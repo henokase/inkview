@@ -137,14 +137,18 @@ const tocObserver = new IntersectionObserver((entries) => {
         if (entry.isIntersecting) {
             const id = entry.target.id;
             const tocLink = document.querySelector(`#toc-list a[href="#${id}"]`);
-            if (tocLink) {
-                document.querySelectorAll('#toc-list a').forEach(a => a.classList.remove('active'));
+            if (tocLink && !tocLink.classList.contains('manual-active')) {
+                document.querySelectorAll('#toc-list a').forEach(a => a.classList.remove('active', 'manual-active'));
                 tocLink.classList.add('active');
                 tocLink.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
     });
 }, observerOptions);
+
+// Flag to temporarily disable observer during manual TOC navigation
+let isManualNavigation = false;
+let manualNavTimeout = null;
 
 // --- Core Functions ---
 
@@ -206,8 +210,18 @@ function renderMarkdown(text, id = null, title = null, scrollPos = 0) {
         
         a.onclick = (e) => {
             e.preventDefault();
-            document.querySelectorAll('#toc-list a').forEach(el => el.classList.remove('active'));
-            a.classList.add('active');
+            
+            // Temporarily disable observer to prevent scroll-based highlighting
+            isManualNavigation = true;
+            if (manualNavTimeout) clearTimeout(manualNavTimeout);
+            manualNavTimeout = setTimeout(() => {
+                isManualNavigation = false;
+            }, 1000);
+            
+            // Manually set active state
+            document.querySelectorAll('#toc-list a').forEach(el => el.classList.remove('active', 'manual-active'));
+            a.classList.add('active', 'manual-active');
+            
             h.scrollIntoView({ behavior: 'smooth' });
             window.history.pushState(null, null, `#${hId}`);
             if (window.innerWidth <= 1300) {
@@ -231,6 +245,10 @@ function renderMarkdown(text, id = null, title = null, scrollPos = 0) {
 
     landingPage.classList.add('hidden');
     saveToHistory(state.currentDoc);
+    
+    // Re-run Prism highlighting on all code blocks after DOM insertion
+    Prism.highlightAll();
+    
     setTimeout(() => {
         window.scrollTo({ top: scrollPos, behavior: 'auto' });
     }, 100);

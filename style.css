@@ -326,9 +326,32 @@ body:not(.sidebar-open) aside { transform: translateX(100%); }
 #toc-list { list-style: none; padding: 0 1.5rem; }
 #toc-list li { margin-bottom: 0.25rem; }
 
+/* TOC Header Level Indentation */
+#toc-list li a.level-1 {
+    padding-left: 1rem;
+    font-weight: 600;
+}
+
+#toc-list li a.level-2 {
+    padding-left: 2rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+#toc-list li a.level-3 {
+    padding-left: 3rem;
+    font-weight: 400;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+#toc-list li a.level-2:hover, #toc-list li a.level-3:hover {
+    color: var(--text);
+}
+
 #toc-list li a {
     display: block;
-    padding: 0.85rem 1rem;
+    padding: 0.85rem 1rem 0.85rem 1rem;
     color: var(--text);
     text-decoration: none;
     font-size: 0.95rem;
@@ -365,7 +388,7 @@ body.sidebar-open main {
 }
 
 .reader-area {
-    max-width: 1000px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 6rem 5% 10rem;
     font-family: 'Lora', serif;
@@ -434,12 +457,23 @@ body.sidebar-open .reader-area {
     padding: 1rem 1.5rem;
     border-bottom: 2px solid var(--border);
     text-align: left;
+    border-right: 1px solid var(--border);
 }
 
 .reader-area td {
     padding: 1rem 1.5rem;
     border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
     color: var(--text);
+}
+
+.reader-area tr:last-child td {
+    border-bottom: none;
+}
+
+.reader-area th:last-child,
+.reader-area td:last-child {
+    border-right: none;
 }
 
 /* Code */
