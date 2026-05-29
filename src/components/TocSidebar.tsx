@@ -32,24 +32,25 @@ export function TocSidebar({ content }: TocSidebarProps) {
   }
 
   return (
-    <nav ref={navRef} className="space-y-0.5">
-      <h3 className="mb-3 font-sans text-xs font-semibold uppercase tracking-widest text-ink-faint">
-        On this page
-      </h3>
+    <nav ref={navRef} className="relative">
       {headings.map((h: TocHeading) => (
-        <a
-          key={h.id}
-          href={`#${h.id}`}
-          onClick={(e) => handleClick(e, h.id)}
-          className={`block truncate rounded-md py-1 pr-2 text-sm transition-all duration-150 ${
-            activeId === h.id
-              ? 'text-accent font-medium'
-              : 'text-ink-soft hover:text-ink'
-          }`}
-          style={{ paddingLeft: `${(h.level - 1) * 14}px` }}
-        >
-          {h.text}
-        </a>
+        <div key={h.id} className="relative flex">
+          {activeId === h.id && (
+            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full bg-accent" />
+          )}
+          <a
+            href={`#${h.id}`}
+            onClick={(e) => handleClick(e, h.id)}
+            className={`block w-full rounded-r-md py-1.5 pr-2 text-sm transition-all duration-150 ${
+              activeId === h.id
+                ? 'text-accent font-medium'
+                : 'text-ink-soft hover:text-ink'
+            }`}
+            style={{ paddingLeft: `${(h.level - 1) * 14 + 12}px` }}
+          >
+            {h.text}
+          </a>
+        </div>
       ))}
     </nav>
   )

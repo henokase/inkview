@@ -37,29 +37,29 @@ export function ConfirmModal({
     <dialog
       ref={dialogRef}
       onClose={onCancel}
-      className="fixed inset-0 z-50 m-auto h-fit w-full max-w-md rounded-2xl border border-border bg-surface p-0 shadow-2xl backdrop:bg-black/50 backdrop:backdrop-blur-sm open:animate-in open:fade-in-0 open:zoom-in-95"
+      className="fixed inset-0 z-50 m-auto h-fit w-full max-w-sm rounded-xl border border-border bg-surface p-0 shadow-2xl backdrop:bg-black/40 backdrop:backdrop-blur-sm"
     >
-      <div className="p-6">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="font-sans text-lg font-semibold text-ink">{title}</h2>
+      <div className="p-5">
+        <div className="mb-1 flex items-center justify-between">
+          <h2 className="font-sans text-base font-semibold text-ink">{title}</h2>
           <button
             onClick={onCancel}
-            className="rounded-md p-1 text-ink-soft hover:bg-surface-alt hover:text-ink transition-colors"
+            className="rounded-lg p-1 text-ink-faint hover:bg-surface-alt hover:text-ink transition-colors"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
-        <p className="mb-6 text-sm text-ink-soft leading-relaxed">{message}</p>
-        <div className="flex justify-end gap-3">
+        <p className="mb-5 text-sm text-ink-soft leading-relaxed font-sans">{message}</p>
+        <div className="flex justify-end gap-2.5">
           <button
             onClick={onCancel}
-            className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-ink hover:bg-surface-alt transition-colors"
+            className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-ink hover:bg-surface-alt transition-colors font-sans"
           >
             {cancelLabel}
           </button>
           <button
             onClick={onConfirm}
-            className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${
+            className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors font-sans ${
               destructive
                 ? 'bg-red-500 hover:bg-red-600'
                 : 'bg-accent hover:bg-accent-soft'

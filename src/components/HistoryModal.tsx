@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Search, Trash2, FileText, CheckSquare, Square, Clock, X, BookOpen } from 'lucide-react'
+import { Search, Trash2, FileText, CheckSquare, Square, Clock, X, BookOpen, Filter } from 'lucide-react'
 import { useDocumentStore } from '../stores/document-store'
 import { ConfirmModal } from './ConfirmModal'
 import { extractTitle } from '../lib/toc'
@@ -21,15 +21,19 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set())
   const [showDeleteModal, setShowDeleteModal] = useState(false)
 
+  const sortBy = useMemo(() => {
+    return [...documents].sort((a, b) => b.updatedAt - a.updatedAt)
+  }, [documents])
+
   const filtered = useMemo(() => {
-    if (!searchQuery.trim()) return documents
+    if (!searchQuery.trim()) return sortBy
     const q = searchQuery.toLowerCase()
-    return documents.filter(
+    return sortBy.filter(
       (d) =>
         d.title.toLowerCase().includes(q) ||
         d.content.toLowerCase().includes(q)
     )
-  }, [documents, searchQuery])
+  }, [sortBy, searchQuery])
 
   const toggleSelection = (id: string) => {
     setSelectedDocs((prev) => {
@@ -77,37 +81,42 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
   }
 
   return createPortal(
-    <div className={`fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-200 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+    <div className={`fixed inset-0 z-50 flex items-center justify-center transition-all duration-200 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative flex h-[80vh] w-full max-w-2xl flex-col rounded-2xl border border-border bg-surface shadow-2xl mx-4">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-5 py-3">
-          <div className="flex items-center gap-2">
-            <BookOpen size={20} className="text-accent" />
-            <h2 className="font-sans text-base font-semibold text-ink">Document History</h2>
+        <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
+          <div className="flex items-center gap-2.5">
+            <div className="rounded-lg bg-accent-bg p-1.5">
+              <BookOpen size={18} className="text-accent" />
+            </div>
+            <h2 className="font-sans text-base font-semibold text-ink">History</h2>
+            <span className="rounded-md bg-surface-alt px-2 py-0.5 text-[11px] font-medium text-ink-faint">
+              {documents.length}
+            </span>
           </div>
           <button
             onClick={onClose}
-            className="rounded-md p-1.5 text-ink-soft hover:bg-surface-alt hover:text-ink transition-colors"
+            className="rounded-lg p-1.5 text-ink-faint hover:bg-surface-alt hover:text-ink transition-colors"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Search */}
-        <div className="px-5 pt-3 pb-2">
+        <div className="px-5 pt-3.5 pb-2">
           <div className="relative">
             <Search
               size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint"
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
             />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by title or content..."
-              className="w-full rounded-lg border border-border bg-surface-alt py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink-faint outline-hidden focus:border-accent transition-colors"
+              placeholder="Search documents..."
+              className="w-full rounded-xl border border-border bg-surface-alt/50 py-2.5 pl-10 pr-3 text-sm text-ink placeholder:text-ink-faint outline-hidden focus:border-accent/50 focus:bg-surface transition-colors"
               autoFocus
             />
           </div>
@@ -115,7 +124,7 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
 
         {/* Toolbar */}
         <div className="flex items-center justify-between px-5 py-2">
-          <span className="text-xs font-medium text-ink-faint">
+          <span className="text-xs font-medium text-ink-faint font-sans">
             {filtered.length} document{filtered.length !== 1 ? 's' : ''}
           </span>
           {filtered.length > 0 && (
@@ -124,7 +133,7 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
                 <>
                   <button
                     onClick={handleSelectAll}
-                    className="flex items-center gap-1 text-xs text-ink-soft hover:text-ink transition-colors"
+                    className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs text-ink-soft hover:text-ink hover:bg-surface-alt transition-colors font-sans"
                   >
                     {selectedDocs.size === filtered.length ? (
                       <CheckSquare size={14} />
@@ -136,14 +145,14 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
                   <button
                     onClick={() => setShowDeleteModal(true)}
                     disabled={selectedDocs.size === 0}
-                    className="flex items-center gap-1 text-xs text-red-400 hover:text-red-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs text-red-400 hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-sans"
                   >
                     <Trash2 size={14} />
                     Delete ({selectedDocs.size})
                   </button>
                   <button
                     onClick={() => { setSelectionMode(false); setSelectedDocs(new Set()) }}
-                    className="text-xs text-ink-faint hover:text-ink transition-colors"
+                    className="rounded-lg px-2.5 py-1 text-xs text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors font-sans"
                   >
                     Cancel
                   </button>
@@ -151,10 +160,10 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
               ) : (
                 <button
                   onClick={() => setSelectionMode(true)}
-                  className="flex items-center gap-1 text-xs text-ink-faint hover:text-ink transition-colors"
+                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors font-sans"
                 >
-                  <Trash2 size={14} />
-                  Delete
+                  <Filter size={14} />
+                  Select
                 </button>
               )}
             </div>
@@ -164,17 +173,19 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
         {/* Document list */}
         <div className="flex-1 overflow-y-auto px-5 pb-4">
           {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center pt-16 text-center">
-              <FileText size={36} className="mb-3 text-ink-faint" />
-              <p className="text-sm text-ink-soft">
-                {searchQuery ? 'No documents found' : 'No history yet'}
+            <div className="flex flex-col items-center justify-center pt-20 text-center">
+              <div className="mb-4 rounded-xl bg-surface-alt p-3">
+                <FileText size={32} className="text-ink-faint" />
+              </div>
+              <p className="text-sm font-medium text-ink font-sans">
+                {searchQuery ? 'No matches found' : 'No documents yet'}
               </p>
-              <p className="mt-1 text-xs text-ink-faint">
-                {searchQuery ? 'Try a different search' : 'Create or upload a document to get started'}
+              <p className="mt-1 text-xs text-ink-faint font-sans">
+                {searchQuery ? 'Try a different search term' : 'Create or upload a document to get started'}
               </p>
             </div>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {filtered.map((doc) => {
                 const title = doc.title || extractTitle(doc.content) || 'Untitled'
                 const isActive = doc.id === activeDocId
@@ -183,40 +194,40 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
                   .replace(/^#+\s+(.+)$/m, '')
                   .replace(/[[\]()#*`>-]/g, '')
                   .trim()
-                  .slice(0, 100)
+                  .slice(0, 120)
 
                 return (
                   <button
                     key={doc.id}
                     onClick={() => handleDocClick(doc.id)}
-                    className={`w-full rounded-lg px-3 py-2.5 text-left transition-all ${
+                    className={`w-full rounded-xl px-3.5 py-3 text-left transition-all duration-150 ${
                       isActive && !selectionMode
                         ? 'bg-accent-bg border border-accent/20'
                         : isSelected
-                          ? 'bg-accent-bg/50 border border-accent/10'
+                          ? 'bg-accent-bg/30 border border-accent/10'
                           : 'border border-transparent hover:bg-surface-alt'
                     }`}
                   >
-                    <div className="flex items-start gap-2.5">
+                    <div className="flex items-start gap-3">
                       {selectionMode && (
                         <span className="mt-0.5 shrink-0">
                           {isSelected ? (
-                            <CheckSquare size={16} className="text-accent" />
+                            <CheckSquare size={18} className="text-accent" />
                           ) : (
-                            <Square size={16} className="text-ink-faint" />
+                            <Square size={18} className="text-ink-faint" />
                           )}
                         </span>
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-ink">
+                        <p className="truncate text-sm font-medium text-ink font-sans">
                           {title}
                         </p>
                         {preview && (
-                          <p className="mt-0.5 truncate text-xs text-ink-faint">
+                          <p className="mt-0.5 line-clamp-1 text-xs text-ink-faint font-serif">
                             {preview}
                           </p>
                         )}
-                        <div className="mt-1 flex items-center gap-1 text-[10px] text-ink-faint">
+                        <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-ink-faint font-sans">
                           <Clock size={10} />
                           <span>{formatDate(doc.updatedAt)}</span>
                         </div>

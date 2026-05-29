@@ -3,36 +3,36 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-surface: oklch(0.97 0.005 240);
-  --color-surface-alt: oklch(0.94 0.005 240);
-  --color-surface-glass: oklch(0.97 0.005 240 / 0.7);
-  --color-ink: oklch(0.12 0.02 240);
-  --color-ink-soft: oklch(0.45 0.02 240);
-  --color-ink-faint: oklch(0.65 0.015 240);
-  --color-border: oklch(0.88 0.01 240);
-  --color-accent: oklch(0.55 0.22 260);
-  --color-accent-soft: oklch(0.65 0.18 260);
-  --color-accent-bg: oklch(0.55 0.22 260 / 0.1);
-  --color-note: oklch(0.55 0.2 250);
-  --color-tip: oklch(0.55 0.2 160);
-  --color-warning: oklch(0.6 0.2 90);
-  --color-important: oklch(0.55 0.22 330);
+  --color-surface: oklch(0.95 0.025 90);
+  --color-surface-alt: oklch(0.91 0.03 88);
+  --color-surface-glass: oklch(0.95 0.025 90 / 0.7);
+  --color-ink: oklch(0.4 0.03 200);
+  --color-ink-soft: oklch(0.52 0.025 200);
+  --color-ink-faint: oklch(0.65 0.02 200);
+  --color-border: oklch(0.85 0.03 85);
+  --color-accent: oklch(0.52 0.17 230);
+  --color-accent-soft: oklch(0.6 0.12 230);
+  --color-accent-bg: oklch(0.52 0.17 230 / 0.1);
+  --color-note: oklch(0.55 0.18 250);
+  --color-tip: oklch(0.55 0.18 145);
+  --color-warning: oklch(0.6 0.18 85);
+  --color-important: oklch(0.55 0.2 330);
   --font-sans: 'Space Grotesk', system-ui, sans-serif;
-  --font-serif: 'Space Grotesk', system-ui, sans-serif;
+  --font-serif: 'Source Serif 4', Georgia, serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
 .dark {
-  --color-surface: oklch(0.13 0.02 240);
-  --color-surface-alt: oklch(0.18 0.02 240);
-  --color-surface-glass: oklch(0.13 0.02 240 / 0.7);
-  --color-ink: oklch(0.96 0.005 240);
-  --color-ink-soft: oklch(0.7 0.01 240);
-  --color-ink-faint: oklch(0.5 0.015 240);
-  --color-border: oklch(0.25 0.02 240);
-  --color-accent: oklch(0.65 0.22 260);
-  --color-accent-soft: oklch(0.55 0.18 260);
-  --color-accent-bg: oklch(0.65 0.22 260 / 0.15);
+  --color-surface: oklch(0.13 0.02 270);
+  --color-surface-alt: oklch(0.17 0.025 270);
+  --color-surface-glass: oklch(0.13 0.02 270 / 0.7);
+  --color-ink: oklch(0.8 0.015 240);
+  --color-ink-soft: oklch(0.58 0.015 240);
+  --color-ink-faint: oklch(0.42 0.01 240);
+  --color-border: oklch(0.22 0.02 270);
+  --color-accent: oklch(0.62 0.16 225);
+  --color-accent-soft: oklch(0.55 0.11 225);
+  --color-accent-bg: oklch(0.62 0.16 225 / 0.15);
 }
 
 @layer base {

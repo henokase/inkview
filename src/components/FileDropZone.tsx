@@ -52,7 +52,7 @@ export function FileDropZone({ onFile }: FileDropZoneProps) {
       className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-8 transition-all duration-200 ${
         dragging
           ? 'border-accent bg-accent-bg scale-[1.02]'
-          : 'border-border hover:border-accent/50 hover:bg-surface-alt/50'
+          : 'border-border hover:border-accent/40 hover:bg-accent-bg/30'
       }`}
     >
       <input
@@ -63,17 +63,17 @@ export function FileDropZone({ onFile }: FileDropZoneProps) {
         onChange={handleFilePick}
       />
       <div
-        className={`rounded-full p-3 transition-colors ${
+        className={`rounded-xl p-3 transition-colors ${
           dragging ? 'bg-accent text-white' : 'bg-surface-alt text-ink-soft'
         }`}
       >
-        <Upload size={24} />
+        <Upload size={22} />
       </div>
       <div className="text-center">
-        <p className="text-sm font-medium text-ink">
+        <p className="text-sm font-medium text-ink font-sans">
           {dragging ? 'Drop your file here' : 'Click or drag to upload'}
         </p>
-        <p className="mt-1 text-xs text-ink-faint">.md or .markdown files</p>
+        <p className="mt-1 text-xs text-ink-faint font-sans">.md or .markdown files</p>
       </div>
     </div>
   )

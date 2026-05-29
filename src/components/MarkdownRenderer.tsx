@@ -58,34 +58,50 @@ export function MarkdownRenderer({ content, onHeadingsRendered }: MarkdownRender
     () => ({
       h1: ({ children }: { children?: ReactNode }) => {
         const id = slugify(String(children))
-        return <h1 id={id} className="mb-6 mt-10 text-3xl font-bold font-sans text-ink first:mt-0">{children}</h1>
+        return (
+          <h1 id={id} className="mb-6 mt-12 text-3xl font-bold font-sans text-accent first:mt-0 tracking-tight">
+            {children}
+          </h1>
+        )
       },
       h2: ({ children }: { children?: ReactNode }) => {
         const id = slugify(String(children))
-        return <h2 id={id} className="mb-4 mt-8 text-2xl font-semibold font-sans text-ink">{children}</h2>
+        return (
+          <h2 id={id} className="mb-4 mt-10 text-2xl font-semibold font-sans text-accent-soft tracking-tight">
+            {children}
+          </h2>
+        )
       },
       h3: ({ children }: { children?: ReactNode }) => {
         const id = slugify(String(children))
-        return <h3 id={id} className="mb-3 mt-6 text-xl font-semibold font-sans text-ink">{children}</h3>
+        return (
+          <h3 id={id} className="mb-3 mt-8 text-xl font-semibold font-sans text-ink tracking-tight">
+            {children}
+          </h3>
+        )
       },
       h4: ({ children }: { children?: ReactNode }) => {
         const id = slugify(String(children))
-        return <h4 id={id} className="mb-2 mt-4 text-lg font-medium font-sans text-ink">{children}</h4>
+        return (
+          <h4 id={id} className="mb-2 mt-6 text-lg font-medium font-sans text-ink-soft tracking-tight">
+            {children}
+          </h4>
+        )
       },
       p: ({ children }: { children?: ReactNode }) => (
-        <p className="mb-4 leading-relaxed text-ink">{children}</p>
+        <p className="mb-5 leading-[1.75] text-ink font-serif text-[1.05rem]">{children}</p>
       ),
       ul: ({ children }: { children?: ReactNode }) => (
-        <ul className="mb-4 ml-6 list-disc space-y-1 text-ink">{children}</ul>
+        <ul className="mb-5 ml-6 list-disc space-y-1.5 text-ink font-serif text-[1.05rem]">{children}</ul>
       ),
       ol: ({ children }: { children?: ReactNode }) => (
-        <ol className="mb-4 ml-6 list-decimal space-y-1 text-ink">{children}</ol>
+        <ol className="mb-5 ml-6 list-decimal space-y-1.5 text-ink font-serif text-[1.05rem]">{children}</ol>
       ),
       li: ({ children }: { children?: ReactNode }) => (
         <li className="leading-relaxed">{children}</li>
       ),
       blockquote: ({ children }: { children?: ReactNode }) => (
-        <blockquote className="mb-4 border-l-4 border-accent/30 pl-4 italic text-ink-soft">
+        <blockquote className="mb-5 border-l-4 border-accent/25 pl-5 italic text-ink-soft font-serif">
           {children}
         </blockquote>
       ),
@@ -94,22 +110,22 @@ export function MarkdownRenderer({ content, onHeadingsRendered }: MarkdownRender
           href={href}
           target={href?.startsWith('http') ? '_blank' : undefined}
           rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined}
-          className="text-accent underline decoration-accent/30 underline-offset-2 transition-colors hover:decoration-accent"
+          className="text-accent underline decoration-accent/25 underline-offset-2 transition-colors hover:decoration-accent/60"
         >
           {children}
         </a>
       ),
-      hr: () => <hr className="my-8 border-border" />,
+      hr: () => <hr className="my-10 border-border/60" />,
       table: ({ children }: { children?: ReactNode }) => (
-        <div className="mb-4 overflow-x-auto">
-          <table className="w-full border-collapse text-sm text-ink">{children}</table>
+        <div className="mb-5 overflow-x-auto rounded-lg border border-border">
+          <table className="w-full border-collapse text-sm text-ink font-sans">{children}</table>
         </div>
       ),
       th: ({ children }: { children?: ReactNode }) => (
-        <th className="border border-border bg-surface-alt px-3 py-2 text-left font-semibold">{children}</th>
+        <th className="bg-surface-alt px-4 py-2.5 text-left font-semibold text-ink border-b border-border">{children}</th>
       ),
       td: ({ children }: { children?: ReactNode }) => (
-        <td className="border border-border px-3 py-2">{children}</td>
+        <td className="px-4 py-2.5 border-b border-border last:border-b-0">{children}</td>
       ),
       code: ({ className, children, ...props }: ComponentPropsWithoutRef<'code'>) => {
         const match = /language-(\w+)/.exec(className || '')
@@ -126,31 +142,31 @@ export function MarkdownRenderer({ content, onHeadingsRendered }: MarkdownRender
         }
         const language = match[1]
         return (
-          <div className="group relative mb-4 mt-2">
-            <div className="flex items-center justify-between rounded-t-lg bg-[#282c34] px-4 py-1.5 text-xs text-[#abb2bf]">
-              <span>{language}</span>
+          <div className="group relative mb-5 mt-3 rounded-lg border border-border overflow-hidden bg-surface-alt">
+            <div className="flex items-center justify-between bg-surface-alt/80 px-4 py-1.5 text-xs text-ink-faint border-b border-border">
+              <span className="font-sans font-medium">{language}</span>
               <button
                 onClick={() => handleCopy(code)}
-                className="flex items-center gap-1.5 rounded px-2 py-1 text-xs opacity-0 transition-opacity group-hover:opacity-100 hover:bg-white/10"
+                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs opacity-0 transition-opacity group-hover:opacity-100 hover:bg-surface/50"
               >
-                {copiedCode === code ? <Check size={14} /> : <Copy size={14} />}
+                {copiedCode === code ? <Check size={13} /> : <Copy size={13} />}
                 {copiedCode === code ? 'Copied' : 'Copy'}
               </button>
             </div>
             <SyntaxHighlighter
+              key={isDark ? 'dark' : 'light'}
               style={isDark ? oneDark : oneLight}
               language={language}
               PreTag="div"
               customStyle={{
                 margin: 0,
-                borderTopLeftRadius: 0,
-                borderTopRightRadius: 0,
-                borderBottomLeftRadius: '0.5rem',
-                borderBottomRightRadius: '0.5rem',
-                fontSize: '0.875rem',
-                lineHeight: '1.5',
+                borderRadius: 0,
+                fontSize: '0.85rem',
+                lineHeight: '1.6',
+                background: 'transparent',
               }}
               showLineNumbers
+              lineNumberStyle={{ color: 'var(--color-ink-faint)', opacity: 0.5 }}
             >
               {code}
             </SyntaxHighlighter>
@@ -178,13 +194,13 @@ export function MarkdownRenderer({ content, onHeadingsRendered }: MarkdownRender
 
           return (
             <div
-              className={`mb-4 rounded-lg border-l-4 p-4 ${c.color}`}
+              className={`mb-5 rounded-lg border-l-4 p-4 ${c.color}`}
               {...props}
             >
-              <strong className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-soft">
+              <strong className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-faint font-sans">
                 {c.icon} {c.label}
               </strong>
-              <div className="text-sm text-ink">{children}</div>
+              <div className="text-sm text-ink font-serif">{children}</div>
             </div>
           )
         }
@@ -194,7 +210,7 @@ export function MarkdownRenderer({ content, onHeadingsRendered }: MarkdownRender
         <img
           src={src}
           alt={alt || ''}
-          className="mb-4 rounded-xl max-w-full h-auto"
+          className="mb-5 rounded-xl max-w-full h-auto"
           loading="lazy"
         />
       ),
@@ -212,7 +228,7 @@ export function MarkdownRenderer({ content, onHeadingsRendered }: MarkdownRender
 
   return (
     <div
-      className="prose-custom font-sans text-base"
+      className="font-sans"
       ref={(el) => {
         if (el && onHeadingsRendered) {
           const ids = Array.from(el.querySelectorAll('h1, h2, h3, h4, h5, h6'))

@@ -1,32 +1,16 @@
-import { Moon, Sun, Monitor } from 'lucide-react'
+import { Moon, Sun } from 'lucide-react'
 import { useTheme } from '../lib/use-theme'
-import type { ThemeMode } from '../types'
-
-const options: { mode: ThemeMode; icon: typeof Sun; label: string }[] = [
-  { mode: 'light', icon: Sun, label: 'Light' },
-  { mode: 'dark', icon: Moon, label: 'Dark' },
-  { mode: 'system', icon: Monitor, label: 'System' },
-]
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
 
   return (
-    <div className="flex items-center gap-1 rounded-lg border border-border bg-surface-alt p-0.5">
-      {options.map(({ mode, icon: Icon, label }) => (
-        <button
-          key={mode}
-          onClick={() => setTheme(mode)}
-          title={label}
-          className={`flex items-center justify-center rounded-md p-1.5 transition-colors ${
-            theme === mode
-              ? 'bg-accent text-white shadow-xs'
-              : 'text-ink-soft hover:text-ink hover:bg-surface'
-          }`}
-        >
-          <Icon size={16} />
-        </button>
-      ))}
-    </div>
+    <button
+      onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+      title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+      className="rounded-lg p-2 text-ink-soft hover:text-accent hover:bg-accent-bg transition-colors"
+    >
+      {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+    </button>
   )
 }
