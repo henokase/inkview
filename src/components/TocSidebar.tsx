@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { memo, useEffect, useMemo, useRef } from 'react'
 import { extractTocHeadings } from '../lib/toc'
 import { useActiveHeading } from '../lib/use-active-heading'
 import type { TocHeading } from '../types'
@@ -7,7 +7,7 @@ interface TocSidebarProps {
   content: string
 }
 
-export function TocSidebar({ content }: TocSidebarProps) {
+export const TocSidebar = memo(function TocSidebar({ content }: TocSidebarProps) {
   const navRef = useRef<HTMLElement>(null)
   const headings = useMemo(() => extractTocHeadings(content), [content])
   const ids = useMemo(() => headings.map((h) => h.id), [headings])
@@ -54,4 +54,4 @@ export function TocSidebar({ content }: TocSidebarProps) {
       ))}
     </nav>
   )
-}
+})

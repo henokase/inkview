@@ -1,10 +1,9 @@
-import { useMemo, useState, useCallback, type ReactNode, type ComponentPropsWithoutRef } from 'react'
+import { memo, useMemo, useState, useCallback, type ReactNode, type ComponentPropsWithoutRef, type CSSProperties } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkGitHubAlerts from 'remark-github-markdown-alerts'
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
-import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { oneDark as oneDarkRaw, oneLight as oneLightRaw } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import tsx from 'react-syntax-highlighter/dist/esm/languages/prism/tsx'
 import typescript from 'react-syntax-highlighter/dist/esm/languages/prism/typescript'
 import javascript from 'react-syntax-highlighter/dist/esm/languages/prism/javascript'
@@ -16,6 +15,17 @@ import css from 'react-syntax-highlighter/dist/esm/languages/prism/css'
 import { Copy, Check } from 'lucide-react'
 import type { Components } from 'react-markdown'
 import { useTheme } from '../lib/use-theme'
+
+function cleanTheme(theme: Record<string, CSSProperties>): Record<string, CSSProperties> {
+  const cleaned: Record<string, CSSProperties> = {}
+  for (const [key, val] of Object.entries(theme)) {
+    cleaned[key] = { ...val, background: 'transparent', backgroundColor: 'transparent' }
+  }
+  return cleaned
+}
+
+const oneDark = cleanTheme(oneDarkRaw)
+const oneLight = cleanTheme(oneLightRaw)
 
 SyntaxHighlighter.registerLanguage('tsx', tsx)
 SyntaxHighlighter.registerLanguage('ts', typescript)
@@ -43,7 +53,7 @@ interface MarkdownRendererProps {
   onHeadingsRendered?: (ids: string[]) => void
 }
 
-export function MarkdownRenderer({ content, onHeadingsRendered }: MarkdownRendererProps) {
+export const MarkdownRenderer = memo(function MarkdownRenderer({ content, onHeadingsRendered }: MarkdownRendererProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
@@ -89,7 +99,7 @@ export function MarkdownRenderer({ content, onHeadingsRendered }: MarkdownRender
         )
       },
       p: ({ children }: { children?: ReactNode }) => (
-        <p className="mb-5 leading-[1.75] text-ink font-serif text-[1.05rem]">{children}</p>
+        <p className="mb-5 leading-[1.75] text-ink font-serif text-[1.05rem] break-words">{children}</p>
       ),
       ul: ({ children }: { children?: ReactNode }) => (
         <ul className="mb-5 ml-6 list-disc space-y-1.5 text-ink font-serif text-[1.05rem]">{children}</ul>
@@ -110,7 +120,7 @@ export function MarkdownRenderer({ content, onHeadingsRendered }: MarkdownRender
           href={href}
           target={href?.startsWith('http') ? '_blank' : undefined}
           rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined}
-          className="text-accent underline decoration-accent/25 underline-offset-2 transition-colors hover:decoration-accent/60"
+          className="break-all text-accent underline decoration-accent/25 underline-offset-2 transition-colors hover:decoration-accent/60"
         >
           {children}
         </a>
@@ -165,6 +175,7 @@ export function MarkdownRenderer({ content, onHeadingsRendered }: MarkdownRender
                 lineHeight: '1.6',
                 background: 'transparent',
               }}
+              codeTagProps={{ style: { background: 'transparent' } }}
               showLineNumbers
               lineNumberStyle={{ color: 'var(--color-ink-faint)', opacity: 0.5 }}
             >
@@ -246,4 +257,4 @@ export function MarkdownRenderer({ content, onHeadingsRendered }: MarkdownRender
       </ReactMarkdown>
     </div>
   )
-}
+})

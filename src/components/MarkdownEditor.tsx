@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { memo, useCallback } from 'react'
 import CodeMirror from '@uiw/react-codemirror'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
@@ -24,7 +24,7 @@ interface MarkdownEditorProps {
   onChange: (value: string) => void
 }
 
-export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
+export const MarkdownEditor = memo(function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
@@ -91,4 +91,4 @@ export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
       }}
     />
   )
-}
+})

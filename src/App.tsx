@@ -1,27 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  FileEdit,
-  Eye,
-  Columns2,
-  Plus,
-  Clock,
-  BookOpen,
-  FileText,
-  List,
-  X,
-} from 'lucide-react'
+import { FileText, Plus, X } from 'lucide-react'
 import { useDocumentStore } from './stores/document-store'
 import { useUiStore } from './stores/ui-store'
 import { useTheme } from './lib/use-theme'
 import { useKeyboard } from './lib/use-keyboard'
 import { extractTitle } from './lib/toc'
-import { ThemeToggle } from './components/ThemeToggle'
+import { NavBar } from './components/NavBar'
 import { MarkdownEditor } from './components/MarkdownEditor'
 import { MarkdownRenderer } from './components/MarkdownRenderer'
 import { TocSidebar } from './components/TocSidebar'
 import { HistoryModal } from './components/HistoryModal'
 import { NewDocModal } from './components/NewDocModal'
-import type { EditorMode } from './types'
 
 function App() {
   const documents = useDocumentStore((s) => s.documents)
@@ -39,19 +28,30 @@ function App() {
   const [splitRatio, setSplitRatio] = useState(0.5)
   const isDragging = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const editorPaneRef = useRef<HTMLDivElement>(null)
+  const previewPaneRef = useRef<HTMLDivElement>(null)
+  const splitRatioRef = useRef(0.5)
+  const [debouncedContent, setDebouncedContent] = useState('')
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging.current || !containerRef.current) return
       const rect = containerRef.current.getBoundingClientRect()
-      const ratio = (e.clientX - rect.left) / rect.width
-      setSplitRatio(Math.min(Math.max(ratio, 0.2), 0.8))
+      const ratio = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0.2), 0.8)
+      splitRatioRef.current = ratio
+      if (editorPaneRef.current) {
+        editorPaneRef.current.style.width = `${ratio * 100}%`
+      }
+      if (previewPaneRef.current) {
+        previewPaneRef.current.style.width = `${(1 - ratio) * 100}%`
+      }
     }
     const handleMouseUp = () => {
       if (isDragging.current) {
         isDragging.current = false
         document.body.style.cursor = ''
         document.body.style.userSelect = ''
+        setSplitRatio(splitRatioRef.current)
       }
     }
     document.addEventListener('mousemove', handleMouseMove)
@@ -74,6 +74,17 @@ function App() {
     () => documents.find((d) => d.id === activeDocId),
     [documents, activeDocId]
   )
+
+  const content = activeDoc?.content ?? ''
+
+  useEffect(() => {
+    if (editorMode === 'edit') {
+      setDebouncedContent(content)
+      return
+    }
+    const timer = setTimeout(() => setDebouncedContent(content), 300)
+    return () => clearTimeout(timer)
+  }, [content, editorMode])
 
   const title = useMemo(
     () => (activeDoc ? activeDoc.title || extractTitle(activeDoc.content) || 'Untitled' : ''),
@@ -114,12 +125,6 @@ function App() {
   useKeyboard({ key: 'n', ctrl: true }, () => setNewDocOpen(true))
   useKeyboard({ key: 'h', ctrl: true }, () => setHistoryOpen(true))
 
-  const editorModes: { mode: EditorMode; icon: typeof FileEdit; label: string }[] = [
-    { mode: 'edit', icon: FileEdit, label: 'Edit' },
-    { mode: 'split', icon: Columns2, label: 'Split' },
-    { mode: 'preview', icon: Eye, label: 'Preview' },
-  ]
-
   const hasActiveDoc = activeDocId !== null && activeDoc !== undefined
   const showEmpty = documents.length === 0 && !activeDoc
   const showContent = hasActiveDoc
@@ -127,77 +132,16 @@ function App() {
   return (
     <div className="flex h-screen overflow-hidden bg-surface">
       <main className="flex flex-1 flex-col min-w-0">
-        {/* Top bar */}
-        <header className="flex items-center justify-between border-b border-border/80 bg-surface/70 backdrop-blur-lg px-5 py-3 select-none">
-          <div className="flex items-center gap-2.5">
-            <div className="rounded-lg bg-accent-bg p-1.5">
-              <BookOpen size={18} className="text-accent" />
-            </div>
-            <span className="font-sans text-sm font-bold text-ink tracking-tight">InkView</span>
-            {showContent && (
-              <>
-                <span className="text-ink-faint/50 mx-1">/</span>
-                <span className="truncate font-sans text-sm font-medium text-ink-soft max-w-[160px] sm:max-w-md">
-                  {title}
-                </span>
-              </>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1">
-            {showContent && (
-              <div className="flex items-center rounded-xl bg-surface-alt/80 border border-border/60 p-0.5 mr-2">
-                {editorModes.map(({ mode, icon: Icon, label }) => (
-                  <button
-                    key={mode}
-                    onClick={() => setEditorMode(mode)}
-                    title={label}
-                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-150 ${
-                      editorMode === mode
-                        ? 'bg-accent text-white shadow-xs'
-                        : 'text-ink-faint hover:text-ink'
-                    }`}
-                  >
-                    <Icon size={14} />
-                    <span className="hidden sm:inline">{label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {showContent && editorMode !== 'edit' && (
-              <button
-                onClick={() => setTocOpen(!tocOpen)}
-                title="Table of contents"
-                className={`rounded-lg p-2 transition-colors ${
-                  tocOpen ? 'text-accent bg-accent-bg' : 'text-ink-faint hover:text-ink hover:bg-surface-alt'
-                }`}
-              >
-                <List size={16} />
-              </button>
-            )}
-
-            <button
-              onClick={() => setNewDocOpen(true)}
-              title="New document (Ctrl+N)"
-              className="rounded-lg p-2 text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors"
-            >
-              <Plus size={16} />
-            </button>
-
-            <button
-              onClick={() => setHistoryOpen(true)}
-              title="Document history (Ctrl+H)"
-              className="rounded-lg p-2 text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors"
-            >
-              <Clock size={16} />
-            </button>
-
-            <div className="ml-1 pl-1 border-l border-border/60">
-              <ThemeToggle />
-            </div>
-          </div>
-        </header>
+        <NavBar
+          title={title}
+          showContent={showContent}
+          editorMode={editorMode}
+          onEditorModeChange={setEditorMode}
+          tocOpen={tocOpen}
+          onTocToggle={() => setTocOpen(!tocOpen)}
+          onNewDoc={() => setNewDocOpen(true)}
+          onHistory={() => setHistoryOpen(true)}
+        />
 
         {/* Content area */}
         <div className="flex flex-1 overflow-hidden">
@@ -222,6 +166,7 @@ function App() {
               <div ref={containerRef} className="flex flex-1 min-w-0">
                 {(editorMode === 'edit' || editorMode === 'split') && (
                   <div
+                    ref={editorPaneRef}
                     className="flex flex-col min-h-0"
                     style={editorMode === 'split' ? { width: `${splitRatio * 100}%` } : { flex: '1' }}
                   >
@@ -245,12 +190,13 @@ function App() {
 
                 {(editorMode === 'preview' || editorMode === 'split') && (
                   <div
+                    ref={previewPaneRef}
                     className="flex flex-col overflow-hidden"
                     style={editorMode === 'split' ? { width: `${(1 - splitRatio) * 100}%` } : { flex: '1' }}
                   >
                     <div className="flex-1 overflow-y-auto px-6 py-6 lg:px-10 xl:px-16">
-                      <article className="mx-auto max-w-4xl xl:max-w-5xl">
-                        <MarkdownRenderer content={activeDoc.content} />
+                      <article className="mx-auto max-w-4xl xl:max-w-5xl break-words">
+                        <MarkdownRenderer content={debouncedContent} />
                       </article>
                     </div>
                   </div>
@@ -285,36 +231,18 @@ function App() {
           className="fixed inset-0 z-50 flex flex-col bg-surface"
           style={{ animation: 'fadeIn 200ms' }}
         >
-          <header className="flex items-center justify-between border-b border-border/80 bg-surface/70 backdrop-blur-lg px-5 py-3 select-none">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-accent-bg p-1.5">
-                <BookOpen size={16} className="text-accent" />
-              </div>
-              <span className="text-sm font-medium text-ink font-sans">
-                Editing: {title}
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              {editorModes.map(({ mode, icon: Icon, label }) => (
-                <button
-                  key={mode}
-                  onClick={() => setEditorMode(mode)}
-                  title={label}
-                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-150 ${
-                    editorMode === mode
-                      ? 'bg-accent text-white shadow-xs'
-                      : 'text-ink-faint hover:text-ink'
-                  }`}
-                >
-                  <Icon size={14} />
-                  <span className="hidden sm:inline">{label}</span>
-                </button>
-              ))}
-              <div className="ml-2 pl-2 border-l border-border/60">
-                <ThemeToggle />
-              </div>
-            </div>
-          </header>
+          <NavBar
+            title={title}
+            showContent
+            editorMode={editorMode}
+            onEditorModeChange={setEditorMode}
+            tocOpen={tocOpen}
+            onTocToggle={() => setTocOpen(!tocOpen)}
+            onNewDoc={() => setNewDocOpen(true)}
+            onHistory={() => setHistoryOpen(true)}
+            variant="fullscreen"
+            onCloseFullscreen={() => setEditorMode('preview')}
+          />
           <div className="flex-1 overflow-auto px-6 py-6 lg:px-12">
             <div className="mx-auto max-w-4xl h-full">
               <MarkdownEditor
