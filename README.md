@@ -1,50 +1,73 @@
-# InkView.
+# React + TypeScript + Vite
 
-InkView is a web-based Markdown viewer designed for clarity, performance, and a premium reading experience. It transforms raw Markdown into beautiful, structured documents with advanced features for researchers, developers, and power users.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-##  Features
+Currently, two official plugins are available:
 
-- **Integrated Editor Mode**: Expand your workspace into a distraction-free, fullscreen notepad to write or refine your Markdown before reading.
-- **Smart File Workflow**: Upload files directly into the editor. Review and modify your content before rendering.
-- **Premium Typography**: Carefully curated fonts (Outfit & Lora) for maximum readability.
-- **Smart Navigation**: Automatically generated Table of Contents (TOC) with scroll-tracking and centering.
-- **Persistent History**: Your reading history is saved locally, including your last-read position.
-- **Intelligent Title Extraction**: Automatically identifies document titles from content.  
-- **Modern UI/UX**:
-    - Smooth transitions and glassmorphism effects.
-    - Dark & Light mode persistence.
-    - Responsive "Sliding" layout for sidebars.
-- **Advanced Markdown Support**:
-    - GitHub Flavored Markdown (GFM).
-    - Syntax highlighting for code blocks via Prism.js.
-    - Custom Alert blocks (NOTE, TIP, WARNING, IMPORTANT).
-    - One-click code copying.
-- **Library Management**:
-    - Search through previous documents.
-    - Bulk selection and deletion.
-    - Custom modern confirmation modals.
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-##  Getting Started
+## React Compiler
 
-InkView is a zero-dependency (build-free) static application.
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-### Installation
+## Expanding the ESLint configuration
 
-1. Clone the repository:
-   ```bash
-   https://github.com/henokase/inkview.git
-   ```
-2. Open `index.html` in any modern web browser.
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
 
-##  Usage
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
 
-- **Loading Content**: Paste your Markdown or drop a `.md` file. The content will appear in the input area.
-- **Editor Mode**: Click the expand icon to open the immersive editor.
-- **Navigation**: Use the sidebar to jump between sections. The sidebar will highlight and center your current location as you scroll.
-- **History**: Access previous documents via the History button. You can search, select multiple items to delete, or clear everything at once.
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
 
-##  License
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
 
-This project is licensed under the [MIT License](LICENSE).
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
----
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
