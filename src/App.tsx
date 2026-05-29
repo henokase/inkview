@@ -33,6 +33,20 @@ function App() {
   const previewPaneRef = useRef<HTMLDivElement>(null)
   const splitRatioRef = useRef(0.5)
   const [debouncedContent, setDebouncedContent] = useState('')
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkSize = () => {
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      if (mobile && editorMode === 'split') {
+        setEditorMode('preview')
+      }
+    }
+    checkSize()
+    window.addEventListener('resize', checkSize)
+    return () => window.removeEventListener('resize', checkSize)
+  }, [editorMode, setEditorMode])
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -152,6 +166,7 @@ function App() {
           onTocToggle={() => setTocOpen(!tocOpen)}
           onNewDoc={() => setNewDocOpen(true)}
           onHistory={() => setHistoryOpen(true)}
+          isMobile={isMobile}
         />
 
         {/* Content area */}
@@ -206,7 +221,7 @@ function App() {
                     style={editorMode === 'split' ? { width: `${(1 - splitRatio) * 100}%` } : { flex: '1' }}
                   >
                     <div className="flex-1 overflow-y-auto px-6 py-6 lg:px-10 xl:px-16">
-                      <article className="mx-auto max-w-4xl xl:max-w-5xl break-words">
+                      <article className="mx-auto max-w-4xl xl:max-w-5xl wrap-break-word">
                         <MarkdownRenderer content={debouncedContent} />
                       </article>
                     </div>
@@ -216,20 +231,27 @@ function App() {
 
               {/* TOC sidebar */}
               {editorMode !== 'edit' && tocOpen && (
-                <aside className="w-60 shrink-0 border-l border-border/60 bg-surface-alt/30 p-4 overflow-y-auto">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-sans text-xs font-semibold uppercase tracking-widest text-ink-faint">
-                      Contents
-                    </h3>
-                    <button
-                      onClick={() => setTocOpen(false)}
-                      className="rounded-lg p-1 text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                  <TocSidebar content={activeDoc.content} />
-                </aside>
+                <>
+                  {/* Backdrop overlay for mobile TOC */}
+                  <div
+                    className="fixed inset-0 z-30 bg-black/20 backdrop-blur-xs lg:hidden"
+                    onClick={() => setTocOpen(false)}
+                  />
+                  <aside className="fixed inset-y-0 right-0 z-40 w-64 lg:static lg:w-60 shrink-0 border-l border-border/60 bg-surface lg:bg-surface-alt/30 p-4 overflow-y-auto shadow-2xl lg:shadow-none animate-in slide-in-from-right duration-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-sans text-xs font-semibold uppercase tracking-widest text-ink-faint">
+                        Contents
+                      </h3>
+                      <button
+                        onClick={() => setTocOpen(false)}
+                        className="rounded-lg p-1 text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <TocSidebar content={activeDoc.content} />
+                  </aside>
+                </>
               )}
             </>
           ) : null}
@@ -254,6 +276,7 @@ function App() {
             onHistory={() => setHistoryOpen(true)}
             variant="fullscreen"
             onCloseFullscreen={() => setEditorMode('preview')}
+            isMobile={isMobile}
           />
           <div className="flex-1 overflow-auto px-6 py-6 lg:px-12">
             <div className="mx-auto max-w-4xl h-full">

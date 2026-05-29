@@ -85,7 +85,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, onHead
       h3: ({ children }: { children?: ReactNode }) => {
         const id = slugify(String(children))
         return (
-          <h3 id={id} className="mb-3 mt-8 text-xl font-semibold font-sans text-ink tracking-tight">
+          <h3 id={id} className="mb-3 mt-8 text-xl font-semibold font-sans text-accent-soft/80 tracking-tight">
             {children}
           </h3>
         )

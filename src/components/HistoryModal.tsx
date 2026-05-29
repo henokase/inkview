@@ -214,18 +214,20 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
                   .slice(0, 120)
 
                 return (
-                  <button
+                  <div
                     key={doc.id}
-                    onClick={() => handleDocClick(doc.id)}
-                    className={`group w-full rounded-xl px-3.5 py-3 text-left transition-all duration-150 ${
+                    className={`group flex items-center justify-between rounded-xl px-3.5 py-3 border transition-all duration-150 ${
                       isActive && !selectionMode
-                        ? 'bg-accent-bg border border-accent/20'
+                        ? 'bg-accent-bg border-accent/20'
                         : isSelected
-                          ? 'bg-accent-bg/30 border border-accent/10'
-                          : 'border border-transparent hover:bg-surface-alt'
+                          ? 'bg-accent-bg/30 border-accent/10'
+                          : 'border-transparent hover:bg-surface-alt'
                     }`}
                   >
-                    <div className="flex items-start gap-3">
+                    <button
+                      onClick={() => handleDocClick(doc.id)}
+                      className="flex flex-1 items-start gap-3 text-left min-w-0"
+                    >
                       {selectionMode && (
                         <span className="mt-0.5 shrink-0">
                           {isSelected ? (
@@ -249,17 +251,17 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
                           <span>{formatDate(doc.updatedAt)}</span>
                         </div>
                       </div>
-                      {!selectionMode && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleSingleDelete(doc.id) }}
-                          className="shrink-0 rounded-lg p-1.5 text-ink-faint opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                          title="Delete document"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                    </div>
-                  </button>
+                    </button>
+                    {!selectionMode && (
+                      <button
+                        onClick={() => handleSingleDelete(doc.id)}
+                        className="shrink-0 rounded-lg p-1.5 text-ink-faint opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all ml-2"
+                        title="Delete document"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
                 )
               })}
             </div>

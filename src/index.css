@@ -17,8 +17,8 @@
   --color-tip: oklch(0.55 0.18 145);
   --color-warning: oklch(0.6 0.18 85);
   --color-important: oklch(0.55 0.2 330);
-  --font-sans: 'Space Grotesk', system-ui, sans-serif;
-  --font-serif: 'Source Serif 4', Georgia, serif;
+  --font-sans: 'Red Hat Display', system-ui, sans-serif;
+  --font-serif: 'Red Hat Display', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
