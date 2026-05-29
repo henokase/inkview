@@ -1,3 +1,4 @@
+import { useCallback, useRef, useState } from 'react'
 import { BookOpen, Columns2, Clock, Eye, FileEdit, List, Plus } from 'lucide-react'
 import { ThemeToggle } from './ThemeToggle'
 import type { EditorMode } from '../types'
@@ -7,6 +8,7 @@ interface NavBarProps {
   showContent?: boolean
   editorMode: EditorMode
   onEditorModeChange: (mode: EditorMode) => void
+  onTitleChange?: (title: string) => void
   tocOpen?: boolean
   onTocToggle?: () => void
   onNewDoc?: () => void
@@ -26,6 +28,7 @@ export function NavBar({
   showContent,
   editorMode,
   onEditorModeChange,
+  onTitleChange,
   tocOpen,
   onTocToggle,
   onNewDoc,
@@ -33,6 +36,33 @@ export function NavBar({
   variant = 'main',
   onCloseFullscreen,
 }: NavBarProps) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(title)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const startEditing = useCallback(() => {
+    setDraft(title)
+    setEditing(true)
+    requestAnimationFrame(() => inputRef.current?.select())
+  }, [title])
+
+  const saveTitle = useCallback(() => {
+    setEditing(false)
+    const trimmed = draft.trim()
+    if (trimmed && trimmed !== title) {
+      onTitleChange?.(trimmed)
+    }
+  }, [draft, title, onTitleChange])
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.currentTarget instanceof HTMLElement && e.currentTarget.blur()
+    }
+    if (e.key === 'Escape') {
+      setDraft(title)
+      setEditing(false)
+    }
+  }, [title])
   return (
     <header className="flex items-center justify-between border-b border-border/80 bg-surface/70 backdrop-blur-lg px-5 py-3 select-none">
       {/* Left side */}
@@ -45,9 +75,24 @@ export function NavBar({
           {showContent && title && (
             <>
               <span className="text-ink-faint/50 mx-1 shrink-0">/</span>
-              <span className="truncate font-sans text-sm font-medium text-ink-soft min-w-0">
-                {title}
-              </span>
+              {editing ? (
+                <input
+                  ref={inputRef}
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onBlur={saveTitle}
+                  onKeyDown={handleKeyDown}
+                  className="min-w-0 flex-1 font-sans text-sm font-medium bg-surface-alt rounded-md px-1.5 py-0.5 text-ink outline-hidden border border-accent/40"
+                />
+              ) : (
+                <button
+                  onClick={startEditing}
+                  className="truncate font-sans text-sm font-medium text-ink-soft min-w-0 text-left hover:text-ink transition-colors"
+                  title="Click to rename"
+                >
+                  {title}
+                </button>
+              )}
             </>
           )}
         </div>

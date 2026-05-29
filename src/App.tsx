@@ -17,6 +17,7 @@ function App() {
   const activeDocId = useDocumentStore((s) => s.activeDocId)
   const createDocument = useDocumentStore((s) => s.createDocument)
   const updateContent = useDocumentStore((s) => s.updateContent)
+  const updateTitle = useDocumentStore((s) => s.updateTitle)
   const setActiveDoc = useDocumentStore((s) => s.setActiveDoc)
 
   const editorMode = useUiStore((s) => s.editorMode)
@@ -109,6 +110,15 @@ function App() {
     [activeDocId, updateContent]
   )
 
+  const handleTitleChange = useCallback(
+    (title: string) => {
+      if (activeDocId) {
+        updateTitle(activeDocId, title)
+      }
+    },
+    [activeDocId, updateTitle]
+  )
+
   const handleNewDoc = useCallback(() => {
     const id = createDocument('', 'Untitled')
     setActiveDoc(id)
@@ -137,6 +147,7 @@ function App() {
           showContent={showContent}
           editorMode={editorMode}
           onEditorModeChange={setEditorMode}
+          onTitleChange={handleTitleChange}
           tocOpen={tocOpen}
           onTocToggle={() => setTocOpen(!tocOpen)}
           onNewDoc={() => setNewDocOpen(true)}
@@ -236,6 +247,7 @@ function App() {
             showContent
             editorMode={editorMode}
             onEditorModeChange={setEditorMode}
+            onTitleChange={handleTitleChange}
             tocOpen={tocOpen}
             onTocToggle={() => setTocOpen(!tocOpen)}
             onNewDoc={() => setNewDocOpen(true)}

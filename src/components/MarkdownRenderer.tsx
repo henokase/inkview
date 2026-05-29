@@ -99,7 +99,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, onHead
         )
       },
       p: ({ children }: { children?: ReactNode }) => (
-        <p className="mb-5 leading-[1.75] text-ink font-serif text-[1.05rem] break-words">{children}</p>
+        <p className="mb-5 leading-[1.75] text-ink font-serif text-[1.05rem] wrap-break-word">{children}</p>
       ),
       ul: ({ children }: { children?: ReactNode }) => (
         <ul className="mb-5 ml-6 list-disc space-y-1.5 text-ink font-serif text-[1.05rem]">{children}</ul>
@@ -141,6 +141,15 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, onHead
         const match = /language-(\w+)/.exec(className || '')
         const code = String(children).replace(/\n$/, '')
         if (!match) {
+          if (code.includes('\n')) {
+            return (
+              <div className="group relative mb-5 mt-3 rounded-lg border border-border overflow-hidden bg-surface-alt">
+                <pre className="overflow-x-auto px-4 py-3 font-mono text-sm leading-relaxed text-ink whitespace-pre-wrap break-all">
+                  <code>{code}</code>
+                </pre>
+              </div>
+            )
+          }
           return (
             <code
               className="rounded-md bg-surface-alt px-1.5 py-0.5 font-mono text-sm text-accent"

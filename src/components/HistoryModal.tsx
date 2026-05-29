@@ -20,6 +20,12 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set())
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const deleteTargetTitle = useMemo(() => {
+    if (!deleteTarget) return ''
+    const doc = documents.find((d) => d.id === deleteTarget)
+    return doc?.title || extractTitle(doc?.content || '') || 'Untitled'
+  }, [deleteTarget, documents])
 
   const sortBy = useMemo(() => {
     return [...documents].sort((a, b) => b.updatedAt - a.updatedAt)
@@ -58,6 +64,17 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
     setSelectedDocs(new Set())
     setSelectionMode(false)
     setShowDeleteModal(false)
+  }
+
+  const handleSingleDelete = (id: string) => {
+    setDeleteTarget(id)
+  }
+
+  const confirmSingleDelete = () => {
+    if (deleteTarget) {
+      removeDocuments([deleteTarget])
+      setDeleteTarget(null)
+    }
   }
 
   const handleDocClick = (id: string) => {
@@ -200,7 +217,7 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
                   <button
                     key={doc.id}
                     onClick={() => handleDocClick(doc.id)}
-                    className={`w-full rounded-xl px-3.5 py-3 text-left transition-all duration-150 ${
+                    className={`group w-full rounded-xl px-3.5 py-3 text-left transition-all duration-150 ${
                       isActive && !selectionMode
                         ? 'bg-accent-bg border border-accent/20'
                         : isSelected
@@ -232,6 +249,15 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
                           <span>{formatDate(doc.updatedAt)}</span>
                         </div>
                       </div>
+                      {!selectionMode && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleSingleDelete(doc.id) }}
+                          className="shrink-0 rounded-lg p-1.5 text-ink-faint opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                          title="Delete document"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </button>
                 )
@@ -247,6 +273,14 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
         message={`Are you sure you want to delete ${selectedDocs.size} document${selectedDocs.size !== 1 ? 's' : ''}? This action cannot be undone.`}
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteModal(false)}
+      />
+
+      <ConfirmModal
+        open={deleteTarget !== null}
+        title="Delete document"
+        message={`Are you sure you want to delete "${deleteTargetTitle}"? This action cannot be undone.`}
+        onConfirm={confirmSingleDelete}
+        onCancel={() => setDeleteTarget(null)}
       />
     </div>,
     document.body
