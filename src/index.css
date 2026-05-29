@@ -17,8 +17,8 @@
   --color-tip: oklch(0.55 0.2 160);
   --color-warning: oklch(0.6 0.2 90);
   --color-important: oklch(0.55 0.22 330);
-  --font-sans: 'Outfit', system-ui, sans-serif;
-  --font-serif: 'Lora', Georgia, serif;
+  --font-sans: 'Space Grotesk', system-ui, sans-serif;
+  --font-serif: 'Space Grotesk', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 }
 

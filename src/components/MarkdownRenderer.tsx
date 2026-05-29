@@ -212,7 +212,7 @@ export function MarkdownRenderer({ content, onHeadingsRendered }: MarkdownRender
 
   return (
     <div
-      className="prose-custom font-serif text-base"
+      className="prose-custom font-sans text-base"
       ref={(el) => {
         if (el && onHeadingsRendered) {
           const ids = Array.from(el.querySelectorAll('h1, h2, h3, h4, h5, h6'))

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { extractTocHeadings } from '../lib/toc'
 import { useActiveHeading } from '../lib/use-active-heading'
 import type { TocHeading } from '../types'
@@ -8,9 +8,18 @@ interface TocSidebarProps {
 }
 
 export function TocSidebar({ content }: TocSidebarProps) {
+  const navRef = useRef<HTMLElement>(null)
   const headings = useMemo(() => extractTocHeadings(content), [content])
   const ids = useMemo(() => headings.map((h) => h.id), [headings])
   const activeId = useActiveHeading(ids)
+
+  useEffect(() => {
+    if (!activeId || !navRef.current) return
+    const activeLink = navRef.current.querySelector(`[href="#${activeId}"]`)
+    if (activeLink) {
+      activeLink.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }
+  }, [activeId])
 
   if (headings.length === 0) return null
 
@@ -23,7 +32,7 @@ export function TocSidebar({ content }: TocSidebarProps) {
   }
 
   return (
-    <nav className="space-y-0.5">
+    <nav ref={navRef} className="space-y-0.5">
       <h3 className="mb-3 font-sans text-xs font-semibold uppercase tracking-widest text-ink-faint">
         On this page
       </h3>

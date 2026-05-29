@@ -37,7 +37,6 @@ export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
     <CodeMirror
       value={value}
       onChange={handleChange}
-      height="100%"
       theme={isDark ? 'dark' : 'light'}
       extensions={[
         markdown({
@@ -48,7 +47,7 @@ export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
         syntaxHighlighting(headingStyle),
         EditorView.lineWrapping,
         EditorView.theme({
-          '&': { backgroundColor: 'transparent !important', height: '100%' },
+          '&': { backgroundColor: 'transparent !important' },
           '.cm-scroller': {
             fontFamily: 'var(--font-sans)',
             fontSize: '15px',

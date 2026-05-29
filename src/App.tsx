@@ -1,13 +1,14 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
-  Menu,
-  X,
   FileEdit,
   Eye,
   Columns2,
   Plus,
-  FileUp,
+  Clock,
   BookOpen,
+  FileText,
+  List,
+  X,
 } from 'lucide-react'
 import { useDocumentStore } from './stores/document-store'
 import { useUiStore } from './stores/ui-store'
@@ -15,11 +16,11 @@ import { useTheme } from './lib/use-theme'
 import { useKeyboard } from './lib/use-keyboard'
 import { extractTitle } from './lib/toc'
 import { ThemeToggle } from './components/ThemeToggle'
-import { DocumentList } from './components/DocumentList'
 import { MarkdownEditor } from './components/MarkdownEditor'
 import { MarkdownRenderer } from './components/MarkdownRenderer'
 import { TocSidebar } from './components/TocSidebar'
-import { FileDropZone } from './components/FileDropZone'
+import { HistoryModal } from './components/HistoryModal'
+import { NewDocModal } from './components/NewDocModal'
 import type { EditorMode } from './types'
 
 function App() {
@@ -29,11 +30,12 @@ function App() {
   const updateContent = useDocumentStore((s) => s.updateContent)
   const setActiveDoc = useDocumentStore((s) => s.setActiveDoc)
 
-  const sidebarOpen = useUiStore((s) => s.sidebarOpen)
-  const toggleSidebar = useUiStore((s) => s.toggleSidebar)
-  const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
   const editorMode = useUiStore((s) => s.editorMode)
   const setEditorMode = useUiStore((s) => s.setEditorMode)
+
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [newDocOpen, setNewDocOpen] = useState(false)
+  const [tocOpen, setTocOpen] = useState(false)
 
   useTheme()
 
@@ -51,9 +53,9 @@ function App() {
     (content: string, name: string) => {
       const id = createDocument(content, name || 'Untitled')
       setActiveDoc(id)
-      setSidebarOpen(true)
+      setNewDocOpen(false)
     },
-    [createDocument, setActiveDoc, setSidebarOpen]
+    [createDocument, setActiveDoc]
   )
 
   const handleContentChange = useCallback(
@@ -69,6 +71,7 @@ function App() {
     const id = createDocument('', 'Untitled')
     setActiveDoc(id)
     setEditorMode('edit')
+    setNewDocOpen(false)
   }, [createDocument, setActiveDoc, setEditorMode])
 
   useKeyboard({ key: 'e', ctrl: true }, () => {
@@ -77,7 +80,8 @@ function App() {
     }
   })
 
-  useKeyboard({ key: 'n', ctrl: true }, handleNewDoc)
+  useKeyboard({ key: 'n', ctrl: true }, () => setNewDocOpen(true))
+  useKeyboard({ key: 'h', ctrl: true }, () => setHistoryOpen(true))
 
   const editorModes: { mode: EditorMode; icon: typeof FileEdit; label: string }[] = [
     { mode: 'edit', icon: FileEdit, label: 'Edit' },
@@ -85,75 +89,34 @@ function App() {
     { mode: 'preview', icon: Eye, label: 'Preview' },
   ]
 
-  const showWelcome = documents.length === 0
-  const showContent = activeDoc && !showWelcome
+  const hasActiveDoc = activeDocId !== null && activeDoc !== undefined
+  const showEmpty = documents.length === 0 && !activeDoc
+  const showContent = hasActiveDoc
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface">
-      {/* Sidebar */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-border bg-surface-glass backdrop-blur-2xl transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <div className="flex items-center gap-2">
-            <BookOpen size={20} className="text-accent" />
-            <h1 className="font-sans text-lg font-bold text-ink tracking-tight">
-              InkView
-            </h1>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={handleNewDoc}
-              title="New document (Ctrl+N)"
-              className="rounded-md p-1.5 text-ink-soft hover:bg-surface-alt hover:text-ink transition-colors"
-            >
-              <Plus size={18} />
-            </button>
-            <button
-              onClick={toggleSidebar}
-              className="rounded-md p-1.5 text-ink-soft hover:bg-surface-alt hover:text-ink transition-colors lg:hidden"
-            >
-              <X size={18} />
-            </button>
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto px-3 py-3">
-          <DocumentList />
-        </div>
-      </aside>
-
-      {/* Backdrop for mobile */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/30 backdrop-blur-xs lg:hidden"
-          onClick={toggleSidebar}
-        />
-      )}
-
       {/* Main area */}
       <main className="flex flex-1 flex-col min-w-0">
         {/* Top bar */}
         <header className="flex items-center justify-between border-b border-border bg-surface/80 backdrop-blur-md px-4 py-2.5">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={toggleSidebar}
-              className="rounded-md p-1.5 text-ink-soft hover:bg-surface-alt hover:text-ink transition-colors"
-              title="Toggle sidebar"
-            >
-              <Menu size={18} />
-            </button>
+          <div className="flex items-center gap-2">
+            <BookOpen size={20} className="text-accent shrink-0" />
+            <h1 className="font-sans text-base font-bold text-ink tracking-tight">
+              InkView
+            </h1>
             {showContent && (
-              <h2 className="truncate font-sans text-sm font-medium text-ink max-w-[200px] sm:max-w-md">
-                {title}
-              </h2>
+              <>
+                <span className="mx-1 text-ink-faint">/</span>
+                <h2 className="truncate font-sans text-sm font-medium text-ink max-w-[180px] sm:max-w-md">
+                  {title}
+                </h2>
+              </>
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {showContent && (
-              <div className="flex items-center gap-0.5 rounded-lg border border-border bg-surface-alt p-0.5 mr-2">
+              <div className="flex items-center gap-0.5 rounded-lg border border-border bg-surface-alt p-0.5 mr-1">
                 {editorModes.map(({ mode, icon: Icon, label }) => (
                   <button
                     key={mode}
@@ -171,57 +134,70 @@ function App() {
                 ))}
               </div>
             )}
-            <ThemeToggle />
+
+            {showContent && editorMode !== 'edit' && (
+              <button
+                onClick={() => setTocOpen(!tocOpen)}
+                title="Toggle table of contents"
+                className={`rounded-md p-1.5 transition-colors ${
+                  tocOpen ? 'text-accent bg-accent-bg' : 'text-ink-soft hover:text-ink hover:bg-surface-alt'
+                }`}
+              >
+                <List size={18} />
+              </button>
+            )}
+
+            <button
+              onClick={() => setNewDocOpen(true)}
+              title="New document (Ctrl+N)"
+              className="rounded-md p-1.5 text-ink-soft hover:bg-surface-alt hover:text-ink transition-colors"
+            >
+              <Plus size={18} />
+            </button>
+
+            <button
+              onClick={() => setHistoryOpen(true)}
+              title="Document history (Ctrl+H)"
+              className="rounded-md p-1.5 text-ink-soft hover:bg-surface-alt hover:text-ink transition-colors"
+            >
+              <Clock size={18} />
+            </button>
+
+            <div className="ml-1">
+              <ThemeToggle />
+            </div>
           </div>
         </header>
 
         {/* Content area */}
         <div className="flex flex-1 overflow-hidden">
-          {showWelcome ? (
+          {showEmpty ? (
             <div className="flex flex-1 flex-col items-center justify-center px-6 py-12">
-              <div className="mb-8 text-center">
-                <div className="mb-4 inline-flex rounded-2xl bg-accent-bg p-4">
-                  <BookOpen size={40} className="text-accent" />
-                </div>
-                <h1 className="mb-2 font-sans text-3xl font-bold text-ink">
-                  Welcome to InkView
-                </h1>
-                <p className="text-sm text-ink-soft max-w-sm mx-auto leading-relaxed">
-                  A premium Markdown viewer. Upload a file or create a new document to get started.
-                </p>
+              <div className="mb-6 inline-flex rounded-2xl bg-surface-alt p-4">
+                <FileText size={40} className="text-ink-faint" />
               </div>
-              <div className="w-full max-w-md space-y-4">
-                <FileDropZone onFile={handleFileUpload} />
-                <div className="flex items-center gap-3">
-                  <div className="h-px flex-1 bg-border" />
-                  <span className="text-xs font-medium text-ink-faint">or</span>
-                  <div className="h-px flex-1 bg-border" />
-                </div>
-                <button
-                  onClick={handleNewDoc}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border px-6 py-4 text-sm font-medium text-ink-soft hover:border-accent/50 hover:text-ink hover:bg-surface-alt/50 transition-all"
-                >
-                  <FileUp size={20} />
-                  Create blank document
-                </button>
-              </div>
+              <p className="mb-6 text-sm text-ink-soft max-w-xs text-center leading-relaxed">
+                No documents open. Create a new one or open a file to get started.
+              </p>
+              <button
+                onClick={() => setNewDocOpen(true)}
+                className="flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-white shadow-xs hover:opacity-90 transition-opacity"
+              >
+                <Plus size={18} />
+                New Document
+              </button>
             </div>
           ) : showContent ? (
             <>
               {/* Editor / Preview area */}
               <div className="flex flex-1 min-w-0">
-                {(editorMode === 'edit' || editorMode === 'split') && (
+                  {(editorMode === 'edit' || editorMode === 'split') && (
                   <div
-                    className={`flex flex-col border-r border-border ${
+                    className={`flex flex-col min-h-0 border-r border-border ${
                       editorMode === 'split' ? 'w-1/2' : 'w-full'
                     }`}
                   >
-                    <div className="flex items-center justify-between border-b border-border px-4 py-1.5">
-                      <span className="text-xs font-medium text-ink-faint uppercase tracking-wider">
-                        Editor
-                      </span>
-                    </div>
-                    <div className="flex-1 overflow-auto px-4 py-4">
+                    <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4">
                       <MarkdownEditor
                         value={activeDoc.content}
                         onChange={handleContentChange}
@@ -230,19 +206,15 @@ function App() {
                   </div>
                 )}
 
-                {(editorMode === 'preview' || editorMode === 'split') && (
+                  {(editorMode === 'preview' || editorMode === 'split') && (
                   <div
                     className={`flex flex-col overflow-hidden ${
                       editorMode === 'split' ? 'w-1/2' : 'w-full'
                     }`}
                   >
-                    <div className="flex items-center justify-between border-b border-border px-4 py-1.5">
-                      <span className="text-xs font-medium text-ink-faint uppercase tracking-wider">
-                        Preview
-                      </span>
-                    </div>
-                    <div className="flex-1 overflow-y-auto px-6 py-6 lg:px-10">
-                      <article className="mx-auto max-w-3xl">
+                    <div className="flex-1 overflow-y-auto px-6 py-6 lg:px-10 xl:px-16"
+                    >
+                      <article className="mx-auto max-w-4xl xl:max-w-5xl">
                         <MarkdownRenderer content={activeDoc.content} />
                       </article>
                     </div>
@@ -251,8 +223,19 @@ function App() {
               </div>
 
               {/* TOC sidebar */}
-              {editorMode !== 'edit' && (
-                <aside className="hidden w-56 shrink-0 border-l border-border bg-surface-alt/50 p-4 overflow-y-auto xl:block">
+              {editorMode !== 'edit' && tocOpen && (
+                <aside className="w-60 shrink-0 border-l border-border bg-surface-alt/50 p-4 overflow-y-auto">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-sans text-xs font-semibold uppercase tracking-widest text-ink-faint">
+                      On this page
+                    </h3>
+                    <button
+                      onClick={() => setTocOpen(false)}
+                      className="rounded p-0.5 text-ink-faint hover:text-ink transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
                   <TocSidebar content={activeDoc.content} />
                 </aside>
               )}
@@ -264,8 +247,8 @@ function App() {
       {/* Fullscreen editor mode */}
       {editorMode === 'edit' && showContent && activeDoc && (
         <div
-          className="fixed inset-0 z-50 flex flex-col bg-surface animate-in fade-in-0"
-          style={{ animationDuration: '200ms' }}
+          className="fixed inset-0 z-50 flex flex-col bg-surface"
+          style={{ animation: 'fadeIn 200ms' }}
         >
           <header className="flex items-center justify-between border-b border-border px-4 py-2.5">
             <div className="flex items-center gap-3">
@@ -280,10 +263,29 @@ function App() {
                 Editing: {title}
               </span>
             </div>
-            <ThemeToggle />
+            <div className="flex items-center gap-1.5">
+              {editorModes.map(({ mode, icon: Icon, label }) => (
+                <button
+                  key={mode}
+                  onClick={() => setEditorMode(mode)}
+                  title={label}
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                    editorMode === mode
+                      ? 'bg-accent text-white shadow-xs'
+                      : 'text-ink-soft hover:text-ink'
+                  }`}
+                >
+                  <Icon size={14} />
+                  <span className="hidden sm:inline">{label}</span>
+                </button>
+              ))}
+              <div className="ml-2">
+                <ThemeToggle />
+              </div>
+            </div>
           </header>
           <div className="flex-1 overflow-auto px-6 py-6 lg:px-12">
-            <div className="mx-auto max-w-3xl h-full">
+            <div className="mx-auto max-w-4xl h-full">
               <MarkdownEditor
                 value={activeDoc.content}
                 onChange={handleContentChange}
@@ -292,6 +294,15 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Modals */}
+      <HistoryModal key={String(historyOpen)} open={historyOpen} onClose={() => setHistoryOpen(false)} />
+      <NewDocModal
+        open={newDocOpen}
+        onClose={() => setNewDocOpen(false)}
+        onCreateBlank={handleNewDoc}
+        onFileUpload={handleFileUpload}
+      />
     </div>
   )
 }
