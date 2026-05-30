@@ -18,6 +18,7 @@ interface NavBarProps {
   onCloseFullscreen?: () => void
   isMobile?: boolean
   content?: string
+  hidden?: boolean
 }
 
 const editorModes: { mode: EditorMode; icon: typeof FileEdit; label: string }[] = [
@@ -40,6 +41,7 @@ export function NavBar({
   onCloseFullscreen,
   isMobile = false,
   content = '',
+  hidden = false,
 }: NavBarProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(title)
@@ -74,7 +76,9 @@ export function NavBar({
     : editorModes
 
   return (
-    <header className="flex items-center justify-between border-b border-border/80 bg-surface/70 backdrop-blur-lg px-3 py-2 sm:px-5 sm:py-3 select-none">
+    <header className={`flex items-center justify-between border-b border-border/80 bg-surface/70 backdrop-blur-lg px-3 py-2 sm:px-5 sm:py-3 select-none transition-transform duration-300 ${
+      isMobile && showContent ? 'fixed top-0 left-0 right-0 z-20' : ''
+    } ${isMobile && showContent && hidden ? '-translate-y-full' : 'translate-y-0'}`}>
       {/* Left side */}
       {variant === 'main' ? (
         <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 mr-2">

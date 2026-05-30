@@ -5,6 +5,7 @@ import { useUiStore } from './stores/ui-store'
 import { useTheme } from './lib/use-theme'
 import { useKeyboard } from './lib/use-keyboard'
 import { extractTitle } from './lib/toc'
+import { useHideOnScroll } from './lib/use-hide-on-scroll'
 import { NavBar } from './components/NavBar'
 import { MarkdownEditor } from './components/MarkdownEditor'
 import type { MarkdownEditorHandle } from './components/MarkdownEditor'
@@ -12,6 +13,7 @@ import { MarkdownRenderer } from './components/MarkdownRenderer'
 import { TocSidebar } from './components/TocSidebar'
 import { HistoryModal } from './components/HistoryModal'
 import { NewDocModal } from './components/NewDocModal'
+import { Toast } from './components/Toast'
 import { parseShareUrl, fetchSharedContent } from './lib/share'
 
 function findPreviewHeading(container: HTMLElement): string | null {
@@ -71,6 +73,16 @@ function App() {
   const [shareLoading, setShareLoading] = useState(false)
   const [tocOpen, setTocOpen] = useState(true)
   const [splitRatio, setSplitRatio] = useState(0.5)
+  const [toastMsg, setToastMsg] = useState('')
+  const [toastType, setToastType] = useState<'success' | 'error'>('success')
+  const [toastVisible, setToastVisible] = useState(false)
+
+  const showToast = useCallback((msg: string, type: 'success' | 'error') => {
+    setToastMsg(msg)
+    setToastType(type)
+    setToastVisible(true)
+  }, [])
+  const hideToast = useCallback(() => setToastVisible(false), [])
   const isDragging = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const editorPaneRef = useRef<HTMLDivElement>(null)
@@ -100,18 +112,28 @@ function App() {
     if (!share || shareProcessed.current) return
     shareProcessed.current = true
     setShareLoading(true)
+
+    const timeoutId = setTimeout(() => {
+      setShareLoading(false)
+      showToast('Request timed out. Please try again.', 'error')
+    }, 10000)
+
     fetchSharedContent(share.id)
       .then((content) => {
+        clearTimeout(timeoutId)
         const title = extractTitle(content) || 'Shared Document'
         const id = createDocument(content, title)
         setActiveDoc(id)
         setShareLoading(false)
         window.history.replaceState(null, '', '/')
+        showToast('Shared document imported successfully', 'success')
       })
       .catch(() => {
+        clearTimeout(timeoutId)
         setShareLoading(false)
+        showToast('Failed to load shared document. The link may have expired.', 'error')
       })
-  }, [createDocument, setActiveDoc])
+  }, [createDocument, setActiveDoc, showToast])
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -161,6 +183,12 @@ function App() {
   const activeDoc = useMemo(
     () => documents.find((d) => d.id === activeDocId),
     [documents, activeDocId]
+  )
+
+  const hasActiveDoc = activeDocId !== null && activeDoc !== undefined
+  const navbarHidden = useHideOnScroll(
+    previewScrollRef,
+    isMobile && hasActiveDoc && editorMode !== 'edit'
   )
 
   const content = activeDoc?.content ?? ''
@@ -223,7 +251,6 @@ function App() {
   useKeyboard({ key: 'n', ctrl: true }, () => setNewDocOpen(true))
   useKeyboard({ key: 'h', ctrl: true }, () => setHistoryOpen(true))
 
-  const hasActiveDoc = activeDocId !== null && activeDoc !== undefined
   const showEmpty = documents.length === 0 && !activeDoc
   const showContent = hasActiveDoc
 
@@ -242,10 +269,17 @@ function App() {
           onHistory={() => setHistoryOpen(true)}
           isMobile={isMobile}
           content={content}
+          hidden={navbarHidden}
         />
 
         {/* Content area */}
-        <div className="flex flex-1 overflow-hidden">
+        <div
+          className="flex flex-1 overflow-hidden"
+          style={{
+            paddingTop: isMobile && hasActiveDoc && !navbarHidden ? '48px' : '0px',
+            transition: 'padding-top 300ms',
+          }}
+        >
           {showEmpty ? (
             shareLoading ? (
               <div className="flex flex-1 flex-col items-center justify-center px-6">
@@ -253,18 +287,18 @@ function App() {
                 <p className="text-sm text-ink-soft font-sans">Loading shared document...</p>
               </div>
             ) : (
-              <div className="flex flex-1 flex-col items-center justify-center px-6">
-                <div className="mb-6 rounded-2xl bg-surface-alt p-5">
-                  <FileText size={44} className="text-ink-faint" />
+              <div className="flex flex-1 flex-col items-center px-4 pt-16 sm:pt-24">
+                <div className="mb-4 rounded-2xl bg-surface-alt p-4 sm:p-5">
+                  <FileText size={36} className="text-ink-faint sm:size-11" />
                 </div>
-                <p className="mb-6 text-sm text-ink-soft max-w-xs text-center leading-relaxed font-sans">
-                  No documents open. Create a new one or open a file.
+                <p className="mb-4 text-sm text-ink-soft max-w-xs text-center leading-relaxed font-sans">
+                  No documents. Create a new one or open a file.
                 </p>
                 <button
                   onClick={() => setNewDocOpen(true)}
-                  className="flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-white shadow-xs hover:opacity-90 transition-opacity font-sans"
+                  className="flex items-center gap-2 rounded-xl bg-accent px-4 py-2 sm:px-5 sm:py-2.5 text-sm font-medium text-white shadow-xs hover:opacity-90 transition-opacity font-sans"
                 >
-                  <Plus size={18} />
+                  <Plus size={16} className="sm:size-4.5" />
                   New Document
                 </button>
               </div>
@@ -383,6 +417,9 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Toast */}
+      <Toast message={toastMsg} type={toastType} visible={toastVisible} onClose={hideToast} />
 
       {/* Modals */}
       <HistoryModal key={String(historyOpen)} open={historyOpen} onClose={() => setHistoryOpen(false)} />
