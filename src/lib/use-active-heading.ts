@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 
-export function useActiveHeading(ids: string[]) {
+export function useActiveHeading(ids: string[], version?: string) {
   const [activeId, setActiveId] = useState<string>(ids[0] || '')
   const observer = useRef<IntersectionObserver | null>(null)
   const idsKey = ids.join(',')
@@ -27,7 +27,7 @@ export function useActiveHeading(ids: string[]) {
 
     return () => observer.current?.disconnect()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idsKey])
+  }, [idsKey, version])
 
   return activeId
 }

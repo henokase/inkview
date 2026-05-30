@@ -11,7 +11,7 @@ export const TocSidebar = memo(function TocSidebar({ content }: TocSidebarProps)
   const navRef = useRef<HTMLElement>(null)
   const headings = useMemo(() => extractTocHeadings(content), [content])
   const ids = useMemo(() => headings.map((h) => h.id), [headings])
-  const activeId = useActiveHeading(ids)
+  const activeId = useActiveHeading(ids, content)
 
   useEffect(() => {
     if (!activeId || !navRef.current) return
