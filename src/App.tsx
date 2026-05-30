@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useDeferredValue } from 'react'
-import { FileText, Plus, RefreshCw, X } from 'lucide-react'
+import { FileText, Loader2, Plus, RefreshCw, X } from 'lucide-react'
 import { useDocumentStore } from './stores/document-store'
 import { useUiStore } from './stores/ui-store'
 import { useTheme } from './lib/use-theme'
@@ -68,6 +68,7 @@ function App() {
   const [historyOpen, setHistoryOpen] = useState(false)
   const [newDocOpen, setNewDocOpen] = useState(false)
   const [creatingDoc, setCreatingDoc] = useState(false)
+  const [shareLoading, setShareLoading] = useState(false)
   const [tocOpen, setTocOpen] = useState(true)
   const [splitRatio, setSplitRatio] = useState(0.5)
   const isDragging = useRef(false)
@@ -92,19 +93,24 @@ function App() {
     return () => window.removeEventListener('resize', checkSize)
   }, [editorMode, setEditorMode])
 
+  const shareProcessed = useRef(false)
+
   useEffect(() => {
     const share = parseShareUrl()
-    if (share) {
-      fetchSharedContent(share.id)
-        .then((content) => {
-          const id = createDocument(content)
-          setActiveDoc(id)
-          window.history.replaceState(null, '', '/')
-        })
-        .catch(() => {
-          // silently fail — user just sees the app as normal
-        })
-    }
+    if (!share || shareProcessed.current) return
+    shareProcessed.current = true
+    setShareLoading(true)
+    fetchSharedContent(share.id)
+      .then((content) => {
+        const title = extractTitle(content) || 'Shared Document'
+        const id = createDocument(content, title)
+        setActiveDoc(id)
+        setShareLoading(false)
+        window.history.replaceState(null, '', '/')
+      })
+      .catch(() => {
+        setShareLoading(false)
+      })
   }, [createDocument, setActiveDoc])
 
   useEffect(() => {
@@ -241,21 +247,28 @@ function App() {
         {/* Content area */}
         <div className="flex flex-1 overflow-hidden">
           {showEmpty ? (
-            <div className="flex flex-1 flex-col items-center justify-center px-6">
-              <div className="mb-6 rounded-2xl bg-surface-alt p-5">
-                <FileText size={44} className="text-ink-faint" />
+            shareLoading ? (
+              <div className="flex flex-1 flex-col items-center justify-center px-6">
+                <Loader2 size={32} className="text-accent animate-spin mb-4" />
+                <p className="text-sm text-ink-soft font-sans">Loading shared document...</p>
               </div>
-              <p className="mb-6 text-sm text-ink-soft max-w-xs text-center leading-relaxed font-sans">
-                No documents open. Create a new one or open a file.
-              </p>
-              <button
-                onClick={() => setNewDocOpen(true)}
-                className="flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-white shadow-xs hover:opacity-90 transition-opacity font-sans"
-              >
-                <Plus size={18} />
-                New Document
-              </button>
-            </div>
+            ) : (
+              <div className="flex flex-1 flex-col items-center justify-center px-6">
+                <div className="mb-6 rounded-2xl bg-surface-alt p-5">
+                  <FileText size={44} className="text-ink-faint" />
+                </div>
+                <p className="mb-6 text-sm text-ink-soft max-w-xs text-center leading-relaxed font-sans">
+                  No documents open. Create a new one or open a file.
+                </p>
+                <button
+                  onClick={() => setNewDocOpen(true)}
+                  className="flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-white shadow-xs hover:opacity-90 transition-opacity font-sans"
+                >
+                  <Plus size={18} />
+                  New Document
+                </button>
+              </div>
+            )
           ) : showContent ? (
             <>
               <div ref={containerRef} className="flex flex-1 min-w-0">
