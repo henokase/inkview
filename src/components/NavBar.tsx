@@ -80,7 +80,7 @@ export function NavBar({
     } ${isMobile && showContent && hidden ? '-translate-y-full' : 'translate-y-0'}`}>
       {/* Left side */}
       {variant === 'main' ? (
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0 w-fit mr-2">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 mr-2 flex-1">
           <div className="rounded-lg bg-accent-bg p-2 shrink-0">
             <BookOpen size={18} className="text-accent sm:size-5" />
           </div>
@@ -88,24 +88,26 @@ export function NavBar({
           {showContent && title && (
             <>
               <span className="text-ink-faint/50 mx-1 shrink-0">/</span>
-              {editing ? (
-                <input
-                  ref={inputRef}
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onBlur={saveTitle}
-                  onKeyDown={handleKeyDown}
-                  className="min-w-0 w-full max-w-50 xs:max-w-[320px] sm:max-w-100 md:max-w-125 font-sans text-sm sm:text-base font-medium bg-surface-alt rounded-md p-1 text-ink outline-hidden border border-accent/40"
-                />
-              ) : (
-                <button
-                  onClick={startEditing}
-                  className="truncate font-sans text-sm sm:text-base font-medium text-ink-soft text-left hover:text-ink transition-colors w-full"
-                  title="Click to rename"
-                >
-                  {title}
-                </button>
-              )}
+              <div className="flex-1 min-w-0">
+                {editing ? (
+                  <input
+                    ref={inputRef}
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onBlur={saveTitle}
+                    onKeyDown={handleKeyDown}
+                    className="w-full font-sans text-sm sm:text-base font-medium bg-surface-alt rounded-md px-2 py-1 text-ink outline-hidden border border-accent/40"
+                  />
+                ) : (
+                  <button
+                    onClick={startEditing}
+                    className="truncate w-full font-sans text-sm sm:text-base font-medium text-ink-soft text-left hover:text-ink transition-colors"
+                    title="Click to rename"
+                  >
+                    {title}
+                  </button>
+                )}
+              </div>
             </>
           )}
         </div>

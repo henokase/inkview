@@ -36,15 +36,6 @@ function applyTheme(theme: ThemeMode) {
   const root = document.documentElement
   const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
 
-  const updateDOM = () => {
-    root.classList.toggle('dark', isDark)
-    root.classList.toggle('light', !isDark)
-  }
-
-  // Use the native high-performance View Transitions API for zero-lag smooth crossfades
-  if (document.startViewTransition) {
-    document.startViewTransition(updateDOM)
-  } else {
-    updateDOM()
-  }
+  root.classList.toggle('dark', isDark)
+  root.classList.toggle('light', !isDark)
 }
