@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, useDeferredValue } f
 import { FileText, Loader2, Plus, RefreshCw, X } from 'lucide-react'
 import { useDocumentStore } from './stores/document-store'
 import { useUiStore } from './stores/ui-store'
-import { useTheme } from './lib/use-theme'
 import { useKeyboard } from './lib/use-keyboard'
 import { extractTitle } from './lib/toc'
 import { useHideOnScroll } from './lib/use-hide-on-scroll'
@@ -177,8 +176,6 @@ function App() {
     if (!heading) return
     editorHandleRef.current?.scrollToHeading(heading)
   }, [])
-
-  useTheme()
 
   const activeDoc = useMemo(
     () => documents.find((d) => d.id === activeDocId),

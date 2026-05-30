@@ -6,7 +6,6 @@ import { languages } from '@codemirror/language-data'
 import { EditorView } from '@codemirror/view'
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language'
 import { tags } from '@lezer/highlight'
-import { useTheme } from '../lib/use-theme'
 
 const headingStyle = HighlightStyle.define([
   { tag: tags.heading1, fontSize: '1.8em', fontWeight: '700' },
@@ -31,8 +30,6 @@ export interface MarkdownEditorHandle {
 
 export const MarkdownEditor = memo(forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
   function MarkdownEditor({ value, onChange }, ref) {
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === 'dark'
   const codemirrorRef = useRef<ReactCodeMirrorRef>(null)
 
   useImperativeHandle(ref, () => ({
@@ -113,7 +110,7 @@ export const MarkdownEditor = memo(forwardRef<MarkdownEditorHandle, MarkdownEdit
       className="h-full"
       value={value}
       onChange={handleChange}
-      theme={isDark ? 'dark' : 'light'}
+      theme="light"
       extensions={extensions}
       basicSetup={{
         lineNumbers: false,
