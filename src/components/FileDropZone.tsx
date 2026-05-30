@@ -3,9 +3,10 @@ import { Upload } from 'lucide-react'
 
 interface FileDropZoneProps {
   onFile: (content: string, name: string) => void
+  disabled?: boolean
 }
 
-export function FileDropZone({ onFile }: FileDropZoneProps) {
+export function FileDropZone({ onFile, disabled = false }: FileDropZoneProps) {
   const [dragging, setDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -26,33 +27,37 @@ export function FileDropZone({ onFile }: FileDropZoneProps) {
     (e: React.DragEvent) => {
       e.preventDefault()
       setDragging(false)
+      if (disabled) return
       const file = e.dataTransfer.files[0]
       if (file) handleFile(file)
     },
-    [handleFile]
+    [handleFile, disabled]
   )
 
   const handleFilePick = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (disabled) return
       const file = e.target.files?.[0]
       if (file) handleFile(file)
     },
-    [handleFile]
+    [handleFile, disabled]
   )
 
   return (
     <div
       onDragOver={(e) => {
         e.preventDefault()
-        setDragging(true)
+        if (!disabled) setDragging(true)
       }}
       onDragLeave={() => setDragging(false)}
       onDrop={handleDrop}
-      onClick={() => inputRef.current?.click()}
+      onClick={() => { if (!disabled) inputRef.current?.click() }}
       className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-8 transition-all duration-200 ${
-        dragging
-          ? 'border-accent bg-accent-bg scale-[1.02]'
-          : 'border-border hover:border-accent/40 hover:bg-accent-bg/30'
+        disabled
+          ? 'opacity-40 pointer-events-none'
+          : dragging
+            ? 'border-accent bg-accent-bg scale-[1.02]'
+            : 'border-border hover:border-accent/40 hover:bg-accent-bg/30'
       }`}
     >
       <input
@@ -61,6 +66,7 @@ export function FileDropZone({ onFile }: FileDropZoneProps) {
         accept=".md,.markdown,.txt"
         className="hidden"
         onChange={handleFilePick}
+        disabled={disabled}
       />
       <div
         className={`rounded-xl p-3 transition-colors ${

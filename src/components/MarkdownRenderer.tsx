@@ -1,7 +1,13 @@
 import { memo, useMemo, useState, useCallback, type ReactNode, type ComponentPropsWithoutRef, type CSSProperties } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
+import remarkEmoji from 'remark-emoji'
+import remarkFootnotes from 'remark-footnotes'
 import remarkGitHubAlerts from 'remark-github-markdown-alerts'
+import rehypeRaw from 'rehype-raw'
+import rehypeKatex from 'rehype-katex'
+import 'katex/dist/katex.min.css'
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark as oneDarkRaw, oneLight as oneLightRaw } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import tsx from 'react-syntax-highlighter/dist/esm/languages/prism/tsx'
@@ -15,6 +21,7 @@ import css from 'react-syntax-highlighter/dist/esm/languages/prism/css'
 import { Copy, Check } from 'lucide-react'
 import type { Components } from 'react-markdown'
 import { useTheme } from '../lib/use-theme'
+import { MermaidDiagram } from './MermaidDiagram'
 
 function cleanTheme(theme: Record<string, CSSProperties>): Record<string, CSSProperties> {
   const cleaned: Record<string, CSSProperties> = {}
@@ -39,6 +46,24 @@ SyntaxHighlighter.registerLanguage('json', json)
 SyntaxHighlighter.registerLanguage('py', python)
 SyntaxHighlighter.registerLanguage('python', python)
 SyntaxHighlighter.registerLanguage('css', css)
+
+function convertYouTubeUrl(url: string): string {
+  try {
+    const u = new URL(url)
+    if (u.hostname === 'youtu.be') {
+      const videoId = u.pathname.slice(1).split('/')[0]
+      if (videoId) return `https://www.youtube.com/embed/${videoId}${u.search}`
+    }
+    if (/^(www\.|m\.)?youtube\.com$/.test(u.hostname) && u.pathname === '/watch') {
+      const videoId = u.searchParams.get('v')
+      if (videoId) {
+        u.searchParams.delete('v')
+        return `https://www.youtube.com/embed/${videoId}${u.search}`
+      }
+    }
+  } catch { /* ignore */ }
+  return url
+}
 
 function slugify(text: string) {
   return text
@@ -115,16 +140,22 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, onHead
           {children}
         </blockquote>
       ),
-      a: ({ href, children }: ComponentPropsWithoutRef<'a'>) => (
-        <a
-          href={href}
-          target={href?.startsWith('http') ? '_blank' : undefined}
-          rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined}
-          className="break-all text-accent underline decoration-accent/25 underline-offset-2 transition-colors hover:decoration-accent/60"
-        >
-          {children}
-        </a>
-      ),
+      a: ({ href: hrefProp, children, ...props }: ComponentPropsWithoutRef<'a'>) => {
+        const href = hrefProp ?? ''
+        const isHash = href.startsWith('#')
+        return (
+          <a
+            href={href || undefined}
+            target={href.startsWith('http') && !isHash ? '_blank' : undefined}
+            rel={href.startsWith('http') && !isHash ? 'noopener noreferrer' : undefined}
+            onClick={isHash ? (e) => { e.preventDefault(); document.getElementById(href.slice(1))?.scrollIntoView({ behavior: 'smooth' }) } : undefined}
+            className="break-all text-accent underline decoration-accent/25 underline-offset-2 transition-colors hover:decoration-accent/60"
+            {...props}
+          >
+            {children}
+          </a>
+        )
+      },
       hr: () => <hr className="my-10 border-border/60" />,
       table: ({ children }: { children?: ReactNode }) => (
         <div className="mb-5 overflow-x-auto rounded-lg border border-border">
@@ -160,6 +191,10 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, onHead
           )
         }
         const language = match[1]
+
+        if (language === 'mermaid') {
+          return <MermaidDiagram code={code} />
+        }
         return (
           <div className="group relative mb-5 mt-3 rounded-lg border border-border overflow-hidden bg-surface-alt">
             <div className="flex items-center justify-between bg-surface-alt/80 px-4 py-1.5 text-xs text-ink-faint border-b border-border">
@@ -234,6 +269,15 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, onHead
           loading="lazy"
         />
       ),
+      iframe: (props: ComponentPropsWithoutRef<'iframe'>) => (
+        <iframe
+          {...props}
+          src={props.src ? convertYouTubeUrl(props.src) : undefined}
+          allowFullScreen
+          allow="fullscreen"
+          className="mb-5 rounded-xl max-w-full border border-border"
+        />
+      ),
       input: ({ type, checked, ...props }: ComponentPropsWithoutRef<'input'>) => (
         <input
           type={type}
@@ -259,7 +303,8 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, onHead
       }}
     >
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkGitHubAlerts]}
+        remarkPlugins={[remarkGfm, remarkMath, remarkEmoji, remarkFootnotes as any, remarkGitHubAlerts]}
+        rehypePlugins={[rehypeKatex, rehypeRaw]}
         components={components}
       >
         {content}

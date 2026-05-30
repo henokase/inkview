@@ -21,6 +21,7 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set())
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const deleteTargetTitle = useMemo(() => {
     if (!deleteTarget) return ''
     const doc = documents.find((d) => d.id === deleteTarget)
@@ -59,11 +60,15 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
   }
 
   const handleDelete = () => {
-    const idsToDelete = Array.from(selectedDocs)
-    removeDocuments(idsToDelete)
-    setSelectedDocs(new Set())
-    setSelectionMode(false)
-    setShowDeleteModal(false)
+    setDeleting(true)
+    setTimeout(() => {
+      const idsToDelete = Array.from(selectedDocs)
+      removeDocuments(idsToDelete)
+      setSelectedDocs(new Set())
+      setSelectionMode(false)
+      setShowDeleteModal(false)
+      setDeleting(false)
+    }, 200)
   }
 
   const handleSingleDelete = (id: string) => {
@@ -71,10 +76,13 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
   }
 
   const confirmSingleDelete = () => {
-    if (deleteTarget) {
+    if (!deleteTarget) return
+    setDeleting(true)
+    setTimeout(() => {
       removeDocuments([deleteTarget])
       setDeleteTarget(null)
-    }
+      setDeleting(false)
+    }, 200)
   }
 
   const handleDocClick = (id: string) => {
@@ -275,6 +283,7 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
         message={`Are you sure you want to delete ${selectedDocs.size} document${selectedDocs.size !== 1 ? 's' : ''}? This action cannot be undone.`}
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteModal(false)}
+        loading={deleting}
       />
 
       <ConfirmModal
@@ -283,6 +292,7 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
         message={`Are you sure you want to delete "${deleteTargetTitle}"? This action cannot be undone.`}
         onConfirm={confirmSingleDelete}
         onCancel={() => setDeleteTarget(null)}
+        loading={deleting}
       />
     </div>,
     document.body

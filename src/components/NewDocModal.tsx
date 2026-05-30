@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom'
-import { PenLine, X } from 'lucide-react'
+import { PenLine, X, Loader2 } from 'lucide-react'
 import { FileDropZone } from './FileDropZone'
 
 interface NewDocModalProps {
@@ -7,16 +7,17 @@ interface NewDocModalProps {
   onClose: () => void
   onCreateBlank: () => void
   onFileUpload: (content: string, name: string) => void
+  loading?: boolean
 }
 
-export function NewDocModal({ open, onClose, onCreateBlank, onFileUpload }: NewDocModalProps) {
+export function NewDocModal({ open, onClose, onCreateBlank, onFileUpload, loading = false }: NewDocModalProps) {
   return createPortal(
     <div
       className={`fixed inset-0 z-50 flex items-center justify-center transition-all duration-200 ${
         open ? 'opacity-100' : 'opacity-0 pointer-events-none'
       }`}
     >
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={loading ? undefined : onClose} />
       <div className="relative w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl mx-4">
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -27,14 +28,15 @@ export function NewDocModal({ open, onClose, onCreateBlank, onFileUpload }: NewD
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-ink-faint hover:bg-surface-alt hover:text-ink transition-colors"
+            disabled={loading}
+            className="rounded-lg p-1.5 text-ink-faint hover:bg-surface-alt hover:text-ink transition-colors disabled:opacity-30"
           >
             <X size={18} />
           </button>
         </div>
 
         <div className="space-y-5">
-          <FileDropZone onFile={onFileUpload} />
+          <FileDropZone onFile={onFileUpload} disabled={loading} />
 
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-border/60" />
@@ -43,11 +45,12 @@ export function NewDocModal({ open, onClose, onCreateBlank, onFileUpload }: NewD
           </div>
 
           <button
-            onClick={() => { onCreateBlank(); onClose() }}
-            className="flex w-full items-center justify-center gap-2.5 rounded-xl border-2 border-dashed border-border px-6 py-4 text-sm font-medium text-ink-soft hover:border-accent/40 hover:text-accent hover:bg-accent-bg/50 transition-all font-sans"
+            onClick={() => { if (!loading) { onCreateBlank(); onClose() } }}
+            disabled={loading}
+            className="flex w-full items-center justify-center gap-2.5 rounded-xl border-2 border-dashed border-border px-6 py-4 text-sm font-medium text-ink-soft hover:border-accent/40 hover:text-accent hover:bg-accent-bg/50 transition-all font-sans disabled:opacity-40 disabled:pointer-events-none"
           >
-            <PenLine size={18} />
-            Start writing from scratch
+            {loading ? <Loader2 size={18} className="animate-spin" /> : <PenLine size={18} />}
+            {loading ? 'Creating…' : 'Start writing from scratch'}
           </button>
         </div>
       </div>

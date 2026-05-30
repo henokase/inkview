@@ -66,6 +66,7 @@ function App() {
 
   const [historyOpen, setHistoryOpen] = useState(false)
   const [newDocOpen, setNewDocOpen] = useState(false)
+  const [creatingDoc, setCreatingDoc] = useState(false)
   const [tocOpen, setTocOpen] = useState(true)
   const [splitRatio, setSplitRatio] = useState(0.5)
   const isDragging = useRef(false)
@@ -151,9 +152,13 @@ function App() {
 
   const handleFileUpload = useCallback(
     (content: string, name: string) => {
-      const id = createDocument(content, name || 'Untitled')
-      setActiveDoc(id)
-      setNewDocOpen(false)
+      setCreatingDoc(true)
+      setTimeout(() => {
+        const id = createDocument(content, name || 'Untitled')
+        setActiveDoc(id)
+        setNewDocOpen(false)
+        setCreatingDoc(false)
+      }, 150)
     },
     [createDocument, setActiveDoc]
   )
@@ -177,10 +182,14 @@ function App() {
   )
 
   const handleNewDoc = useCallback(() => {
-    const id = createDocument('', 'Untitled')
-    setActiveDoc(id)
-    setEditorMode('edit')
-    setNewDocOpen(false)
+    setCreatingDoc(true)
+    setTimeout(() => {
+      const id = createDocument('', 'Untitled')
+      setActiveDoc(id)
+      setEditorMode('edit')
+      setNewDocOpen(false)
+      setCreatingDoc(false)
+    }, 200)
   }, [createDocument, setActiveDoc, setEditorMode])
 
   useKeyboard({ key: 'e', ctrl: true }, () => {
@@ -352,6 +361,7 @@ function App() {
         onClose={() => setNewDocOpen(false)}
         onCreateBlank={handleNewDoc}
         onFileUpload={handleFileUpload}
+        loading={creatingDoc}
       />
     </div>
   )
