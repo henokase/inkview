@@ -91,9 +91,10 @@ function App() {
   )
 
   const content = activeDoc?.content ?? ''
+  const displayContent = editorMode === 'split' ? debouncedContent : content
 
   useEffect(() => {
-    if (editorMode === 'edit') {
+    if (editorMode !== 'split') {
       setDebouncedContent(content)
       return
     }
@@ -222,7 +223,7 @@ function App() {
                   >
                     <div className="flex-1 overflow-y-auto px-6 py-6 lg:px-10 xl:px-16">
                       <article className="mx-auto max-w-4xl xl:max-w-5xl wrap-break-word">
-                        <MarkdownRenderer content={debouncedContent} />
+                        <MarkdownRenderer content={displayContent} />
                       </article>
                     </div>
                   </div>
