@@ -77,7 +77,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, onHead
       h2: ({ children }: { children?: ReactNode }) => {
         const id = slugify(String(children))
         return (
-          <h2 id={id} className="mb-4 mt-10 text-2xl font-semibold font-sans text-accent-soft tracking-tight">
+          <h2 id={id} className="mb-4 mt-10 text-2xl font-semibold font-sans text-accent-soft tracking-tight first:mt-0">
             {children}
           </h2>
         )
@@ -85,7 +85,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, onHead
       h3: ({ children }: { children?: ReactNode }) => {
         const id = slugify(String(children))
         return (
-          <h3 id={id} className="mb-3 mt-8 text-xl font-semibold font-sans text-accent-soft/80 tracking-tight">
+          <h3 id={id} className="mb-3 mt-8 text-xl font-semibold font-sans text-accent-soft/80 tracking-tight first:mt-0">
             {children}
           </h3>
         )
@@ -93,7 +93,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, onHead
       h4: ({ children }: { children?: ReactNode }) => {
         const id = slugify(String(children))
         return (
-          <h4 id={id} className="mb-2 mt-6 text-lg font-medium font-sans text-ink-soft tracking-tight">
+          <h4 id={id} className="mb-2 mt-6 text-lg font-medium font-sans text-ink-soft tracking-tight first:mt-0">
             {children}
           </h4>
         )

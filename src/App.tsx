@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { FileText, Plus, X } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState, useDeferredValue } from 'react'
+import { FileText, Plus, RefreshCw, X } from 'lucide-react'
 import { useDocumentStore } from './stores/document-store'
 import { useUiStore } from './stores/ui-store'
 import { useTheme } from './lib/use-theme'
@@ -7,10 +7,51 @@ import { useKeyboard } from './lib/use-keyboard'
 import { extractTitle } from './lib/toc'
 import { NavBar } from './components/NavBar'
 import { MarkdownEditor } from './components/MarkdownEditor'
+import type { MarkdownEditorHandle } from './components/MarkdownEditor'
 import { MarkdownRenderer } from './components/MarkdownRenderer'
 import { TocSidebar } from './components/TocSidebar'
 import { HistoryModal } from './components/HistoryModal'
 import { NewDocModal } from './components/NewDocModal'
+
+function findPreviewHeading(container: HTMLElement): string | null {
+  const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6')
+  if (headings.length === 0) return null
+
+  const containerRect = container.getBoundingClientRect()
+  const viewportHeight = containerRect.height
+  let bestInViewport: { text: string; top: number } | null = null
+  let bestAbove: { text: string; dist: number } | null = null
+  let bestBelow: { text: string; dist: number } | null = null
+
+  for (const h of headings) {
+    const el = h as HTMLElement
+    const relativeTop = el.getBoundingClientRect().top - containerRect.top
+    const text = el.textContent?.trim()
+    if (!text) continue
+
+    if (relativeTop >= 0 && relativeTop <= viewportHeight) {
+      if (!bestInViewport || relativeTop < bestInViewport.top) {
+        bestInViewport = { text, top: relativeTop }
+      }
+    } else if (relativeTop < 0) {
+      const dist = Math.abs(relativeTop)
+      if (!bestAbove || dist < bestAbove.dist) {
+        bestAbove = { text, dist }
+      }
+    } else {
+      const dist = relativeTop - viewportHeight
+      if (!bestBelow || dist < bestBelow.dist) {
+        bestBelow = { text, dist }
+      }
+    }
+  }
+
+  if (bestInViewport) return bestInViewport.text
+
+  const aboveDist = bestAbove?.dist ?? Infinity
+  const belowDist = bestBelow?.dist ?? Infinity
+  return aboveDist <= belowDist ? (bestAbove?.text ?? null) : (bestBelow?.text ?? null)
+}
 
 function App() {
   const documents = useDocumentStore((s) => s.documents)
@@ -32,7 +73,8 @@ function App() {
   const editorPaneRef = useRef<HTMLDivElement>(null)
   const previewPaneRef = useRef<HTMLDivElement>(null)
   const splitRatioRef = useRef(0.5)
-  const [debouncedContent, setDebouncedContent] = useState('')
+  const editorHandleRef = useRef<MarkdownEditorHandle>(null)
+  const previewScrollRef = useRef<HTMLDivElement>(null)
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
@@ -83,6 +125,14 @@ function App() {
     document.body.style.userSelect = 'none'
   }, [])
 
+  const handleSync = useCallback(() => {
+    const previewEl = previewScrollRef.current
+    if (!previewEl) return
+    const heading = findPreviewHeading(previewEl)
+    if (!heading) return
+    editorHandleRef.current?.scrollToHeading(heading)
+  }, [])
+
   useTheme()
 
   const activeDoc = useMemo(
@@ -91,16 +141,8 @@ function App() {
   )
 
   const content = activeDoc?.content ?? ''
-  const displayContent = editorMode === 'split' ? debouncedContent : content
-
-  useEffect(() => {
-    if (editorMode !== 'split') {
-      setDebouncedContent(content)
-      return
-    }
-    const timer = setTimeout(() => setDebouncedContent(content), 300)
-    return () => clearTimeout(timer)
-  }, [content, editorMode])
+  const deferredContent = useDeferredValue(content)
+  const displayContent = editorMode === 'split' ? deferredContent : content
 
   const title = useMemo(
     () => (activeDoc ? activeDoc.title || extractTitle(activeDoc.content) || 'Untitled' : ''),
@@ -197,8 +239,13 @@ function App() {
                     className="flex flex-col min-h-0"
                     style={editorMode === 'split' ? { width: `${splitRatio * 100}%` } : { flex: '1' }}
                   >
-                    <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5">
+                    <div className={`flex flex-1 flex-col min-h-0 overflow-hidden py-8 ${
+                      editorMode === 'split'
+                        ? 'pl-6 lg:pl-10 xl:pl-16 pr-0'
+                        : 'px-6 lg:px-10 xl:px-16'
+                    }`}>
                       <MarkdownEditor
+                        ref={editorHandleRef}
                         value={activeDoc.content}
                         onChange={handleContentChange}
                       />
@@ -209,9 +256,17 @@ function App() {
                 {editorMode === 'split' && (
                   <div
                     onMouseDown={handleDividerMouseDown}
-                    className="w-1 shrink-0 cursor-col-resize bg-border/40 hover:bg-accent/50 transition-colors relative"
+                    className="w-1 shrink-0 cursor-col-resize bg-border/40 hover:bg-accent/50 transition-colors relative group"
                   >
-                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-8 rounded-full bg-ink-faint/30" />
+                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-8 rounded-full bg-ink-faint/30 pointer-events-none" />
+                    <button
+                      onClick={handleSync}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-7 h-7 rounded-full bg-surface shadow-xs border border-border/60 text-ink-faint hover:text-accent hover:border-accent/40 hover:bg-accent-bg/50 transition-all opacity-0 group-hover:opacity-100"
+                      title="Snap editor to preview heading"
+                    >
+                      <RefreshCw size={13} />
+                    </button>
                   </div>
                 )}
 
@@ -221,7 +276,7 @@ function App() {
                     className="flex flex-col overflow-hidden"
                     style={editorMode === 'split' ? { width: `${(1 - splitRatio) * 100}%` } : { flex: '1' }}
                   >
-                    <div className="flex-1 overflow-y-auto px-6 py-6 lg:px-10 xl:px-16">
+                    <div ref={previewScrollRef} className="flex-1 overflow-y-auto pl-6 pr-6 lg:px-10 xl:px-16 py-8">
                       <article className="mx-auto max-w-4xl xl:max-w-5xl wrap-break-word">
                         <MarkdownRenderer content={displayContent} />
                       </article>
