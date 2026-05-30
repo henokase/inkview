@@ -1,0 +1,44 @@
+import { Share2, Check, AlertCircle, Loader2 } from 'lucide-react'
+import { useState, useCallback } from 'react'
+import { createShareLink } from '../lib/share'
+
+interface ShareButtonProps {
+  content: string
+}
+
+export function ShareButton({ content }: ShareButtonProps) {
+  const [status, setStatus] = useState<'idle' | 'loading' | 'copied' | 'error'>('idle')
+
+  const handleShare = useCallback(async () => {
+    if (!content.trim() || status === 'loading') return
+    setStatus('loading')
+    try {
+      const url = await createShareLink(content)
+      await navigator.clipboard.writeText(url)
+      setStatus('copied')
+      setTimeout(() => setStatus('idle'), 2000)
+    } catch {
+      setStatus('error')
+      setTimeout(() => setStatus('idle'), 3000)
+    }
+  }, [content, status])
+
+  return (
+    <button
+      onClick={handleShare}
+      title="Share document"
+      disabled={!content.trim()}
+      className="rounded-lg p-1.5 sm:p-2 text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+    >
+      {status === 'loading' ? (
+        <Loader2 size={16} className="animate-spin" />
+      ) : status === 'copied' ? (
+        <Check size={16} className="text-green-500" />
+      ) : status === 'error' ? (
+        <AlertCircle size={16} className="text-red-500" />
+      ) : (
+        <Share2 size={16} />
+      )}
+    </button>
+  )
+}

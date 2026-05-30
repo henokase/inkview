@@ -12,6 +12,7 @@ import { MarkdownRenderer } from './components/MarkdownRenderer'
 import { TocSidebar } from './components/TocSidebar'
 import { HistoryModal } from './components/HistoryModal'
 import { NewDocModal } from './components/NewDocModal'
+import { parseShareUrl, fetchSharedContent } from './lib/share'
 
 function findPreviewHeading(container: HTMLElement): string | null {
   const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6')
@@ -90,6 +91,21 @@ function App() {
     window.addEventListener('resize', checkSize)
     return () => window.removeEventListener('resize', checkSize)
   }, [editorMode, setEditorMode])
+
+  useEffect(() => {
+    const share = parseShareUrl()
+    if (share) {
+      fetchSharedContent(share.id)
+        .then((content) => {
+          const id = createDocument(content)
+          setActiveDoc(id)
+          window.history.replaceState(null, '', '/')
+        })
+        .catch(() => {
+          // silently fail — user just sees the app as normal
+        })
+    }
+  }, [createDocument, setActiveDoc])
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -219,6 +235,7 @@ function App() {
           onNewDoc={() => setNewDocOpen(true)}
           onHistory={() => setHistoryOpen(true)}
           isMobile={isMobile}
+          content={content}
         />
 
         {/* Content area */}

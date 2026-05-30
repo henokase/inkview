@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { BookOpen, Columns2, Clock, Eye, FileEdit, List, Plus } from 'lucide-react'
 import { ThemeToggle } from './ThemeToggle'
+import { ShareButton } from './ShareButton'
 import type { EditorMode } from '../types'
 
 interface NavBarProps {
@@ -16,6 +17,7 @@ interface NavBarProps {
   variant?: 'main' | 'fullscreen'
   onCloseFullscreen?: () => void
   isMobile?: boolean
+  content?: string
 }
 
 const editorModes: { mode: EditorMode; icon: typeof FileEdit; label: string }[] = [
@@ -37,6 +39,7 @@ export function NavBar({
   variant = 'main',
   onCloseFullscreen,
   isMobile = false,
+  content = '',
 }: NavBarProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(title)
@@ -154,6 +157,8 @@ export function NavBar({
             <List size={16} />
           </button>
         )}
+
+        {showContent && <ShareButton content={content} />}
 
         <>
           <button
