@@ -38,7 +38,6 @@ export function NavBar({
   onNewDoc,
   onHistory,
   variant = 'main',
-  onCloseFullscreen,
   isMobile = false,
   content = '',
   hidden = false,
@@ -76,16 +75,16 @@ export function NavBar({
     : editorModes
 
   return (
-    <header className={`flex items-center justify-between border-b border-border/80 bg-surface/70 backdrop-blur-lg px-3 py-2 sm:px-5 sm:py-3 select-none transition-transform duration-300 ${
+    <header className={`flex items-center justify-between border-b border-border/80 bg-surface/70 backdrop-blur-lg px-4 py-2.5 sm:px-6 sm:py-3 select-none transition-transform duration-300 ${
       isMobile && showContent ? 'fixed top-0 left-0 right-0 z-20' : ''
     } ${isMobile && showContent && hidden ? '-translate-y-full' : 'translate-y-0'}`}>
       {/* Left side */}
       {variant === 'main' ? (
-        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 mr-2">
-          <div className="rounded-lg bg-accent-bg p-1.5 shrink-0">
-            <BookOpen size={16} className="text-accent" />
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 w-fit mr-2">
+          <div className="rounded-lg bg-accent-bg p-2 shrink-0">
+            <BookOpen size={18} className="text-accent sm:size-5" />
           </div>
-          <span className="font-sans text-xs sm:text-sm font-bold text-ink tracking-tight shrink-0 hidden xs:inline">InkView</span>
+          <span className="font-sans text-sm sm:text-base font-bold text-ink tracking-tight shrink-0 hidden xs:inline">InkView</span>
           {showContent && title && (
             <>
               <span className="text-ink-faint/50 mx-1 shrink-0">/</span>
@@ -96,12 +95,12 @@ export function NavBar({
                   onChange={(e) => setDraft(e.target.value)}
                   onBlur={saveTitle}
                   onKeyDown={handleKeyDown}
-                  className="min-w-0 max-w-30 sm:max-w-xs font-sans text-xs sm:text-sm font-medium bg-surface-alt rounded-md px-1.5 py-0.5 text-ink outline-hidden border border-accent/40"
+                  className="min-w-0 w-full max-w-50 xs:max-w-[320px] sm:max-w-100 md:max-w-125 font-sans text-sm sm:text-base font-medium bg-surface-alt rounded-md p-1 text-ink outline-hidden border border-accent/40"
                 />
               ) : (
                 <button
                   onClick={startEditing}
-                  className="truncate font-sans text-xs sm:text-sm font-medium text-ink-soft min-w-0 text-left hover:text-ink transition-colors max-w-25 xs:max-w-[160px] sm:max-w-xs"
+                  className="truncate font-sans text-sm sm:text-base font-medium text-ink-soft text-left hover:text-ink transition-colors w-full"
                   title="Click to rename"
                 >
                   {title}
@@ -111,25 +110,18 @@ export function NavBar({
           )}
         </div>
       ) : (
-        <div className="flex items-center gap-2 sm:gap-3 mr-2 min-w-0">
-          <button
-            onClick={onCloseFullscreen}
-            className="rounded-lg p-1.5 text-ink-faint hover:bg-surface-alt hover:text-ink transition-colors shrink-0"
-            title="Close fullscreen editor"
-          >
-            <Eye size={16} />
-          </button>
-          <div className="rounded-lg bg-accent-bg p-1.5 shrink-0 hidden xs:block">
-            <BookOpen size={16} className="text-accent" />
+        <div className="flex items-center gap-2.5 sm:gap-3 mr-2 min-w-0">
+          <div className="rounded-lg bg-accent-bg p-2 shrink-0">
+            <BookOpen size={18} className="text-accent sm:size-5" />
           </div>
-          <span className="text-xs sm:text-sm font-medium text-ink font-sans truncate min-w-0">
+          <span className="text-sm sm:text-base font-medium text-ink font-sans truncate min-w-0">
             Editing: {title}
           </span>
         </div>
       )}
 
       {/* Right side */}
-      <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+      <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
         {showContent && (
           <div className="flex items-center rounded-xl bg-surface-alt/80 border border-border/60 p-0.5 mr-1 sm:mr-2">
             {filteredModes.map(({ mode, icon: Icon, label }) => (
@@ -137,13 +129,13 @@ export function NavBar({
                 key={mode}
                 onClick={() => onEditorModeChange(mode)}
                 title={label}
-                className={`flex items-center gap-1 sm:gap-1.5 rounded-lg px-2 sm:px-2.5 py-1 sm:py-1.5 text-xs font-medium transition-all duration-150 ${
+                className={`flex items-center gap-1.5 sm:gap-2 rounded-lg px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-all duration-150 ${
                   editorMode === mode
                     ? 'bg-accent text-white shadow-xs'
                     : 'text-ink-faint hover:text-ink'
                 }`}
               >
-                <Icon size={14} />
+                <Icon size={14} className="sm:size-4" />
                 <span className="hidden md:inline">{label}</span>
               </button>
             ))}
@@ -154,11 +146,11 @@ export function NavBar({
           <button
             onClick={onTocToggle}
             title="Table of contents"
-            className={`rounded-lg p-1.5 sm:p-2 transition-colors ${
+            className={`rounded-lg p-2 sm:p-2.5 transition-colors ${
               tocOpen ? 'text-accent bg-accent-bg' : 'text-ink-faint hover:text-ink hover:bg-surface-alt'
             }`}
           >
-            <List size={16} />
+            <List size={18} />
           </button>
         )}
 
@@ -168,21 +160,21 @@ export function NavBar({
           <button
             onClick={onNewDoc}
             title="New document (Ctrl+N)"
-            className="rounded-lg p-1.5 sm:p-2 text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors"
+            className="rounded-lg p-2 sm:p-2.5 text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors"
           >
-            <Plus size={16} />
+            <Plus size={18} />
           </button>
 
           <button
             onClick={onHistory}
             title="Document history (Ctrl+H)"
-            className="rounded-lg p-1.5 sm:p-2 text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors"
+            className="rounded-lg p-2 sm:p-2.5 text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors"
           >
-            <Clock size={16} />
+            <Clock size={18} />
           </button>
         </>
 
-        <div className="ml-0.5 sm:ml-1 pl-0.5 sm:pl-1 border-l border-border/60">
+        <div className="ml-1 sm:ml-1.5 pl-1 sm:pl-1.5 border-l border-border/60">
           <ThemeToggle />
         </div>
       </div>

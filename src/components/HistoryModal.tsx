@@ -263,7 +263,7 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
                     {!selectionMode && (
                       <button
                         onClick={() => handleSingleDelete(doc.id)}
-                        className="shrink-0 rounded-lg p-1.5 text-ink-faint opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all ml-2"
+                        className="shrink-0 rounded-lg p-1.5 text-ink-faint/50 hover:text-red-400 hover:bg-red-500/10 transition-all ml-2"
                         title="Delete document"
                       >
                         <Trash2 size={14} />

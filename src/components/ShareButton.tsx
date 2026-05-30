@@ -6,6 +6,9 @@ interface ShareButtonProps {
   content: string
 }
 
+const COPIED_DURATION = 2000
+const ERROR_DURATION = 3000
+
 export function ShareButton({ content }: ShareButtonProps) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'copied' | 'error'>('idle')
 
@@ -16,10 +19,10 @@ export function ShareButton({ content }: ShareButtonProps) {
       const url = await createShareLink(content)
       await navigator.clipboard.writeText(url)
       setStatus('copied')
-      setTimeout(() => setStatus('idle'), 2000)
+      setTimeout(() => setStatus('idle'), COPIED_DURATION)
     } catch {
       setStatus('error')
-      setTimeout(() => setStatus('idle'), 3000)
+      setTimeout(() => setStatus('idle'), ERROR_DURATION)
     }
   }, [content, status])
 
@@ -28,16 +31,22 @@ export function ShareButton({ content }: ShareButtonProps) {
       onClick={handleShare}
       title="Share document"
       disabled={!content.trim()}
-      className="rounded-lg p-1.5 sm:p-2 text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+      className="rounded-lg p-2 sm:p-2.5 text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
     >
       {status === 'loading' ? (
-        <Loader2 size={16} className="animate-spin" />
+        <Loader2 size={18} className="animate-spin" />
       ) : status === 'copied' ? (
-        <Check size={16} className="text-green-500" />
+        <span className="flex items-center gap-1.5 text-green-500 text-xs sm:text-sm font-medium font-sans">
+          <Check size={16} />
+          Copied!
+        </span>
       ) : status === 'error' ? (
-        <AlertCircle size={16} className="text-red-500" />
+        <span className="flex items-center gap-1.5 text-red-500 text-xs sm:text-sm font-medium font-sans">
+          <AlertCircle size={16} />
+          Failed
+        </span>
       ) : (
-        <Share2 size={16} />
+        <Share2 size={18} />
       )}
     </button>
   )
