@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { BookOpen, Columns2, Clock, Eye, FileEdit, List, Plus } from 'lucide-react'
 import { ThemeToggle } from './ThemeToggle'
 import { ShareButton } from './ShareButton'
+
 import type { EditorMode } from '../types'
 
 interface NavBarProps {
@@ -75,19 +76,40 @@ export function NavBar({
     : editorModes
 
   return (
-    <header className={`flex items-center justify-between border-b border-border/80 bg-surface/70 backdrop-blur-lg px-4 py-2.5 sm:px-6 sm:py-3 select-none transition-transform duration-300 ${
+    <header  className={`flex items-center justify-between border-b border-border/80 bg-surface/70 backdrop-blur-lg px-4 py-2.5 sm:px-6 sm:py-3 select-none transition-transform duration-300 ${
       isMobile && showContent ? 'fixed top-0 left-0 right-0 z-20' : ''
     } ${isMobile && showContent && hidden ? '-translate-y-full' : 'translate-y-0'}`}>
       {/* Left side */}
-      {variant === 'main' ? (
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0 mr-2 flex-1">
+      {isMobile && variant === 'main' ? (
+        <div className="flex items-center min-w-0 mr-2 flex-1">
+          {showContent && (
+            <div className="flex items-center rounded-xl bg-surface-alt/80 border border-border/60 p-0.5">
+              {filteredModes.map(({ mode, icon: Icon, label }) => (
+                <button
+                  key={mode}
+                  onClick={() => onEditorModeChange(mode)}
+                  title={label}
+                  className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium transition-all duration-150 ${
+                    editorMode === mode
+                      ? 'bg-accent text-white shadow-xs'
+                      : 'text-ink-faint hover:text-ink'
+                  }`}
+                >
+                  <Icon size={14} />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : variant === 'main' ? (
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 mr-2 flex-1">
           <div className="rounded-lg bg-accent-bg p-2 shrink-0">
             <BookOpen size={18} className="text-accent sm:size-5" />
           </div>
-          <span className="font-sans text-sm sm:text-base font-bold text-ink tracking-tight shrink-0 hidden xs:inline">InkView</span>
+          <span className="font-sans text-sm sm:text-base font-bold text-ink tracking-tight shrink-0 hidden sm:inline">InkView</span>
           {showContent && title && (
             <>
-              <span className="text-ink-faint/50 mx-1 shrink-0">/</span>
+              <span className="text-ink-faint/50 mx-0.5 sm:mx-1 shrink-0 hidden sm:inline">/</span>
               <div className="flex-1 min-w-0">
                 {editing ? (
                   <input
@@ -123,15 +145,15 @@ export function NavBar({
       )}
 
       {/* Right side */}
-      <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-        {showContent && (
-          <div className="flex items-center rounded-xl bg-surface-alt/80 border border-border/60 p-0.5 mr-1 sm:mr-2">
+      <div className="flex items-center gap-0.5 sm:gap-1.5 shrink-0">
+        {!isMobile && showContent && (
+          <div className="flex items-center rounded-xl bg-surface-alt/80 border border-border/60 p-0.5 mr-0.5 sm:mr-2">
             {filteredModes.map(({ mode, icon: Icon, label }) => (
               <button
                 key={mode}
                 onClick={() => onEditorModeChange(mode)}
                 title={label}
-                className={`flex items-center gap-1.5 sm:gap-2 rounded-lg px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-all duration-150 ${
+                className={`flex items-center gap-1.5 sm:gap-2 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-all duration-150 ${
                   editorMode === mode
                     ? 'bg-accent text-white shadow-xs'
                     : 'text-ink-faint hover:text-ink'
@@ -176,7 +198,7 @@ export function NavBar({
           </button>
         </>
 
-        <div className="ml-1 sm:ml-1.5 pl-1 sm:pl-1.5 border-l border-border/60">
+        <div className="ml-0.5 sm:ml-1.5 pl-1 sm:pl-1.5 border-l border-border/60">
           <ThemeToggle />
         </div>
       </div>
