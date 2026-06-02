@@ -12,14 +12,34 @@ db.version(1).stores({
   documents: 'id, updatedAt',
 })
 
+function extractFirstHeading(markdown: string): string | null {
+  const lines = markdown.trim().split('\n')
+  let inCodeBlock = false
+  for (const line of lines) {
+    if (/^```/.test(line.trim())) {
+      inCodeBlock = !inCodeBlock
+      continue
+    }
+    if (inCodeBlock) continue
+    const match = /^#\s+(.+)$/.exec(line)
+    if (match) return match[1].trim()
+  }
+  return null
+}
+
 export async function migrateFromLocalStorage(): Promise<number> {
   const raw = localStorage.getItem(LOCALSTORAGE_KEY)
   if (!raw) return 0
 
   try {
     const parsed = JSON.parse(raw)
-    const docs: Document[] = parsed?.state?.documents ?? []
+    let docs: Document[] = parsed?.state?.documents ?? []
     if (docs.length === 0) return 0
+
+    docs = docs.map((doc) => ({
+      ...doc,
+      title: doc.title || extractFirstHeading(doc.content) || 'Untitled',
+    }))
 
     await db.documents.bulkPut(docs)
 
