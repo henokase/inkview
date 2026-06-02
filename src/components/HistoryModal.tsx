@@ -1,14 +1,112 @@
-import { useMemo, useState } from 'react'
+import { memo, useDeferredValue, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Search, Trash2, FileText, CheckSquare, Square, Clock, X, BookOpen, Filter } from 'lucide-react'
 import { useDocumentStore } from '../stores/document-store'
 import { ConfirmModal } from './ConfirmModal'
 import { extractTitle } from '../lib/toc'
+import type { Document } from '../types'
 
 interface HistoryModalProps {
   open: boolean
   onClose: () => void
 }
+
+function formatDate(ts: number) {
+  const d = new Date(ts)
+  const now = new Date()
+  const diff = now.getTime() - d.getTime()
+  if (diff < 60000) return 'Just now'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
+  if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`
+  return d.toLocaleDateString()
+}
+
+function getPreview(content: string): string {
+  return content
+    .replace(/^#+\s+(.+)$/m, '')
+    .replace(/[[\]()#*`>-]/g, '')
+    .trim()
+    .slice(0, 120)
+}
+
+function getItemTitle(doc: Document): string {
+  return doc.title || extractTitle(doc.content) || 'Untitled'
+}
+
+interface DocListItemProps {
+  id: string
+  title: string
+  content: string
+  updatedAt: number
+  isActive: boolean
+  isSelected: boolean
+  selectionMode: boolean
+  onDocClick: (id: string) => void
+  onDelete: (id: string) => void
+}
+
+const DocListItem = memo(function DocListItem({
+  id,
+  title,
+  content,
+  updatedAt,
+  isActive,
+  isSelected,
+  selectionMode,
+  onDocClick,
+  onDelete,
+}: DocListItemProps) {
+  const displayTitle = getItemTitle({ id, title, content } as Document)
+
+  return (
+    <div
+      className={`group flex items-center justify-between rounded-xl px-3.5 py-3 border transition-all duration-150 ${
+        isActive && !selectionMode
+          ? 'bg-accent-bg border-accent/20'
+          : isSelected
+            ? 'bg-accent-bg/30 border-accent/10'
+            : 'border-transparent hover:bg-surface-alt'
+      }`}
+    >
+      <button
+        onClick={() => onDocClick(id)}
+        className="flex flex-1 items-start gap-3 text-left min-w-0"
+      >
+        {selectionMode && (
+          <span className="mt-0.5 shrink-0">
+            {isSelected ? (
+              <CheckSquare size={18} className="text-accent" />
+            ) : (
+              <Square size={18} className="text-ink-faint" />
+            )}
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-ink font-sans">
+            {displayTitle}
+          </p>
+          <p className="mt-0.5 line-clamp-1 text-xs text-ink-faint font-serif">
+            {getPreview(content)}
+          </p>
+          <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-ink-faint font-sans">
+            <Clock size={10} />
+            <span>{formatDate(updatedAt)}</span>
+          </div>
+        </div>
+      </button>
+      {!selectionMode && (
+        <button
+          onClick={() => onDelete(id)}
+          className="shrink-0 rounded-lg p-1.5 text-ink-faint/50 hover:text-red-400 hover:bg-red-500/10 transition-all ml-2"
+          title="Delete document"
+        >
+          <Trash2 size={14} />
+        </button>
+      )}
+    </div>
+  )
+})
 
 export function HistoryModal({ open, onClose }: HistoryModalProps) {
   const documents = useDocumentStore((s) => s.documents)
@@ -17,30 +115,32 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
   const removeDocuments = useDocumentStore((s) => s.removeDocuments)
 
   const [searchQuery, setSearchQuery] = useState('')
+  const deferredQuery = useDeferredValue(searchQuery)
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set())
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const deleteTargetTitle = useMemo(() => {
-    if (!deleteTarget) return ''
-    const doc = documents.find((d) => d.id === deleteTarget)
-    return doc?.title || extractTitle(doc?.content || '') || 'Untitled'
-  }, [deleteTarget, documents])
 
   const sortBy = useMemo(() => {
     return [...documents].sort((a, b) => b.updatedAt - a.updatedAt)
   }, [documents])
 
   const filtered = useMemo(() => {
-    if (!searchQuery.trim()) return sortBy
-    const q = searchQuery.toLowerCase()
+    if (!deferredQuery.trim()) return sortBy
+    const q = deferredQuery.toLowerCase()
     return sortBy.filter(
       (d) =>
         d.title.toLowerCase().includes(q) ||
         d.content.toLowerCase().includes(q)
     )
-  }, [sortBy, searchQuery])
+  }, [sortBy, deferredQuery])
+
+  const deleteTargetTitle = useMemo(() => {
+    if (!deleteTarget) return ''
+    const doc = documents.find((d) => d.id === deleteTarget)
+    return getItemTitle(doc!)
+  }, [deleteTarget, documents])
 
   const toggleSelection = (id: string) => {
     setSelectedDocs((prev) => {
@@ -71,15 +171,11 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
     }, 200)
   }
 
-  const handleSingleDelete = (id: string) => {
-    setDeleteTarget(id)
-  }
-
   const confirmSingleDelete = () => {
     if (!deleteTarget) return
     setDeleting(true)
     setTimeout(() => {
-      removeDocuments([deleteTarget])
+      removeDocuments([deleteTarget!])
       setDeleteTarget(null)
       setDeleting(false)
     }, 200)
@@ -92,17 +188,6 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
       setActiveDoc(id)
       onClose()
     }
-  }
-
-  const formatDate = (ts: number) => {
-    const d = new Date(ts)
-    const now = new Date()
-    const diff = now.getTime() - d.getTime()
-    if (diff < 60000) return 'Just now'
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
-    if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`
-    return d.toLocaleDateString()
   }
 
   return createPortal(
@@ -148,10 +233,7 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
         </div>
 
         {/* Toolbar */}
-        <div className="flex items-center justify-between px-5 py-2">
-          <span className="text-xs font-medium text-ink-faint font-sans">
-            {filtered.length} document{filtered.length !== 1 ? 's' : ''}
-          </span>
+        <div className="flex items-center justify-end px-5 py-2">
           {filtered.length > 0 && (
             <div className="flex items-center gap-2">
               {selectionMode ? (
@@ -211,67 +293,20 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
             </div>
           ) : (
             <div className="space-y-0.5">
-              {filtered.map((doc) => {
-                const title = doc.title || extractTitle(doc.content) || 'Untitled'
-                const isActive = doc.id === activeDocId
-                const isSelected = selectedDocs.has(doc.id)
-                const preview = doc.content
-                  .replace(/^#+\s+(.+)$/m, '')
-                  .replace(/[[\]()#*`>-]/g, '')
-                  .trim()
-                  .slice(0, 120)
-
-                return (
-                  <div
-                    key={doc.id}
-                    className={`group flex items-center justify-between rounded-xl px-3.5 py-3 border transition-all duration-150 ${
-                      isActive && !selectionMode
-                        ? 'bg-accent-bg border-accent/20'
-                        : isSelected
-                          ? 'bg-accent-bg/30 border-accent/10'
-                          : 'border-transparent hover:bg-surface-alt'
-                    }`}
-                  >
-                    <button
-                      onClick={() => handleDocClick(doc.id)}
-                      className="flex flex-1 items-start gap-3 text-left min-w-0"
-                    >
-                      {selectionMode && (
-                        <span className="mt-0.5 shrink-0">
-                          {isSelected ? (
-                            <CheckSquare size={18} className="text-accent" />
-                          ) : (
-                            <Square size={18} className="text-ink-faint" />
-                          )}
-                        </span>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-ink font-sans">
-                          {title}
-                        </p>
-                        {preview && (
-                          <p className="mt-0.5 line-clamp-1 text-xs text-ink-faint font-serif">
-                            {preview}
-                          </p>
-                        )}
-                        <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-ink-faint font-sans">
-                          <Clock size={10} />
-                          <span>{formatDate(doc.updatedAt)}</span>
-                        </div>
-                      </div>
-                    </button>
-                    {!selectionMode && (
-                      <button
-                        onClick={() => handleSingleDelete(doc.id)}
-                        className="shrink-0 rounded-lg p-1.5 text-ink-faint/50 hover:text-red-400 hover:bg-red-500/10 transition-all ml-2"
-                        title="Delete document"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                  </div>
-                )
-              })}
+              {filtered.map((doc) => (
+                <DocListItem
+                  key={doc.id}
+                  id={doc.id}
+                  title={doc.title}
+                  content={doc.content}
+                  updatedAt={doc.updatedAt}
+                  isActive={doc.id === activeDocId}
+                  isSelected={selectedDocs.has(doc.id)}
+                  selectionMode={selectionMode}
+                  onDocClick={handleDocClick}
+                  onDelete={(id) => setDeleteTarget(id)}
+                />
+              ))}
             </div>
           )}
         </div>
