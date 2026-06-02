@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useDeferredValue } from 'react'
-import { FileText, Loader2, Plus, RefreshCw, X } from 'lucide-react'
+import { FileText, Loader2, Plus, RefreshCw, WifiOff, X } from 'lucide-react'
 import { useDocumentStore } from './stores/document-store'
 import { useUiStore } from './stores/ui-store'
 import { useKeyboard } from './lib/use-keyboard'
@@ -58,6 +58,8 @@ function findPreviewHeading(container: HTMLElement): string | null {
 function App() {
   const documents = useDocumentStore((s) => s.documents)
   const activeDocId = useDocumentStore((s) => s.activeDocId)
+  const hydrated = useDocumentStore((s) => s._hydrated)
+  const migrationCount = useDocumentStore((s) => s._migrationCount)
   const createDocument = useDocumentStore((s) => s.createDocument)
   const updateContent = useDocumentStore((s) => s.updateContent)
   const updateTitle = useDocumentStore((s) => s.updateTitle)
@@ -90,6 +92,18 @@ function App() {
   const editorHandleRef = useRef<MarkdownEditorHandle>(null)
   const previewScrollRef = useRef<HTMLDivElement>(null)
   const [isMobile, setIsMobile] = useState(false)
+  const [isOnline, setIsOnline] = useState(navigator.onLine)
+
+  useEffect(() => {
+    const goOnline = () => setIsOnline(true)
+    const goOffline = () => setIsOnline(false)
+    window.addEventListener('online', goOnline)
+    window.addEventListener('offline', goOffline)
+    return () => {
+      window.removeEventListener('online', goOnline)
+      window.removeEventListener('offline', goOffline)
+    }
+  }, [])
 
   useEffect(() => {
     const checkSize = () => {
@@ -133,6 +147,12 @@ function App() {
         showToast('Failed to load shared document. The link may have expired.', 'error')
       })
   }, [createDocument, setActiveDoc, showToast])
+
+  useEffect(() => {
+    if (migrationCount > 0) {
+      showToast(`Migrated ${migrationCount} document${migrationCount !== 1 ? 's' : ''} for offline access`, 'success')
+    }
+  }, [migrationCount, showToast])
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -251,6 +271,17 @@ function App() {
   const showEmpty = documents.length === 0 && !activeDoc
   const showContent = hasActiveDoc
 
+  if (!hydrated) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-surface">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 size={28} className="text-accent animate-spin" />
+          <p className="text-sm text-ink-soft font-sans">Loading documents...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-surface">
       <main className="flex flex-1 flex-col min-w-0">
@@ -267,6 +298,7 @@ function App() {
           isMobile={isMobile}
           content={content}
           hidden={navbarHidden}
+          isOnline={isOnline}
         />
 
         {/* Content area */}

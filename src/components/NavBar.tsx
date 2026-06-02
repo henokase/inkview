@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { BookOpen, Columns2, Clock, Eye, FileEdit, List, Plus } from 'lucide-react'
+import { BookOpen, Columns2, Clock, Eye, FileEdit, List, Plus, WifiOff } from 'lucide-react'
 import { ThemeToggle } from './ThemeToggle'
 import { ShareButton } from './ShareButton'
 
@@ -20,6 +20,7 @@ interface NavBarProps {
   isMobile?: boolean
   content?: string
   hidden?: boolean
+  isOnline?: boolean
 }
 
 const editorModes: { mode: EditorMode; icon: typeof FileEdit; label: string }[] = [
@@ -42,6 +43,7 @@ export function NavBar({
   isMobile = false,
   content = '',
   hidden = false,
+  isOnline = true,
 }: NavBarProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(title)
@@ -224,6 +226,12 @@ export function NavBar({
         )}
         </>
 
+        {!isOnline && (
+          <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-note/10 text-note text-[10px] font-medium mr-0.5 sm:mr-1">
+            <WifiOff size={11} />
+            <span className="hidden sm:inline">Offline</span>
+          </div>
+        )}
         <div className="ml-0.5 sm:ml-1.5 pl-1 sm:pl-1.5 border-l border-border/60">
           <ThemeToggle />
         </div>
