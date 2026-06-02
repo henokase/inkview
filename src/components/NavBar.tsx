@@ -204,7 +204,7 @@ export function NavBar({
           </button>
         )}
 
-        {showContent && <ShareButton content={content} />}
+        {showContent && <ShareButton content={content} title={title} />}
 
         <>
           <button

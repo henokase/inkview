@@ -23,6 +23,7 @@ export interface ShareEntry {
 
 export interface ShareResponse {
   content?: string
+  title?: string
   documents?: ShareEntry[]
   folderName?: string
 }

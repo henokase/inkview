@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       return Response.json({ id })
     }
 
-    const { content } = body
+    const { content, title } = body
     if (!content || typeof content !== 'string') {
       return Response.json({ error: 'Content is required' }, { status: 400 })
     }
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Content exceeds 1 MB limit' }, { status: 413 })
     }
     const id = crypto.randomUUID()
-    const payload = JSON.stringify({ type: 'single', content })
+    const payload = JSON.stringify({ type: 'single', title: title || '', content })
     await redis.set(`share:${id}`, payload, { ex: FIFTEEN_DAYS })
     return Response.json({ id })
   } catch {
@@ -83,9 +83,9 @@ export async function GET(request: Request) {
             nocache()
           )
         }
-        // Single share (new format: { type: 'single', content: '...' })
+        // Single share (new format: { type: 'single', title?: string, content: '...' })
         if (typeof parsed.content === 'string') {
-          return Response.json({ content: parsed.content }, nocache())
+          return Response.json({ content: parsed.content, title: parsed.title || undefined }, nocache())
         }
       }
     } catch {

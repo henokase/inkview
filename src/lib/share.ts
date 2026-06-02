@@ -23,11 +23,11 @@ export function hasShareUrl(): boolean {
   return path.includes(SHARE_PATH_PREFIX)
 }
 
-export async function createShareLink(content: string): Promise<string> {
+export async function createShareLink(content: string, title?: string): Promise<string> {
   const res = await fetch('/api/share', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, title }),
   })
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
@@ -70,7 +70,14 @@ export async function fetchSharedContent(id: string): Promise<ShareResponse> {
   const data = await doFetch('no-cache')
   if (data && data.content !== undefined && typeof data.content !== 'string') {
     if (data.content && typeof data.content.content === 'string') {
-      data.content = data.content.content
+      const shared = data.content as { content: string; title?: string }
+      data.title = shared.title
+      data.content = shared.content
+    } else if (data.content && data.content.type === 'batch' && Array.isArray(data.content.documents)) {
+      const shared = data.content as { documents: ShareEntry[]; folderName?: string }
+      data.documents = shared.documents
+      data.folderName = shared.folderName
+      delete data.content
     }
   }
   return data

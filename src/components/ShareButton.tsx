@@ -4,19 +4,20 @@ import { createShareLink } from '../lib/share'
 
 interface ShareButtonProps {
   content: string
+  title?: string
 }
 
 const COPIED_DURATION = 2000
 const ERROR_DURATION = 3000
 
-export function ShareButton({ content }: ShareButtonProps) {
+export function ShareButton({ content, title }: ShareButtonProps) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'copied' | 'error'>('idle')
 
   const handleShare = useCallback(async () => {
     if (!content.trim() || status === 'loading') return
     setStatus('loading')
     try {
-      const url = await createShareLink(content)
+      const url = await createShareLink(content, title)
       await navigator.clipboard.writeText(url)
       setStatus('copied')
       setTimeout(() => setStatus('idle'), COPIED_DURATION)
