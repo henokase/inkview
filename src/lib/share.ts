@@ -67,9 +67,11 @@ export async function fetchSharedContent(id: string): Promise<ShareResponse> {
     return res.json()
   }
 
-  let data = await doFetch('default')
+  const data = await doFetch('no-cache')
   if (data && data.content !== undefined && typeof data.content !== 'string') {
-    data = await doFetch('no-cache')
+    if (data.content && typeof data.content.content === 'string') {
+      data.content = data.content.content
+    }
   }
   return data
 }

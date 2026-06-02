@@ -4,16 +4,6 @@ const redis = Redis.fromEnv()
 
 const FIFTEEN_DAYS = 60 * 60 * 24 * 15
 
-const NO_CACHE = {
-  headers: {
-    'Cache-Control': 'no-cache, no-store, must-revalidate',
-    'Pragma': 'no-cache',
-    'Expires': '0',
-    'CDN-Cache-Control': 'no-cache',
-    'Surrogate-Control': 'no-store',
-  },
-} as const
-
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -58,36 +48,53 @@ export async function POST(request: Request) {
   }
 }
 
+function nocache(init: ResponseInit = {}): ResponseInit {
+  return {
+    ...init,
+    headers: {
+      ...(init.headers as Record<string, string> || {}),
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    },
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url)
     const id = url.searchParams.get('id')
     if (!id) {
-      return Response.json({ error: 'Missing id parameter' }, { status: 400, ...NO_CACHE })
+      return Response.json({ error: 'Missing id parameter' }, nocache({ status: 400 }))
     }
     const raw = await redis.get<string>(`share:${id}`)
     if (raw === null) {
-      return Response.json({ error: 'Shared document not found or has expired' }, { status: 404, ...NO_CACHE })
+      return Response.json({ error: 'Shared document not found or has expired' }, nocache({ status: 404 }))
     }
 
+    // Try to handle JSON-wrapped format (new shares)
     try {
       const parsed = JSON.parse(raw)
-      if (parsed.type === 'batch') {
-        return Response.json({
-          documents: parsed.documents,
-          folderName: parsed.folderName,
-        }, NO_CACHE)
-      }
-      if (typeof parsed.content === 'string') {
-        return Response.json({ content: parsed.content }, NO_CACHE)
+      if (parsed && typeof parsed === 'object') {
+        // Batch share
+        if (parsed.type === 'batch' && Array.isArray(parsed.documents)) {
+          return Response.json(
+            { documents: parsed.documents, folderName: parsed.folderName },
+            nocache()
+          )
+        }
+        // Single share (new format: { type: 'single', content: '...' })
+        if (typeof parsed.content === 'string') {
+          return Response.json({ content: parsed.content }, nocache())
+        }
       }
     } catch {
-      // Legacy format: raw content string
-      return Response.json({ content: raw }, NO_CACHE)
+      // raw is not JSON — legacy format (plain text content)
     }
 
-    return Response.json({ content: raw }, NO_CACHE)
+    // Fallback: return the raw Redis value as-is
+    return Response.json({ content: raw }, nocache())
   } catch {
-    return Response.json({ error: 'Internal server error' }, { status: 500, ...NO_CACHE })
+    return Response.json({ error: 'Internal server error' }, nocache({ status: 500 }))
   }
 }
