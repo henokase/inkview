@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useDeferredValue } from 'react'
-import { FileText, Loader2, Plus, RefreshCw, WifiOff, X } from 'lucide-react'
+import { FileText, Loader2, Plus, RefreshCw, X } from 'lucide-react'
 import { useDocumentStore } from './stores/document-store'
 import { useUiStore } from './stores/ui-store'
 import { useKeyboard } from './lib/use-keyboard'
