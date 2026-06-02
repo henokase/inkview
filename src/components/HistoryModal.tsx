@@ -149,7 +149,7 @@ const FolderItem = memo(function FolderItem({
       <span className="truncate flex-1">{folder.name}</span>
       <span className="text-[11px] text-ink-faint mr-5">{docCount}</span>
 
-      <div className={`absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 rounded-lg px-1 py-0.5 z-10 transition-opacity duration-150 ${show ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+      <div className={`absolute shadow-2xl bg-surface-alt dark:bg-surface-alt/95 right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 rounded-lg px-1 py-0.5 z-10 transition-opacity duration-150 ${show ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
         <button
           onClick={(e) => { e.stopPropagation(); onShare() }}
           className="rounded-md p-1 text-ink-faint hover:text-accent hover:bg-accent-bg/50 transition-colors"
@@ -439,7 +439,7 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
             <div className="rounded-lg bg-accent-bg p-1.5">
               <BookOpen size={18} className="text-accent" />
             </div>
-            <h2 className="font-sans text-base font-semibold text-ink">History</h2>
+            <h2 className="font-sans text-base font-semibold text-ink">Documents</h2>
             <span className="rounded-md bg-surface-alt px-2 py-0.5 text-[11px] font-medium text-ink-faint">
               {allDocsCount}
             </span>
@@ -665,9 +665,9 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
                   <span className="text-xs text-red-400">{shareError}</span>
                 )}
               </div>
-              <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto">
+              <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 min-w-0">
                 {filtered.length > 0 && (
-                  <div className="flex items-center gap-1 sm:gap-2">
+                  <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
                     {selectionMode ? (
                       <>
                         <button
@@ -700,7 +700,7 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
                               Move
                             </button>
                             {showFolderPicker && (
-                              <div className="absolute top-full right-0 mt-1 w-44 rounded-xl border border-border bg-surface shadow-xl z-20 py-1">
+                              <div className="absolute top-full right-0 z-50 mt-1 w-44 rounded-xl border border-border bg-surface shadow-xl py-1">
                                 <p className="px-3 py-1.5 text-[11px] text-ink-faint uppercase tracking-wider font-semibold">
                                   Move to folder
                                 </p>
