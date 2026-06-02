@@ -121,11 +121,11 @@ const Ol = ({ children }: { children?: ReactNode }) => (
 )
 
 const Li = ({ children }: { children?: ReactNode }) => (
-  <li className="leading-relaxed">{children}</li>
+  <li className="leading-relaxed wrap-break-word">{children}</li>
 )
 
 const Blockquote = ({ children }: { children?: ReactNode }) => (
-  <blockquote className="mb-5 border-l-4 border-accent/25 pl-5 italic text-ink-soft font-serif">
+  <blockquote className="mb-5 border-l-4 border-accent/25 pl-5 italic text-ink-soft font-serif wrap-break-word">
     {children}
   </blockquote>
 )
@@ -156,11 +156,11 @@ const Table = ({ children }: { children?: ReactNode }) => (
 )
 
 const Th = ({ children }: { children?: ReactNode }) => (
-  <th className="bg-surface-alt px-4 py-2.5 text-left font-semibold text-ink border-b border-border">{children}</th>
+  <th className="bg-surface-alt px-4 py-2.5 text-left font-semibold text-ink border-b border-border wrap-break-word">{children}</th>
 )
 
 const Td = ({ children }: { children?: ReactNode }) => (
-  <td className="px-4 py-2.5 border-b border-border last:border-b-0">{children}</td>
+  <td className="px-4 py-2.5 border-b border-border last:border-b-0 wrap-break-word">{children}</td>
 )
 
 const ThemedCodeBlock = memo(function ThemedCodeBlock({ code, language }: { code: string; language: string }) {
@@ -204,6 +204,7 @@ const ThemedCodeBlock = memo(function ThemedCodeBlock({ code, language }: { code
           fontSize: '0.85rem',
           lineHeight: '1.6',
           background: 'transparent',
+          overflowX: 'auto',
         }}
         codeTagProps={{ style: { background: 'transparent' } }}
         showLineNumbers
@@ -279,13 +280,15 @@ const Input = ({ type, checked, ...props }: ComponentPropsWithoutRef<'input'>) =
 
 const CodeBlock = ({ className, children, ...props }: ComponentPropsWithoutRef<'code'>) => {
   const match = /language-(\w+)/.exec(className || '')
-  const code = String(children).replace(/\n$/, '')
+  const code = String(children)
+  const isFenced = /\n/.test(code)
+  const trimmed = code.replace(/\n$/, '')
   if (!match) {
-    if (code.includes('\n')) {
+    if (isFenced) {
       return (
         <div className="group relative mb-5 mt-3 rounded-lg border border-border overflow-hidden bg-surface-alt">
-          <pre className="overflow-x-auto px-4 py-3 font-mono text-sm leading-relaxed text-ink whitespace-pre-wrap break-all">
-            <code>{code}</code>
+          <pre className="overflow-x-auto px-4 py-3 font-mono text-sm leading-relaxed text-ink whitespace-pre">
+            <code>{trimmed}</code>
           </pre>
         </div>
       )
@@ -302,9 +305,9 @@ const CodeBlock = ({ className, children, ...props }: ComponentPropsWithoutRef<'
   const language = match[1]
 
   if (language === 'mermaid') {
-    return <MermaidDiagram code={code} />
+    return <MermaidDiagram code={trimmed} />
   }
-  return <ThemedCodeBlock code={code} language={language} />
+  return <ThemedCodeBlock code={trimmed} language={language} />
 }
 
 const components: Components = {
@@ -335,7 +338,7 @@ interface MarkdownRendererProps {
 
 export const MarkdownRenderer = memo(function MarkdownRenderer({ content }: MarkdownRendererProps) {
   return (
-    <div className="font-sans">
+    <div className="font-sans wrap-break-word">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath, remarkEmoji, remarkFootnotes as any, remarkGitHubAlerts]}
         rehypePlugins={[rehypeKatex, rehypeRaw]}

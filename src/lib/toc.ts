@@ -12,7 +12,7 @@ export function extractTocHeadings(markdown: string): TocHeading[] {
     }
     if (inCodeBlock) continue
 
-    const match = /^(#{1,6})\s+(.+)$/.exec(line)
+    const match = /^(#{1,6})\s+(.+)/.exec(line)
     if (!match) continue
 
     const level = match[1].length
@@ -38,7 +38,7 @@ export function extractTitle(markdown: string): string | null {
       continue
     }
     if (inCodeBlock) continue
-    const match = /^#\s+(.+)$/.exec(line)
+    const match = /^#\s+(.+)/.exec(line)
     if (match) return match[1].trim()
   }
   return null

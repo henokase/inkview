@@ -303,7 +303,7 @@ function App() {
 
         {/* Content area */}
         <div
-          className="flex flex-1 overflow-hidden"
+          className={`flex flex-1 overflow-hidden ${navbarHidden ? 'mt-0' : 'sm:mt-5'}`}
           style={{
             paddingTop: hasActiveDoc && !navbarHidden ? '48px' : '0px',
             transition: 'padding-top 300ms',
