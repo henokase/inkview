@@ -58,12 +58,20 @@ export async function createBatchShareLink(
 }
 
 export async function fetchSharedContent(id: string): Promise<ShareResponse> {
-  const res = await fetch(`/api/share?id=${encodeURIComponent(id)}`)
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error(data.error || `Server returned ${res.status}`)
+  async function doFetch(cache: RequestCache) {
+    const res = await fetch(`/api/share?id=${encodeURIComponent(id)}&_t=${Date.now()}`, { cache })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      throw new Error(data.error || `Server returned ${res.status}`)
+    }
+    return res.json()
   }
-  return res.json()
+
+  let data = await doFetch('default')
+  if (data && data.content !== undefined && typeof data.content !== 'string') {
+    data = await doFetch('no-cache')
+  }
+  return data
 }
 
 export function resolveTitleUnique(

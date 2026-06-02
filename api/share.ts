@@ -4,6 +4,16 @@ const redis = Redis.fromEnv()
 
 const FIFTEEN_DAYS = 60 * 60 * 24 * 15
 
+const NO_CACHE = {
+  headers: {
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+    'CDN-Cache-Control': 'no-cache',
+    'Surrogate-Control': 'no-store',
+  },
+} as const
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -53,11 +63,11 @@ export async function GET(request: Request) {
     const url = new URL(request.url)
     const id = url.searchParams.get('id')
     if (!id) {
-      return Response.json({ error: 'Missing id parameter' }, { status: 400 })
+      return Response.json({ error: 'Missing id parameter' }, { status: 400, ...NO_CACHE })
     }
     const raw = await redis.get<string>(`share:${id}`)
     if (raw === null) {
-      return Response.json({ error: 'Shared document not found or has expired' }, { status: 404 })
+      return Response.json({ error: 'Shared document not found or has expired' }, { status: 404, ...NO_CACHE })
     }
 
     try {
@@ -66,18 +76,18 @@ export async function GET(request: Request) {
         return Response.json({
           documents: parsed.documents,
           folderName: parsed.folderName,
-        })
+        }, NO_CACHE)
       }
       if (typeof parsed.content === 'string') {
-        return Response.json({ content: parsed.content })
+        return Response.json({ content: parsed.content }, NO_CACHE)
       }
     } catch {
       // Legacy format: raw content string
-      return Response.json({ content: raw })
+      return Response.json({ content: raw }, NO_CACHE)
     }
 
-    return Response.json({ content: raw })
+    return Response.json({ content: raw }, NO_CACHE)
   } catch {
-    return Response.json({ error: 'Internal server error' }, { status: 500 })
+    return Response.json({ error: 'Internal server error' }, { status: 500, ...NO_CACHE })
   }
 }
