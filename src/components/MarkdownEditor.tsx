@@ -22,6 +22,7 @@ const headingStyle = HighlightStyle.define([
 interface MarkdownEditorProps {
   value: string
   onChange: (value: string) => void
+  autoFocus?: boolean
 }
 
 export interface MarkdownEditorHandle {
@@ -29,7 +30,7 @@ export interface MarkdownEditorHandle {
 }
 
 export const MarkdownEditor = memo(forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
-  function MarkdownEditor({ value, onChange }, ref) {
+  function MarkdownEditor({ value, onChange, autoFocus }, ref) {
   const codemirrorRef = useRef<ReactCodeMirrorRef>(null)
 
   useImperativeHandle(ref, () => ({
@@ -110,6 +111,7 @@ export const MarkdownEditor = memo(forwardRef<MarkdownEditorHandle, MarkdownEdit
       className="h-full"
       value={value}
       onChange={handleChange}
+      autoFocus={autoFocus}
       theme="light"
       extensions={extensions}
       basicSetup={{

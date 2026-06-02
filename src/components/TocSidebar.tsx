@@ -5,9 +5,10 @@ import type { TocHeading } from '../types'
 
 interface TocSidebarProps {
   content: string
+  onHeadingClick?: () => void
 }
 
-export const TocSidebar = memo(function TocSidebar({ content }: TocSidebarProps) {
+export const TocSidebar = memo(function TocSidebar({ content, onHeadingClick }: TocSidebarProps) {
   const navRef = useRef<HTMLElement>(null)
   const headings = useMemo(() => extractTocHeadings(content), [content])
   const activeIndex = useActiveHeading(headings, content)
@@ -24,6 +25,7 @@ export const TocSidebar = memo(function TocSidebar({ content }: TocSidebarProps)
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, i: number) => {
     e.preventDefault()
+    onHeadingClick?.()
     const container = document.querySelector<HTMLElement>('[data-preview-scroll]')
     if (!container) return
     const headingEls = container.querySelectorAll('h1, h2, h3, h4, h5, h6')

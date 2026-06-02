@@ -3,7 +3,7 @@ import { FileText, Loader2, Plus, RefreshCw, X } from 'lucide-react'
 import { useDocumentStore } from './stores/document-store'
 import { useUiStore } from './stores/ui-store'
 import { useKeyboard } from './lib/use-keyboard'
-import { extractTitle } from './lib/toc'
+import { extractTitle, extractTocHeadings } from './lib/toc'
 import { useHideOnScroll } from './lib/use-hide-on-scroll'
 import { NavBar } from './components/NavBar'
 import { MarkdownEditor } from './components/MarkdownEditor'
@@ -13,7 +13,7 @@ import { TocSidebar } from './components/TocSidebar'
 import { HistoryModal } from './components/HistoryModal'
 import { NewDocModal } from './components/NewDocModal'
 import { Toast } from './components/Toast'
-import { parseShareUrl, fetchSharedContent, resolveImportEntries } from './lib/share'
+import { parseShareUrl, fetchSharedContent, resolveImportEntries, resolveTitleUnique } from './lib/share'
 
 function findPreviewHeading(container: HTMLElement): string | null {
   const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6')
@@ -74,7 +74,7 @@ function App() {
   const [newDocOpen, setNewDocOpen] = useState(false)
   const [creatingDoc, setCreatingDoc] = useState(false)
   const [shareLoading, setShareLoading] = useState(false)
-  const [tocOpen, setTocOpen] = useState(true)
+  const [tocOpen, setTocOpen] = useState(() => window.innerWidth >= 768)
   const [splitRatio, setSplitRatio] = useState(0.5)
   const [toastMsg, setToastMsg] = useState('')
   const [toastType, setToastType] = useState<'success' | 'error'>('success')
@@ -257,6 +257,11 @@ function App() {
     [activeDoc]
   )
 
+  const hasHeadings = useMemo(
+    () => content ? extractTocHeadings(content).length > 0 : false,
+    [content]
+  )
+
   const handleFileUpload = useCallback(
     (content: string, name: string) => {
       setCreatingDoc(true)
@@ -306,7 +311,14 @@ function App() {
   const handleTitleChange = useCallback(
     (title: string) => {
       if (activeDocId) {
-        updateTitle(activeDocId, title)
+        const state = useDocumentStore.getState()
+        const conflict = state.documents.some((d) => d.id !== activeDocId && d.title === title)
+        if (conflict) {
+          const others = state.documents.filter((d) => d.id !== activeDocId)
+          updateTitle(activeDocId, resolveTitleUnique(title, others))
+        } else {
+          updateTitle(activeDocId, title)
+        }
       }
     },
     [activeDocId, updateTitle]
@@ -335,6 +347,12 @@ function App() {
   const showEmpty = documents.length === 0 && !activeDoc
   const showContent = hasActiveDoc
 
+  useEffect(() => {
+    if (isMobile && editorMode === 'preview') {
+      setTocOpen(false)
+    }
+  }, [isMobile, editorMode])
+
   if (!hydrated) {
     return (
       <div className="flex h-screen items-center justify-center bg-surface">
@@ -349,21 +367,22 @@ function App() {
   return (
     <div className="flex h-screen overflow-hidden bg-surface">
       <main className="flex flex-1 flex-col min-w-0">
-        <NavBar
-          title={title}
-          showContent={showContent}
-          editorMode={editorMode}
-          onEditorModeChange={setEditorMode}
-          onTitleChange={handleTitleChange}
-          tocOpen={tocOpen}
-          onTocToggle={() => setTocOpen(!tocOpen)}
-          onNewDoc={() => setNewDocOpen(true)}
-          onHistory={() => setHistoryOpen(true)}
-          isMobile={isMobile}
-          content={content}
-          hidden={navbarHidden}
-          isOnline={isOnline}
-        />
+          <NavBar
+            title={title}
+            showContent={showContent}
+            editorMode={editorMode}
+            onEditorModeChange={setEditorMode}
+            onTitleChange={handleTitleChange}
+            tocOpen={tocOpen}
+            onTocToggle={() => setTocOpen(!tocOpen)}
+            onNewDoc={() => setNewDocOpen(true)}
+            onHistory={() => setHistoryOpen(true)}
+            isMobile={isMobile}
+            content={content}
+            hidden={navbarHidden}
+            isOnline={isOnline}
+            hasHeadings={hasHeadings}
+          />
 
         {/* Content area */}
         <div
@@ -452,7 +471,7 @@ function App() {
               </div>
 
               {/* TOC sidebar */}
-              {editorMode !== 'edit' && tocOpen && (
+              {editorMode !== 'edit' && tocOpen && hasHeadings && (
                 <>
                   {/* Backdrop overlay for mobile TOC */}
                   <div
@@ -471,7 +490,10 @@ function App() {
                         <X size={14} />
                       </button>
                     </div>
-                    <TocSidebar content={displayContent} />
+                    <TocSidebar
+                      content={displayContent}
+                      onHeadingClick={isMobile ? () => setTocOpen(false) : undefined}
+                    />
                   </aside>
                 </>
               )}
@@ -483,7 +505,7 @@ function App() {
       {/* Fullscreen editor mode */}
       {editorMode === 'edit' && showContent && activeDoc && (
         <div
-          className="fixed inset-0 z-50 flex flex-col bg-surface"
+          className="fixed inset-0 z-50 flex flex-col bg-surface-alt"
           style={{ animation: 'fadeIn 200ms' }}
         >
           <NavBar
@@ -500,11 +522,12 @@ function App() {
             onCloseFullscreen={() => setEditorMode('preview')}
             isMobile={isMobile}
           />
-          <div className="flex-1 overflow-auto px-6 py-6 lg:px-12">
-            <div className="mx-auto max-w-4xl h-full">
+          <div className="flex-1 overflow-auto px-6 lg:px-12">
+            <div className="mx-auto h-full max-w-4xl bg-surface shadow-lg ring-1 ring-border/50 px-4 py-3">
               <MarkdownEditor
                 value={activeDoc.content}
                 onChange={handleContentChange}
+                autoFocus
               />
             </div>
           </div>

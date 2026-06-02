@@ -21,6 +21,7 @@ interface NavBarProps {
   content?: string
   hidden?: boolean
   isOnline?: boolean
+  hasHeadings?: boolean
 }
 
 const editorModes: { mode: EditorMode; icon: typeof FileEdit; label: string }[] = [
@@ -44,6 +45,7 @@ export function NavBar({
   content = '',
   hidden = false,
   isOnline = true,
+  hasHeadings = true,
 }: NavBarProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(title)
@@ -192,7 +194,7 @@ export function NavBar({
           </div>
         )}
 
-        {showContent && editorMode !== 'edit' && (
+        {showContent && editorMode !== 'edit' && hasHeadings && (
           <button
             onClick={onTocToggle}
             title="Table of contents"

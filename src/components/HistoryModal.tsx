@@ -395,12 +395,21 @@ const handleCreateFolder = useCallback(() => {
   }, [])
 
   const handleFinishRename = useCallback(() => {
-    if (renamingFolderId && renameValue.trim()) {
-      renameFolder(renamingFolderId, renameValue.trim())
+    if (!renamingFolderId || !renameValue.trim()) {
+      setRenamingFolderId(null)
+      setRenameValue('')
+      return
     }
+    const newName = renameValue.trim()
+    const exists = folders.some((f) => f.id !== renamingFolderId && f.name === newName)
+    if (exists) {
+      showToast?.('A folder with that name already exists', 'error')
+      return
+    }
+    renameFolder(renamingFolderId, newName)
     setRenamingFolderId(null)
     setRenameValue('')
-  }, [renamingFolderId, renameValue, renameFolder])
+  }, [renamingFolderId, renameValue, renameFolder, folders, showToast])
 
   const handleRenameKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
