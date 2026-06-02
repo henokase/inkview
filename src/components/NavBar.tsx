@@ -77,37 +77,42 @@ export function NavBar({
 
   return (
     <header  className={`flex items-center justify-between border-b border-border/80 bg-surface/70 backdrop-blur-lg px-4 py-2.5 sm:px-6 sm:py-3 select-none transition-transform duration-300 ${
-      isMobile && showContent ? 'fixed top-0 left-0 right-0 z-20' : ''
-    } ${isMobile && showContent && hidden ? '-translate-y-full' : 'translate-y-0'}`}>
+      showContent && variant !== 'fullscreen' ? 'fixed top-0 left-0 right-0 z-20' : ''
+    } ${showContent && hidden ? '-translate-y-full' : 'translate-y-0'}`}>
       {/* Left side */}
-      {isMobile && variant === 'main' ? (
+      {!showContent ? (
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 mr-2 flex-1">
+          <div className="rounded-lg bg-accent-bg p-2 shrink-0">
+            <BookOpen size={18} className="text-accent sm:size-5" />
+          </div>
+          <span className="font-sans text-sm sm:text-base font-bold text-ink tracking-tight shrink-0 hidden lg:inline">InkView</span>
+        </div>
+      ) : isMobile && variant === 'main' ? (
         <div className="flex items-center min-w-0 mr-2 flex-1">
-          {showContent && (
-            <div className="flex items-center rounded-xl bg-surface-alt/80 border border-border/60 p-0.5">
-              {filteredModes.map(({ mode, icon: Icon, label }) => (
-                <button
-                  key={mode}
-                  onClick={() => onEditorModeChange(mode)}
-                  title={label}
-                  className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium transition-all duration-150 ${
-                    editorMode === mode
-                      ? 'bg-accent text-white shadow-xs'
-                      : 'text-ink-faint hover:text-ink'
-                  }`}
-                >
-                  <Icon size={14} />
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="flex items-center rounded-xl bg-surface-alt/80 border border-border/60 p-0.5">
+            {filteredModes.map(({ mode, icon: Icon, label }) => (
+              <button
+                key={mode}
+                onClick={() => onEditorModeChange(mode)}
+                title={label}
+                className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium transition-all duration-150 ${
+                  editorMode === mode
+                    ? 'bg-accent text-white shadow-xs'
+                    : 'text-ink-faint hover:text-ink'
+                }`}
+              >
+                <Icon size={14} />
+              </button>
+            ))}
+          </div>
         </div>
       ) : variant === 'main' ? (
         <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 mr-2 flex-1">
           <div className="rounded-lg bg-accent-bg p-2 shrink-0">
             <BookOpen size={18} className="text-accent sm:size-5" />
           </div>
-          <span className="font-sans text-sm sm:text-base font-bold text-ink tracking-tight shrink-0 hidden sm:inline">InkView</span>
-          {showContent && title && (
+          <span className="font-sans text-sm sm:text-base font-bold text-ink tracking-tight shrink-0 hidden lg:inline">InkView</span>
+          {title && (
             <>
               <span className="text-ink-faint/50 mx-0.5 sm:mx-1 shrink-0 hidden sm:inline">/</span>
               <div className="flex-1 min-w-0">
@@ -132,6 +137,25 @@ export function NavBar({
               </div>
             </>
           )}
+        </div>
+      ) : isMobile ? (
+        <div className="flex items-center min-w-0 mr-2 flex-1">
+          <div className="flex items-center rounded-xl bg-surface-alt/80 border border-border/60 p-0.5">
+            {filteredModes.map(({ mode, icon: Icon, label }) => (
+              <button
+                key={mode}
+                onClick={() => onEditorModeChange(mode)}
+                title={label}
+                className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium transition-all duration-150 ${
+                  editorMode === mode
+                    ? 'bg-accent text-white shadow-xs'
+                    : 'text-ink-faint hover:text-ink'
+                }`}
+              >
+                <Icon size={14} />
+              </button>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="flex items-center gap-2.5 sm:gap-3 mr-2 min-w-0">
@@ -189,6 +213,7 @@ export function NavBar({
             <Plus size={18} />
           </button>
 
+          {showContent && (
           <button
             onClick={onHistory}
             title="Document history (Ctrl+H)"
@@ -196,6 +221,7 @@ export function NavBar({
           >
             <Clock size={18} />
           </button>
+        )}
         </>
 
         <div className="ml-0.5 sm:ml-1.5 pl-1 sm:pl-1.5 border-l border-border/60">

@@ -185,7 +185,7 @@ function App() {
   const hasActiveDoc = activeDocId !== null && activeDoc !== undefined
   const navbarHidden = useHideOnScroll(
     previewScrollRef,
-    isMobile && hasActiveDoc && editorMode !== 'edit'
+    hasActiveDoc && editorMode !== 'edit'
   )
 
   const content = activeDoc?.content ?? ''
@@ -273,7 +273,7 @@ function App() {
         <div
           className="flex flex-1 overflow-hidden"
           style={{
-            paddingTop: isMobile && hasActiveDoc && !navbarHidden ? '48px' : '0px',
+            paddingTop: hasActiveDoc && !navbarHidden ? '48px' : '0px',
             transition: 'padding-top 300ms',
           }}
         >
