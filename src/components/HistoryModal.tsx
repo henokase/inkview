@@ -1,10 +1,14 @@
-import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Search, Trash2, FileText, CheckSquare, Square, Clock, X, BookOpen, Filter } from 'lucide-react'
+import {
+  Search, Trash2, FileText, CheckSquare, Square, Clock, X, BookOpen, Filter,
+  Folder as FolderIcon, FolderOpen, Plus, Share2, Edit3, ChevronDown,
+} from 'lucide-react'
 import { useDocumentStore } from '../stores/document-store'
 import { ConfirmModal } from './ConfirmModal'
 import { extractTitle } from '../lib/toc'
-import type { Document } from '../types'
+import { createBatchShareLink } from '../lib/share'
+import type { Document, Folder } from '../types'
 
 interface HistoryModalProps {
   open: boolean
@@ -108,13 +112,83 @@ const DocListItem = memo(function DocListItem({
   )
 })
 
+interface FolderItemProps {
+  folder: Folder
+  docCount: number
+  isActive: boolean
+  onSelect: () => void
+  onShare: () => void
+  onRename: () => void
+  onDelete: () => void
+}
+
+const FolderItem = memo(function FolderItem({
+  folder,
+  docCount,
+  isActive,
+  onSelect,
+  onShare,
+  onRename,
+  onDelete,
+}: FolderItemProps) {
+  const [showActions, setShowActions] = useState(false)
+  const show = showActions || isActive
+
+  return (
+    <div
+      className={`relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm cursor-pointer transition-colors ${
+        isActive
+          ? 'bg-accent-bg text-accent font-medium'
+          : 'text-ink-soft hover:bg-surface-alt hover:text-ink'
+      }`}
+      onClick={onSelect}
+      onMouseEnter={() => setShowActions(true)}
+      onMouseLeave={() => setShowActions(false)}
+    >
+      {isActive ? <FolderOpen size={16} className="shrink-0" /> : <FolderIcon size={16} className="shrink-0" />}
+      <span className="truncate flex-1">{folder.name}</span>
+      <span className="text-[11px] text-ink-faint mr-5">{docCount}</span>
+
+      <div className={`absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 rounded-lg px-1 py-0.5 z-10 transition-opacity duration-150 ${show ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+        <button
+          onClick={(e) => { e.stopPropagation(); onShare() }}
+          className="rounded-md p-1 text-ink-faint hover:text-accent hover:bg-accent-bg/50 transition-colors"
+          title="Share folder"
+        >
+          <Share2 size={12} />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onRename() }}
+          className="rounded-md p-1 text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors"
+          title="Rename folder"
+        >
+          <Edit3 size={12} />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete() }}
+          className="rounded-md p-1 text-ink-faint hover:text-red-400 hover:bg-red-500/10 transition-colors"
+          title="Delete folder"
+        >
+          <Trash2 size={12} />
+        </button>
+      </div>
+    </div>
+  )
+})
+
 export function HistoryModal({ open, onClose }: HistoryModalProps) {
   const docsVersion = useDocumentStore((s) => s._docsVersion)
+  const foldersVersion = useDocumentStore((s) => s._foldersVersion)
   const activeDocId = useDocumentStore((s) => s.activeDocId)
   const setActiveDoc = useDocumentStore((s) => s.setActiveDoc)
   const removeDocuments = useDocumentStore((s) => s.removeDocuments)
+  const createFolder = useDocumentStore((s) => s.createFolder)
+  const renameFolder = useDocumentStore((s) => s.renameFolder)
+  const deleteFolderAction = useDocumentStore((s) => s.deleteFolder)
+  const moveDocumentsToFolder = useDocumentStore((s) => s.moveDocumentsToFolder)
 
   const [documents, setDocuments] = useState<Document[]>([])
+  const [folders, setFolders] = useState<Folder[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const deferredQuery = useDeferredValue(searchQuery)
   const [selectionMode, setSelectionMode] = useState(false)
@@ -123,14 +197,49 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  const [activeFolderId, setActiveFolderId] = useState<string | null>(null)
+  const [showNewFolder, setShowNewFolder] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
+  const newFolderInputRef = useRef<HTMLInputElement>(null)
+  const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+  const renameInputRef = useRef<HTMLInputElement>(null)
+  const [showDeleteFolderModal, setShowDeleteFolderModal] = useState(false)
+  const [folderToDelete, setFolderToDelete] = useState<string | null>(null)
+  const [sharingFolder, setSharingFolder] = useState<string | null>(null)
+  const [shareError, setShareError] = useState<string | null>(null)
+  const [showFolderPicker, setShowFolderPicker] = useState(false)
+  const [showMobileFolderList, setShowMobileFolderList] = useState(false)
+
   useEffect(() => {
-    const { documents: docs } = useDocumentStore.getState()
+    const { documents: docs, folders: flds } = useDocumentStore.getState()
     setDocuments(docs)
-  }, [docsVersion])
+    setFolders(flds)
+  }, [docsVersion, foldersVersion])
+
+  useEffect(() => {
+    if (showNewFolder && newFolderInputRef.current) {
+      newFolderInputRef.current.focus()
+    }
+  }, [showNewFolder])
+
+  useEffect(() => {
+    if (renamingFolderId && renameInputRef.current) {
+      renameInputRef.current.focus()
+      renameInputRef.current.select()
+    }
+  }, [renamingFolderId])
+
+  const docsByFolder = useMemo(() => {
+    if (!activeFolderId) return documents
+    const folder = folders.find((f) => f.id === activeFolderId)
+    if (!folder) return documents
+    return documents.filter((d) => folder.documentIds.includes(d.id))
+  }, [documents, folders, activeFolderId])
 
   const sortBy = useMemo(() => {
-    return [...documents].sort((a, b) => b.lastAccessedAt - a.lastAccessedAt)
-  }, [documents])
+    return [...docsByFolder].sort((a, b) => b.lastAccessedAt - a.lastAccessedAt)
+  }, [docsByFolder])
 
   const filtered = useMemo(() => {
     if (!deferredQuery.trim()) return sortBy
@@ -142,11 +251,25 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
     )
   }, [sortBy, deferredQuery])
 
+  const folderDocCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const f of folders) {
+      counts[f.id] = documents.filter((d) => f.documentIds.includes(d.id)).length
+    }
+    return counts
+  }, [folders, documents])
+
   const deleteTargetTitle = useMemo(() => {
     if (!deleteTarget) return ''
     const doc = documents.find((d) => d.id === deleteTarget)
     return doc ? getItemTitle(doc) : ''
   }, [deleteTarget, documents])
+
+  const folderDeleteName = useMemo(() => {
+    if (!folderToDelete) return ''
+    const f = folders.find((fld) => fld.id === folderToDelete)
+    return f?.name || ''
+  }, [folderToDelete, folders])
 
   const handleSelectAll = useCallback(() => {
     setSelectedDocs((prev) => {
@@ -211,11 +334,105 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
     setSelectionMode(true)
   }, [])
 
+  const handleCreateFolder = useCallback(() => {
+    const name = newFolderName.trim()
+    if (!name) return
+    createFolder(name)
+    setNewFolderName('')
+    setShowNewFolder(false)
+    setActiveFolderId(null)
+  }, [newFolderName, createFolder])
+
+  const handleNewFolderKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleCreateFolder()
+    } else if (e.key === 'Escape') {
+      setShowNewFolder(false)
+      setNewFolderName('')
+    }
+  }, [handleCreateFolder])
+
+  const handleStartRename = useCallback((folder: Folder) => {
+    setRenamingFolderId(folder.id)
+    setRenameValue(folder.name)
+  }, [])
+
+  const handleFinishRename = useCallback(() => {
+    if (renamingFolderId && renameValue.trim()) {
+      renameFolder(renamingFolderId, renameValue.trim())
+    }
+    setRenamingFolderId(null)
+    setRenameValue('')
+  }, [renamingFolderId, renameValue, renameFolder])
+
+  const handleRenameKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleFinishRename()
+    } else if (e.key === 'Escape') {
+      setRenamingFolderId(null)
+      setRenameValue('')
+    }
+  }, [handleFinishRename])
+
+  const handleFolderShare = useCallback(async (folder: Folder) => {
+    const folderDocs = documents.filter((d) => folder.documentIds.includes(d.id))
+    if (folderDocs.length === 0) return
+    setSharingFolder(folder.id)
+    setShareError(null)
+    try {
+      const entries = folderDocs.map((d) => ({ title: d.title || 'Untitled', content: d.content }))
+      const url = await createBatchShareLink(entries, folder.name)
+      await navigator.clipboard.writeText(url)
+      setShareError(null)
+      setTimeout(() => setSharingFolder(null), 1500)
+    } catch {
+      setShareError('Failed to share folder')
+      setTimeout(() => { setSharingFolder(null); setShareError(null) }, 3000)
+    }
+  }, [documents])
+
+  const handleShareSelected = useCallback(async () => {
+    if (selectedDocs.size === 0) return
+    const selected = documents.filter((d) => selectedDocs.has(d.id))
+    setShareError(null)
+    try {
+      const entries = selected.map((d) => ({ title: d.title || 'Untitled', content: d.content }))
+      const url = await createBatchShareLink(entries)
+      await navigator.clipboard.writeText(url)
+      setSelectionMode(false)
+      setSelectedDocs(new Set())
+      setShareError(null)
+    } catch {
+      setShareError('Failed to share documents')
+      setTimeout(() => setShareError(null), 3000)
+    }
+  }, [selectedDocs, documents])
+
+  const handleMoveToFolder = useCallback((folderId: string) => {
+    if (selectedDocs.size === 0) return
+    moveDocumentsToFolder(folderId, Array.from(selectedDocs))
+    setSelectedDocs(new Set())
+    setShowFolderPicker(false)
+    setActiveFolderId(folderId)
+  }, [selectedDocs, moveDocumentsToFolder])
+
+  const handleConfirmDeleteFolder = useCallback(() => {
+    if (!folderToDelete) return
+    deleteFolderAction(folderToDelete)
+    if (activeFolderId === folderToDelete) {
+      setActiveFolderId(null)
+    }
+    setFolderToDelete(null)
+    setShowDeleteFolderModal(false)
+  }, [folderToDelete, deleteFolderAction, activeFolderId])
+
+  const allDocsCount = documents.length
+
   return createPortal(
     <div className={`fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-200 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
-      <div className="relative flex h-[80vh] w-full max-w-2xl flex-col rounded-2xl border border-border bg-surface shadow-2xl mx-4">
+      <div className="relative flex h-[80vh] w-[calc(100%-1rem)] sm:w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl flex-col rounded-2xl border border-border bg-surface shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
           <div className="flex items-center gap-2.5">
@@ -224,7 +441,7 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
             </div>
             <h2 className="font-sans text-base font-semibold text-ink">History</h2>
             <span className="rounded-md bg-surface-alt px-2 py-0.5 text-[11px] font-medium text-ink-faint">
-              {documents.length}
+              {allDocsCount}
             </span>
           </div>
           <button
@@ -235,101 +452,363 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
           </button>
         </div>
 
-        {/* Search */}
-        <div className="px-5 pt-3.5 pb-2">
-          <div className="relative">
-            <Search
-              size={16}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
-            />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search documents..."
-              className="w-full rounded-xl border border-border bg-surface-alt/50 py-2.5 pl-10 pr-3 text-sm text-ink placeholder:text-ink-faint outline-hidden focus:border-accent/50 focus:bg-surface transition-colors"
-              autoFocus
-            />
-          </div>
-        </div>
+        <div className="flex flex-1 overflow-hidden">
+          {/* Folder sidebar */}
+          <div className="hidden md:flex w-52 shrink-0 border-r border-border flex-col">
+            <div className="px-3 pt-3.5 pb-2">
+              <span className="text-[11px] font-semibold text-ink-faint uppercase tracking-wider">
+                Folders
+              </span>
+            </div>
+            <div className="flex-1 overflow-y-auto px-2 space-y-0.5">
+              <button
+                onClick={() => setActiveFolderId(null)}
+                className={`flex items-center gap-2 w-full rounded-lg px-3 py-2 text-sm text-left transition-colors ${
+                  activeFolderId === null
+                    ? 'bg-accent-bg text-accent font-medium'
+                    : 'text-ink-soft hover:bg-surface-alt hover:text-ink'
+                }`}
+              >
+                {activeFolderId === null ? <FolderOpen size={16} /> : <FolderIcon size={16} />}
+                <span className="truncate flex-1">All Documents</span>
+                <span className="text-[11px] text-ink-faint">{allDocsCount}</span>
+              </button>
 
-        {/* Toolbar */}
-        <div className="flex items-center justify-end px-5 py-2">
-          {filtered.length > 0 && (
-            <div className="flex items-center gap-2">
-              {selectionMode ? (
-                <>
-                  <button
-                    onClick={handleSelectAll}
-                    className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs text-ink-soft hover:text-ink hover:bg-surface-alt transition-colors font-sans"
-                  >
-                    {selectedDocs.size === filtered.length ? (
-                      <CheckSquare size={14} />
-                    ) : (
-                      <Square size={14} />
-                    )}
-                    Select all
-                  </button>
-                  <button
-                    onClick={handleToolbarDelete}
-                    disabled={selectedDocs.size === 0}
-                    className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs text-red-400 hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-sans"
-                  >
-                    <Trash2 size={14} />
-                    Delete ({selectedDocs.size})
-                  </button>
-                  <button
-                    onClick={cancelSelection}
-                    className="rounded-lg px-2.5 py-1 text-xs text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors font-sans"
-                  >
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={enableSelection}
-                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors font-sans"
-                >
-                  <Filter size={14} />
-                  Select
-                </button>
+              {showNewFolder && (
+                <div className="flex items-center gap-2 rounded-lg px-3 py-2 bg-surface-alt">
+                  <FolderIcon size={16} className="text-ink-faint shrink-0" />
+                  <input
+                    ref={newFolderInputRef}
+                    type="text"
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    onKeyDown={handleNewFolderKeyDown}
+                    onBlur={() => {
+                      if (!newFolderName.trim()) {
+                        setShowNewFolder(false)
+                      } else {
+                        handleCreateFolder()
+                      }
+                    }}
+                    placeholder="Folder name"
+                    className="flex-1 bg-transparent text-sm text-ink outline-hidden placeholder:text-ink-faint"
+                  />
+                </div>
               )}
-            </div>
-          )}
-        </div>
 
-        {/* Document list */}
-        <div className="flex-1 overflow-y-auto px-5 pb-4">
-          {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center pt-20 text-center">
-              <div className="mb-4 rounded-xl bg-surface-alt p-3">
-                <FileText size={32} className="text-ink-faint" />
-              </div>
-              <p className="text-sm font-medium text-ink font-sans">
-                {searchQuery ? 'No matches found' : 'No documents yet'}
-              </p>
-              <p className="mt-1 text-xs text-ink-faint font-sans">
-                {searchQuery ? 'Try a different search term' : 'Create or upload a document to get started'}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-0.5">
-              {filtered.map((doc) => (
-                <DocListItem
-                  key={doc.id}
-                  id={doc.id}
-                  title={doc.title}
-                  content={doc.content}
-                  updatedAt={doc.updatedAt}
-                  isActive={doc.id === activeDocId}
-                  isSelected={selectedDocs.has(doc.id)}
-                  selectionMode={selectionMode}
-                  onDocClick={handleDocClick}
-                  onDelete={handleDeleteClick}
-                />
+              {folders.map((folder) => (
+                renamingFolderId === folder.id ? (
+                  <div
+                    key={folder.id}
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 bg-surface-alt"
+                  >
+                    <FolderIcon size={16} className="text-ink-faint shrink-0" />
+                    <input
+                      ref={renameInputRef}
+                      type="text"
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={handleRenameKeyDown}
+                      onBlur={handleFinishRename}
+                      className="flex-1 bg-transparent text-sm text-ink outline-hidden placeholder:text-ink-faint"
+                    />
+                  </div>
+                ) : (
+                  <FolderItem
+                    key={folder.id}
+                    folder={folder}
+                    docCount={folderDocCounts[folder.id] || 0}
+                    isActive={activeFolderId === folder.id}
+                    onSelect={() => setActiveFolderId(folder.id)}
+                    onShare={() => handleFolderShare(folder)}
+                    onRename={() => handleStartRename(folder)}
+                    onDelete={() => { setFolderToDelete(folder.id); setShowDeleteFolderModal(true) }}
+                  />
+                )
               ))}
             </div>
-          )}
+
+            <div className="px-2 py-2 border-t border-border">
+              <button
+                onClick={() => { setShowNewFolder(true); setNewFolderName('') }}
+                className="flex items-center gap-1.5 w-full rounded-lg px-3 py-1.5 text-xs text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors"
+              >
+                <Plus size={14} />
+                New Folder
+              </button>
+            </div>
+          </div>
+
+          {/* Document panel */}
+          <div className="flex-1 flex flex-col min-w-0">
+            {/* Search */}
+            <div className="px-5 pt-3.5 pb-2">
+              <div className="relative">
+                <Search
+                  size={16}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
+                />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={activeFolderId ? 'Search in folder...' : 'Search documents...'}
+                  className="w-full rounded-xl border border-border bg-surface-alt/50 py-2.5 pl-10 pr-3 text-sm text-ink placeholder:text-ink-faint outline-hidden focus:border-accent/50 focus:bg-surface transition-colors"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* Mobile folder selector */}
+            <div className="md:hidden px-5 pb-1">
+              <div className="relative">
+                <button
+                  onClick={() => setShowMobileFolderList(!showMobileFolderList)}
+                  className="flex items-center gap-2 w-full rounded-xl border border-border bg-surface-alt/50 px-3 py-2 text-sm text-ink hover:bg-surface-alt transition-colors"
+                >
+                  {activeFolderId ? (
+                    <FolderOpen size={16} className="shrink-0 text-accent" />
+                  ) : (
+                    <FolderIcon size={16} className="shrink-0 text-ink-faint" />
+                  )}
+                  <span className="flex-1 text-left truncate">
+                    {activeFolderId
+                      ? folders.find((f) => f.id === activeFolderId)?.name || 'Folder'
+                      : 'All Documents'}
+                  </span>
+                  <span className="text-[11px] text-ink-faint">
+                    {activeFolderId
+                      ? (folderDocCounts[activeFolderId] ?? 0)
+                      : allDocsCount}
+                  </span>
+                  <ChevronDown size={14} className="text-ink-faint" />
+                </button>
+
+                {showMobileFolderList && (
+                  <div className="absolute top-full left-0 right-0 mt-1 rounded-xl border border-border bg-surface shadow-xl z-20 py-1 max-h-56 overflow-y-auto">
+                    <button
+                      onClick={() => { setActiveFolderId(null); setShowMobileFolderList(false) }}
+                      className={`flex items-center gap-2 w-full px-3 py-2 text-sm text-left transition-colors ${
+                        activeFolderId === null
+                          ? 'bg-accent-bg text-accent font-medium'
+                          : 'text-ink-soft hover:bg-surface-alt hover:text-ink'
+                      }`}
+                    >
+                      <FolderIcon size={16} className="shrink-0" />
+                      <span className="flex-1 truncate">All Documents</span>
+                      <span className="text-[11px] text-ink-faint">{allDocsCount}</span>
+                    </button>
+                    {folders.map((f) => (
+                      <div
+                        key={f.id}
+                        className={`flex items-center gap-2 w-full px-2 text-sm transition-colors ${
+                          activeFolderId === f.id
+                            ? 'bg-accent-bg/30'
+                            : ''
+                        }`}
+                      >
+                        <button
+                          onClick={() => { setActiveFolderId(f.id); setShowMobileFolderList(false) }}
+                          className="flex items-center gap-2 flex-1 min-w-0 py-2 text-left truncate text-ink-soft hover:text-ink transition-colors"
+                        >
+                          <FolderIcon size={16} className="shrink-0 text-ink-faint" />
+                          <span className="truncate">{f.name}</span>
+                          <span className="text-[11px] text-ink-faint shrink-0">{folderDocCounts[f.id] || 0}</span>
+                        </button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); const folder = folders.find(x => x.id === f.id); if (folder) handleFolderShare(folder) }}
+                            className="rounded-md p-1.5 text-ink-faint hover:text-accent hover:bg-accent-bg/50 transition-colors"
+                            title="Share folder"
+                          >
+                            <Share2 size={13} />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); const folder = folders.find(x => x.id === f.id); if (folder) { setShowMobileFolderList(false); handleStartRename(folder) } }}
+                            className="rounded-md p-1.5 text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors"
+                            title="Rename folder"
+                          >
+                            <Edit3 size={13} />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setShowMobileFolderList(false); setFolderToDelete(f.id); setShowDeleteFolderModal(true) }}
+                            className="rounded-md p-1.5 text-ink-faint hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                            title="Delete folder"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="border-t border-border my-1" />
+                    <button
+                      onClick={() => { setShowMobileFolderList(false); setShowNewFolder(true); setNewFolderName('') }}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors"
+                    >
+                      <Plus size={14} />
+                      <span>New Folder</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Toolbar */}
+            <div className="flex items-center justify-between px-5 py-2">
+              <div>
+                {activeFolderId && !selectionMode && (
+                  <span className="text-xs text-ink-faint">
+                    {filtered.length} document{filtered.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+                {shareError && (
+                  <span className="text-xs text-red-400">{shareError}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto">
+                {filtered.length > 0 && (
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    {selectionMode ? (
+                      <>
+                        <button
+                          onClick={handleSelectAll}
+                          className="flex items-center gap-1.5 rounded-lg px-2 py-1 sm:px-2.5 text-xs text-ink-soft hover:text-ink hover:bg-surface-alt transition-colors font-sans whitespace-nowrap"
+                        >
+                          {selectedDocs.size === filtered.length ? (
+                            <CheckSquare size={14} />
+                          ) : (
+                            <Square size={14} />
+                          )}
+                          Select all
+                        </button>
+                        <button
+                          onClick={handleShareSelected}
+                          disabled={selectedDocs.size === 0}
+                          className="flex items-center gap-1.5 rounded-lg px-2 py-1 sm:px-2.5 text-xs text-accent hover:text-accent/80 hover:bg-accent-bg/50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-sans whitespace-nowrap"
+                        >
+                          <Share2 size={14} />
+                          Share ({selectedDocs.size})
+                        </button>
+                        {folders.length > 0 && (
+                          <div className="relative">
+                            <button
+                              onClick={() => setShowFolderPicker(!showFolderPicker)}
+                              disabled={selectedDocs.size === 0}
+                              className="flex items-center gap-1.5 rounded-lg px-2 py-1 sm:px-2.5 text-xs text-ink-soft hover:text-ink hover:bg-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-sans whitespace-nowrap"
+                            >
+                              <FolderIcon size={14} />
+                              Move
+                            </button>
+                            {showFolderPicker && (
+                              <div className="absolute top-full right-0 mt-1 w-44 rounded-xl border border-border bg-surface shadow-xl z-20 py-1">
+                                <p className="px-3 py-1.5 text-[11px] text-ink-faint uppercase tracking-wider font-semibold">
+                                  Move to folder
+                                </p>
+                                {folders.map((f) => (
+                                  <button
+                                    key={f.id}
+                                    onClick={() => handleMoveToFolder(f.id)}
+                                    className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-ink-soft hover:text-ink hover:bg-surface-alt text-left transition-colors"
+                                  >
+                                    <FolderIcon size={14} className="shrink-0" />
+                                    <span className="truncate">{f.name}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        <button
+                          onClick={handleToolbarDelete}
+                          disabled={selectedDocs.size === 0}
+                          className="flex items-center gap-1.5 rounded-lg px-2 py-1 sm:px-2.5 text-xs text-red-400 hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-sans whitespace-nowrap"
+                        >
+                          <Trash2 size={14} />
+                          Delete ({selectedDocs.size})
+                        </button>
+                        <button
+                          onClick={cancelSelection}
+                          className="rounded-lg px-2 py-1 sm:px-2.5 text-xs text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors font-sans whitespace-nowrap"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={enableSelection}
+                        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors font-sans"
+                      >
+                        <Filter size={14} />
+                        Select
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Share feedback */}
+            {sharingFolder && (
+              <div className="px-5 pb-2">
+                <div className="flex items-center gap-2 rounded-lg bg-accent-bg/50 px-3 py-2">
+                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-accent border-r-transparent" />
+                  <span className="text-xs text-accent">Sharing folder...</span>
+                </div>
+              </div>
+            )}
+
+            {shareError && !sharingFolder && (
+              <div className="px-5 pb-2">
+                <div className="rounded-lg bg-red-500/10 px-3 py-2">
+                  <span className="text-xs text-red-400">{shareError}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Document list */}
+            <div className="flex-1 overflow-y-auto px-5 pb-4">
+              {filtered.length === 0 ? (
+                <div className="flex flex-col items-center justify-center pt-20 text-center">
+                  <div className="mb-4 rounded-xl bg-surface-alt p-3">
+                    <FileText size={32} className="text-ink-faint" />
+                  </div>
+                  <p className="text-sm font-medium text-ink font-sans">
+                    {searchQuery
+                      ? 'No matches found'
+                      : activeFolderId
+                        ? 'This folder is empty'
+                        : 'No documents yet'
+                    }
+                  </p>
+                  <p className="mt-1 text-xs text-ink-faint font-sans">
+                    {searchQuery
+                      ? 'Try a different search term'
+                      : activeFolderId
+                        ? 'Move documents here from the main list'
+                        : 'Create or upload a document to get started'
+                    }
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-0.5">
+                  {filtered.map((doc) => (
+                    <DocListItem
+                      key={doc.id}
+                      id={doc.id}
+                      title={doc.title}
+                      content={doc.content}
+                      updatedAt={doc.updatedAt}
+                      isActive={doc.id === activeDocId}
+                      isSelected={selectedDocs.has(doc.id)}
+                      selectionMode={selectionMode}
+                      onDocClick={handleDocClick}
+                      onDelete={handleDeleteClick}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -349,6 +828,14 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
         onConfirm={confirmSingleDelete}
         onCancel={() => setDeleteTarget(null)}
         loading={deleting}
+      />
+
+      <ConfirmModal
+        open={showDeleteFolderModal}
+        title="Delete folder"
+        message={`Delete folder "${folderDeleteName}"? Documents inside will not be deleted.`}
+        onConfirm={handleConfirmDeleteFolder}
+        onCancel={() => { setShowDeleteFolderModal(false); setFolderToDelete(null) }}
       />
     </div>,
     document.body

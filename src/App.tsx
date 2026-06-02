@@ -13,7 +13,7 @@ import { TocSidebar } from './components/TocSidebar'
 import { HistoryModal } from './components/HistoryModal'
 import { NewDocModal } from './components/NewDocModal'
 import { Toast } from './components/Toast'
-import { parseShareUrl, fetchSharedContent } from './lib/share'
+import { parseShareUrl, fetchSharedContent, resolveTitleUnique } from './lib/share'
 
 function findPreviewHeading(container: HTMLElement): string | null {
   const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6')
@@ -62,6 +62,7 @@ function App() {
   const migrationCount = useDocumentStore((s) => s._migrationCount)
   const createDocument = useDocumentStore((s) => s.createDocument)
   const createDocuments = useDocumentStore((s) => s.createDocuments)
+  const createFolder = useDocumentStore((s) => s.createFolder)
   const updateContent = useDocumentStore((s) => s.updateContent)
   const updateTitle = useDocumentStore((s) => s.updateTitle)
   const setActiveDoc = useDocumentStore((s) => s.setActiveDoc)
@@ -133,21 +134,39 @@ function App() {
     }, 10000)
 
     fetchSharedContent(share.id)
-      .then((content) => {
+      .then((data) => {
         clearTimeout(timeoutId)
-        const title = extractTitle(content) || 'Shared Document'
-        const id = createDocument(content, title)
-        setActiveDoc(id)
-        setShareLoading(false)
-        window.history.replaceState(null, '', '/')
-        showToast('Shared document imported successfully', 'success')
+
+        if (data.documents && data.documents.length > 0) {
+          const allDocs = useDocumentStore.getState().documents
+          const entries = data.documents!.map((d) => ({
+            content: d.content,
+            title: resolveTitleUnique(d.title, allDocs),
+          }))
+          const ids = createDocuments(entries)
+          createFolder(data.folderName || 'Shared Documents', ids)
+          setActiveDoc(ids[0])
+          setShareLoading(false)
+          window.history.replaceState(null, '', '/')
+          showToast(`Imported ${ids.length} shared documents`, 'success')
+        } else if (data.content) {
+          const title = extractTitle(data.content) || 'Shared Document'
+          const id = createDocument(data.content, title)
+          setActiveDoc(id)
+          setShareLoading(false)
+          window.history.replaceState(null, '', '/')
+          showToast('Shared document imported successfully', 'success')
+        } else {
+          setShareLoading(false)
+          showToast('Invalid shared content', 'error')
+        }
       })
       .catch(() => {
         clearTimeout(timeoutId)
         setShareLoading(false)
-        showToast('Failed to load shared document. The link may have expired.', 'error')
+        showToast('Failed to load shared content. The link may have expired.', 'error')
       })
-  }, [createDocument, setActiveDoc, showToast])
+  }, [createDocument, createDocuments, createFolder, setActiveDoc, showToast])
 
   useEffect(() => {
     if (migrationCount > 0) {

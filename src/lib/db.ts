@@ -1,15 +1,21 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Document } from '../types'
+import type { Document, Folder } from '../types'
 
 const LOCALSTORAGE_KEY = 'inkview-documents'
 const ACTIVE_DOC_KEY = 'inkview-active-doc'
 
 const db = new Dexie('InkViewDB') as Dexie & {
   documents: EntityTable<Document, 'id'>
+  folders: EntityTable<Folder, 'id'>
 }
 
 db.version(1).stores({
   documents: 'id, updatedAt',
+})
+
+db.version(2).stores({
+  documents: 'id, updatedAt',
+  folders: 'id, name',
 })
 
 function extractFirstHeading(markdown: string): string | null {
@@ -70,6 +76,22 @@ export async function bulkSaveDocuments(docs: Document[]): Promise<void> {
 
 export async function deleteDocuments(ids: string[]): Promise<void> {
   await db.documents.bulkDelete(ids)
+}
+
+export async function loadAllFolders(): Promise<Folder[]> {
+  return db.folders.toArray()
+}
+
+export async function saveFolder(folder: Folder): Promise<void> {
+  await db.folders.put(folder)
+}
+
+export async function bulkSaveFolders(folders: Folder[]): Promise<void> {
+  await db.folders.bulkPut(folders)
+}
+
+export async function deleteFolders(ids: string[]): Promise<void> {
+  await db.folders.bulkDelete(ids)
 }
 
 export function persistActiveDocId(id: string | null): void {
