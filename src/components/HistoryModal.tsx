@@ -1,4 +1,4 @@
-import { memo, useDeferredValue, useMemo, useState } from 'react'
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Search, Trash2, FileText, CheckSquare, Square, Clock, X, BookOpen, Filter } from 'lucide-react'
 import { useDocumentStore } from '../stores/document-store'
@@ -61,7 +61,7 @@ const DocListItem = memo(function DocListItem({
 
   return (
     <div
-      className={`group flex items-center justify-between rounded-xl px-3.5 py-3 border transition-all duration-150 ${
+      className={`group flex items-center justify-between rounded-xl px-3.5 py-3 border transition-colors duration-150 ${
         isActive && !selectionMode
           ? 'bg-accent-bg border-accent/20'
           : isSelected
@@ -98,7 +98,7 @@ const DocListItem = memo(function DocListItem({
       {!selectionMode && (
         <button
           onClick={() => onDelete(id)}
-          className="shrink-0 rounded-lg p-1.5 text-ink-faint/50 hover:text-red-400 hover:bg-red-500/10 transition-all ml-2"
+          className="shrink-0 rounded-lg p-1.5 text-ink-faint/50 hover:text-red-400 hover:bg-red-500/10 transition-colors ml-2"
           title="Delete document"
         >
           <Trash2 size={14} />
@@ -109,11 +109,12 @@ const DocListItem = memo(function DocListItem({
 })
 
 export function HistoryModal({ open, onClose }: HistoryModalProps) {
-  const documents = useDocumentStore((s) => s.documents)
+  const docsVersion = useDocumentStore((s) => s._docsVersion)
   const activeDocId = useDocumentStore((s) => s.activeDocId)
   const setActiveDoc = useDocumentStore((s) => s.setActiveDoc)
   const removeDocuments = useDocumentStore((s) => s.removeDocuments)
 
+  const [documents, setDocuments] = useState<Document[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const deferredQuery = useDeferredValue(searchQuery)
   const [selectionMode, setSelectionMode] = useState(false)
@@ -122,8 +123,13 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  useEffect(() => {
+    const { documents: docs } = useDocumentStore.getState()
+    setDocuments(docs)
+  }, [docsVersion])
+
   const sortBy = useMemo(() => {
-    return [...documents].sort((a, b) => b.updatedAt - a.updatedAt)
+    return [...documents].sort((a, b) => b.lastAccessedAt - a.lastAccessedAt)
   }, [documents])
 
   const filtered = useMemo(() => {
@@ -139,60 +145,75 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
   const deleteTargetTitle = useMemo(() => {
     if (!deleteTarget) return ''
     const doc = documents.find((d) => d.id === deleteTarget)
-    return getItemTitle(doc!)
+    return doc ? getItemTitle(doc) : ''
   }, [deleteTarget, documents])
 
-  const toggleSelection = (id: string) => {
+  const handleSelectAll = useCallback(() => {
     setSelectedDocs((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
+      if (prev.size === filtered.length) {
+        return new Set()
+      }
+      return new Set(filtered.map((d) => d.id))
     })
-  }
+  }, [filtered])
 
-  const handleSelectAll = () => {
-    if (selectedDocs.size === filtered.length) {
-      setSelectedDocs(new Set())
-    } else {
-      setSelectedDocs(new Set(filtered.map((d) => d.id)))
-    }
-  }
-
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     setDeleting(true)
     setTimeout(() => {
-      const idsToDelete = Array.from(selectedDocs)
-      removeDocuments(idsToDelete)
+      removeDocuments(Array.from(selectedDocs))
       setSelectedDocs(new Set())
       setSelectionMode(false)
       setShowDeleteModal(false)
       setDeleting(false)
     }, 200)
-  }
+  }, [selectedDocs, removeDocuments])
 
-  const confirmSingleDelete = () => {
+  const confirmSingleDelete = useCallback(() => {
     if (!deleteTarget) return
     setDeleting(true)
     setTimeout(() => {
-      removeDocuments([deleteTarget!])
+      removeDocuments([deleteTarget])
       setDeleteTarget(null)
       setDeleting(false)
     }, 200)
-  }
+  }, [deleteTarget, removeDocuments])
 
-  const handleDocClick = (id: string) => {
-    if (selectionMode) {
-      toggleSelection(id)
-    } else {
+  const handleDocClick = useCallback((id: string) => {
+    setSelectedDocs((prev) => {
+      if (selectionMode) {
+        const next = new Set(prev)
+        if (next.has(id)) next.delete(id)
+        else next.add(id)
+        return next
+      }
+      return prev
+    })
+    if (!selectionMode) {
       setActiveDoc(id)
       onClose()
     }
-  }
+  }, [selectionMode, setActiveDoc, onClose])
+
+  const handleDeleteClick = useCallback((id: string) => {
+    setDeleteTarget(id)
+  }, [])
+
+  const handleToolbarDelete = useCallback(() => {
+    setShowDeleteModal(true)
+  }, [])
+
+  const cancelSelection = useCallback(() => {
+    setSelectionMode(false)
+    setSelectedDocs(new Set())
+  }, [])
+
+  const enableSelection = useCallback(() => {
+    setSelectionMode(true)
+  }, [])
 
   return createPortal(
-    <div className={`fixed inset-0 z-50 flex items-center justify-center transition-all duration-200 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+    <div className={`fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-200 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
       <div className="relative flex h-[80vh] w-full max-w-2xl flex-col rounded-2xl border border-border bg-surface shadow-2xl mx-4">
         {/* Header */}
@@ -250,7 +271,7 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
                     Select all
                   </button>
                   <button
-                    onClick={() => setShowDeleteModal(true)}
+                    onClick={handleToolbarDelete}
                     disabled={selectedDocs.size === 0}
                     className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs text-red-400 hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-sans"
                   >
@@ -258,7 +279,7 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
                     Delete ({selectedDocs.size})
                   </button>
                   <button
-                    onClick={() => { setSelectionMode(false); setSelectedDocs(new Set()) }}
+                    onClick={cancelSelection}
                     className="rounded-lg px-2.5 py-1 text-xs text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors font-sans"
                   >
                     Cancel
@@ -266,7 +287,7 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
                 </>
               ) : (
                 <button
-                  onClick={() => setSelectionMode(true)}
+                  onClick={enableSelection}
                   className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors font-sans"
                 >
                   <Filter size={14} />
@@ -304,7 +325,7 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
                   isSelected={selectedDocs.has(doc.id)}
                   selectionMode={selectionMode}
                   onDocClick={handleDocClick}
-                  onDelete={(id) => setDeleteTarget(id)}
+                  onDelete={handleDeleteClick}
                 />
               ))}
             </div>

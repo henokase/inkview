@@ -14,6 +14,7 @@ interface DocumentStore {
   activeDocId: string | null
   _hydrated: boolean
   _migrationCount: number
+  _docsVersion: number
   createDocument: (content?: string, title?: string) => string
   updateContent: (id: string, content: string) => void
   updateTitle: (id: string, title: string) => void
@@ -28,20 +29,24 @@ export const useDocumentStore = create<DocumentStore>()((set, get) => ({
   activeDocId: null,
   _hydrated: false,
   _migrationCount: 0,
+  _docsVersion: 0,
 
   createDocument: (content = '', title = 'Untitled') => {
+    const now = Date.now()
     const id = crypto.randomUUID()
     const doc: Document = {
       id,
       title,
       content,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
+      lastAccessedAt: now,
       lastScrollPosition: 0,
     }
     set((s) => ({
       documents: [...s.documents, doc],
       activeDocId: id,
+      _docsVersion: s._docsVersion + 1,
     }))
     saveDocument(doc)
     persistActiveDocId(id)
@@ -65,14 +70,24 @@ export const useDocumentStore = create<DocumentStore>()((set, get) => ({
       documents: s.documents.map((d) =>
         d.id === id ? { ...d, ...updated } : d
       ),
+      _docsVersion: s._docsVersion + 1,
     }))
     const doc = get().documents.find((d) => d.id === id)
     if (doc) saveDocument(doc)
   },
 
   setActiveDoc: (id) => {
-    set({ activeDocId: id })
+    const now = Date.now()
+    set((s) => ({
+      activeDocId: id,
+      _docsVersion: s._docsVersion + 1,
+      documents: s.documents.map((d) =>
+        d.id === id ? { ...d, lastAccessedAt: now } : d
+      ),
+    }))
     persistActiveDocId(id)
+    const doc = get().documents.find((d) => d.id === id)
+    if (doc) saveDocument(doc)
   },
 
   updateScrollPosition: (id, position) => {
@@ -90,6 +105,7 @@ export const useDocumentStore = create<DocumentStore>()((set, get) => ({
         s.activeDocId && ids.includes(s.activeDocId)
           ? (s.documents.find((d) => !ids.includes(d.id))?.id ?? null)
           : s.activeDocId,
+      _docsVersion: s._docsVersion + 1,
     }))
     deleteDocuments(ids)
   },
@@ -116,6 +132,7 @@ export function hydrateStore(
       activeDocId,
       _hydrated: true,
       _migrationCount: migrated,
+      _docsVersion: 1,
     })
 
     if (migrated > 0) {

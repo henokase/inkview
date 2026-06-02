@@ -39,6 +39,7 @@ export async function migrateFromLocalStorage(): Promise<number> {
     docs = docs.map((doc) => ({
       ...doc,
       title: doc.title || extractFirstHeading(doc.content) || 'Untitled',
+      lastAccessedAt: (doc as any).lastAccessedAt || doc.updatedAt,
     }))
 
     await db.documents.bulkPut(docs)
