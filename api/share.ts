@@ -68,7 +68,7 @@ export async function GET(request: Request) {
           folderName: parsed.folderName,
         })
       }
-      if (parsed.content) {
+      if (typeof parsed.content === 'string') {
         return Response.json({ content: parsed.content })
       }
     } catch {
