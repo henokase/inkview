@@ -158,7 +158,10 @@ function App() {
           showToast('Shared document imported successfully', 'success')
         } else {
           setShareLoading(false)
-          showToast('Failed to load shared content: unexpected response format', 'error')
+          console.error('Share response:', JSON.stringify(data, null, 2))
+          const keys = Object.keys(data || {}).join(', ')
+          const t = data && 'content' in data ? typeof data.content : 'NO_KEY'
+          showToast(`Bad response (keys: ${keys}, content: ${t})`, 'error')
         }
       })
       .catch((err) => {
