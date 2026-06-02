@@ -158,7 +158,8 @@ function App() {
           showToast('Shared document imported successfully', 'success')
         } else {
           setShareLoading(false)
-          showToast('Invalid shared content', 'error')
+          const keys = data ? Object.keys(data).join(', ') : 'null'
+          showToast(`Invalid shared content (keys: ${keys})`, 'error')
         }
       })
       .catch((err) => {
