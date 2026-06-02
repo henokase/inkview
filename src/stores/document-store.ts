@@ -8,7 +8,6 @@ import {
   deleteDocuments,
   loadAllFolders,
   saveFolder,
-  bulkSaveFolders,
   deleteFolders,
   persistActiveDocId,
   loadActiveDocId,
