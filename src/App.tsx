@@ -392,7 +392,7 @@ function App() {
                     className="flex flex-col overflow-hidden"
                     style={editorMode === 'split' ? { width: `${(1 - splitRatio) * 100}%` } : { flex: '1' }}
                   >
-                    <div ref={previewScrollRef} className="flex-1 overflow-y-auto pl-6 pr-6 lg:px-10 xl:px-16 py-8">
+                    <div ref={previewScrollRef} className="flex-1 overflow-y-auto pl-6 pr-6 lg:px-10 xl:px-16 py-8" data-preview-scroll>
                       <article className="mx-auto max-w-4xl xl:max-w-5xl wrap-break-word">
                         <MarkdownRenderer content={displayContent} />
                       </article>
@@ -421,7 +421,7 @@ function App() {
                         <X size={14} />
                       </button>
                     </div>
-                    <TocSidebar content={activeDoc.content} />
+                    <TocSidebar content={displayContent} />
                   </aside>
                 </>
               )}

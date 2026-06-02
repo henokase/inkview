@@ -10,22 +10,24 @@ interface TocSidebarProps {
 export const TocSidebar = memo(function TocSidebar({ content }: TocSidebarProps) {
   const navRef = useRef<HTMLElement>(null)
   const headings = useMemo(() => extractTocHeadings(content), [content])
-  const ids = useMemo(() => headings.map((h) => h.id), [headings])
-  const activeId = useActiveHeading(ids, content)
+  const activeIndex = useActiveHeading(headings, content)
 
   useEffect(() => {
-    if (!activeId || !navRef.current) return
-    const activeLink = navRef.current.querySelector(`[href="#${activeId}"]`)
-    if (activeLink) {
-      activeLink.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    if (!navRef.current || activeIndex < 0 || activeIndex >= headings.length) return
+    const link = navRef.current.querySelector<HTMLAnchorElement>(`[data-toc-i="${activeIndex}"]`)
+    if (link) {
+      link.scrollIntoView({ block: 'center', behavior: 'smooth' })
     }
-  }, [activeId])
+  }, [activeIndex, headings.length])
 
   if (headings.length === 0) return null
 
-  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, i: number) => {
     e.preventDefault()
-    const el = document.getElementById(id)
+    const container = document.querySelector<HTMLElement>('[data-preview-scroll]')
+    if (!container) return
+    const headingEls = container.querySelectorAll('h1, h2, h3, h4, h5, h6')
+    const el = headingEls[i]
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
@@ -35,14 +37,15 @@ export const TocSidebar = memo(function TocSidebar({ content }: TocSidebarProps)
     <nav ref={navRef} className="relative">
       {headings.map((h: TocHeading, i) => (
         <div key={`${h.id}-${i}`} className="relative flex">
-          {activeId === h.id && (
+          {activeIndex === i && (
             <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full bg-accent" />
           )}
           <a
             href={`#${h.id}`}
-            onClick={(e) => handleClick(e, h.id)}
+            data-toc-i={i}
+            onClick={(e) => handleClick(e, i)}
             className={`block w-full rounded-r-md py-1.5 pr-2 text-sm transition-all duration-150 ${
-              activeId === h.id
+              activeIndex === i
                 ? 'text-accent font-medium'
                 : 'text-ink-soft hover:text-ink'
             }`}

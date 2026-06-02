@@ -1,33 +1,41 @@
 import { useEffect, useState, useRef } from 'react'
+import type { TocHeading } from '../types'
 
-export function useActiveHeading(ids: string[], version?: string) {
-  const [activeId, setActiveId] = useState<string>(ids[0] || '')
-  const observer = useRef<IntersectionObserver | null>(null)
-  const idsKey = ids.join(',')
+export function useActiveHeading(headings: TocHeading[], _content: string) {
+  const [activeIndex, setActiveIndex] = useState(0)
+  const current = useRef(0)
 
   useEffect(() => {
-    if (observer.current) observer.current.disconnect()
+    current.current = 0
+    setActiveIndex(0)
 
-    observer.current = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
-        if (visible.length > 0) {
-          setActiveId(visible[0].target.id)
+    const container = document.querySelector<HTMLElement>('[data-preview-scroll]')
+    if (!container) return
+
+    const handleScroll = () => {
+      const headingEls = container.querySelectorAll('h1, h2, h3, h4, h5, h6')
+      let bestIdx = 0
+      let bestDist = Infinity
+
+      headingEls.forEach((el, i) => {
+        const rect = el.getBoundingClientRect()
+        const dist = Math.abs(rect.top - 80)
+        if (dist < bestDist) {
+          bestDist = dist
+          bestIdx = i
         }
-      },
-      { rootMargin: '0% 0% -75% 0px', threshold: 0 }
-    )
+      })
 
-    ids.forEach((id) => {
-      const el = document.getElementById(id)
-      if (el) observer.current?.observe(el)
-    })
+      if (bestIdx !== current.current) {
+        current.current = bestIdx
+        setActiveIndex(bestIdx)
+      }
+    }
 
-    return () => observer.current?.disconnect()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idsKey, version])
+    handleScroll()
+    container.addEventListener('scroll', handleScroll, { passive: true })
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [headings, _content])
 
-  return activeId
+  return activeIndex
 }
