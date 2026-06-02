@@ -4,6 +4,7 @@ import {
   migrateFromLocalStorage,
   loadAllDocuments,
   saveDocument,
+  bulkSaveDocuments,
   deleteDocuments,
   persistActiveDocId,
   loadActiveDocId,
@@ -16,6 +17,7 @@ interface DocumentStore {
   _migrationCount: number
   _docsVersion: number
   createDocument: (content?: string, title?: string) => string
+  createDocuments: (entries: { content: string; title: string }[]) => string[]
   updateContent: (id: string, content: string) => void
   updateTitle: (id: string, title: string) => void
   setActiveDoc: (id: string | null) => void
@@ -51,6 +53,33 @@ export const useDocumentStore = create<DocumentStore>()((set, get) => ({
     saveDocument(doc)
     persistActiveDocId(id)
     return id
+  },
+
+  createDocuments: (entries) => {
+    const base = Date.now()
+    const ids: string[] = []
+    const docs: Document[] = entries.map((entry, i) => {
+      const now = base + i + 1
+      const id = crypto.randomUUID()
+      ids.push(id)
+      return {
+        id,
+        title: entry.title || 'Untitled',
+        content: entry.content,
+        createdAt: now,
+        updatedAt: now,
+        lastAccessedAt: now,
+        lastScrollPosition: 0,
+      }
+    })
+    set((s) => ({
+      documents: [...s.documents, ...docs],
+      activeDocId: ids[0] ?? s.activeDocId,
+      _docsVersion: s._docsVersion + 1,
+    }))
+    bulkSaveDocuments(docs)
+    if (ids[0]) persistActiveDocId(ids[0])
+    return ids
   },
 
   updateContent: (id, content) => {

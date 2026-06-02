@@ -2,45 +2,34 @@ import { useCallback, useRef, useState } from 'react'
 import { Upload } from 'lucide-react'
 
 interface FileDropZoneProps {
-  onFile: (content: string, name: string) => void
+  onPick: (files: File[]) => void
   disabled?: boolean
+  multiple?: boolean
 }
 
-export function FileDropZone({ onFile, disabled = false }: FileDropZoneProps) {
+export function FileDropZone({ onPick, disabled = false, multiple = false }: FileDropZoneProps) {
   const [dragging, setDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
-
-  const handleFile = useCallback(
-    (file: File) => {
-      const reader = new FileReader()
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          onFile(reader.result, file.name.replace(/\.(md|markdown)$/i, ''))
-        }
-      }
-      reader.readAsText(file)
-    },
-    [onFile]
-  )
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault()
       setDragging(false)
       if (disabled) return
-      const file = e.dataTransfer.files[0]
-      if (file) handleFile(file)
+      const files = Array.from(e.dataTransfer.files)
+      if (files.length > 0) onPick(files)
     },
-    [handleFile, disabled]
+    [onPick, disabled]
   )
 
   const handleFilePick = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       if (disabled) return
-      const file = e.target.files?.[0]
-      if (file) handleFile(file)
+      const files = Array.from(e.target.files ?? [])
+      if (files.length > 0) onPick(files)
+      e.target.value = ''
     },
-    [handleFile, disabled]
+    [onPick, disabled]
   )
 
   return (
@@ -64,6 +53,7 @@ export function FileDropZone({ onFile, disabled = false }: FileDropZoneProps) {
         ref={inputRef}
         type="file"
         accept=".md,.markdown,.txt"
+        multiple={multiple}
         className="hidden"
         onChange={handleFilePick}
         disabled={disabled}
@@ -77,7 +67,7 @@ export function FileDropZone({ onFile, disabled = false }: FileDropZoneProps) {
       </div>
       <div className="text-center">
         <p className="text-sm font-medium text-ink font-sans">
-          {dragging ? 'Drop your file here' : 'Click or drag to upload'}
+          {dragging ? 'Drop your files here' : 'Click or drag to upload'}
         </p>
         <p className="mt-1 text-xs text-ink-faint font-sans">.md or .markdown files</p>
       </div>

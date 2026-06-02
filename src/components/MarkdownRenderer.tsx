@@ -1,4 +1,4 @@
-import { memo, useState, useEffect, useCallback, type ReactNode, type ComponentPropsWithoutRef } from 'react'
+import { memo, useState, useEffect, useCallback, useRef, useMemo, type ReactNode, type ComponentPropsWithoutRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
@@ -72,40 +72,18 @@ function slugify(text: string) {
     .replace(/-+/g, '-')
 }
 
-const H1 = ({ children }: { children?: ReactNode }) => {
-  const id = slugify(String(children))
-  return (
-    <h1 id={id} className="mb-6 mt-12 text-3xl font-bold font-sans text-accent first:mt-0 tracking-tight">
-      {children}
-    </h1>
-  )
-}
-
-const H2 = ({ children }: { children?: ReactNode }) => {
-  const id = slugify(String(children))
-  return (
-    <h2 id={id} className="mb-4 mt-10 text-2xl font-semibold font-sans text-accent-soft tracking-tight first:mt-0">
-      {children}
-    </h2>
-  )
-}
-
-const H3 = ({ children }: { children?: ReactNode }) => {
-  const id = slugify(String(children))
-  return (
-    <h3 id={id} className="mb-3 mt-8 text-xl font-semibold font-sans text-accent-soft/80 tracking-tight first:mt-0">
-      {children}
-    </h3>
-  )
-}
-
-const H4 = ({ children }: { children?: ReactNode }) => {
-  const id = slugify(String(children))
-  return (
-    <h4 id={id} className="mb-2 mt-6 text-lg font-medium font-sans text-ink-soft tracking-tight first:mt-0">
-      {children}
-    </h4>
-  )
+function makeHeading(Tag: 'h1' | 'h2' | 'h3' | 'h4', className: string, counts: Map<string, number>) {
+  return ({ children }: { children?: ReactNode }) => {
+    const base = slugify(String(children))
+    const count = counts.get(base) ?? 0
+    counts.set(base, count + 1)
+    const id = count > 0 ? `${base}-${count + 1}` : base
+    return (
+      <Tag id={id} className={className}>
+        {children}
+      </Tag>
+    )
+  }
 }
 
 const P = ({ children }: { children?: ReactNode }) => (
@@ -311,10 +289,6 @@ const CodeBlock = ({ className, children, ...props }: ComponentPropsWithoutRef<'
 }
 
 const components: Components = {
-  h1: H1,
-  h2: H2,
-  h3: H3,
-  h4: H4,
   p: P,
   ul: Ul,
   ol: Ol,
@@ -337,12 +311,22 @@ interface MarkdownRendererProps {
 }
 
 export const MarkdownRenderer = memo(function MarkdownRenderer({ content }: MarkdownRendererProps) {
+  const slugCounts = useRef(new Map<string, number>())
+  slugCounts.current = new Map()
+
+  const headingComponents = {
+    h1: makeHeading('h1', 'mb-6 mt-12 text-3xl font-bold font-sans text-accent first:mt-0 tracking-tight', slugCounts.current),
+    h2: makeHeading('h2', 'mb-4 mt-10 text-2xl font-semibold font-sans text-accent-soft tracking-tight first:mt-0', slugCounts.current),
+    h3: makeHeading('h3', 'mb-3 mt-8 text-xl font-semibold font-sans text-accent-soft/80 tracking-tight first:mt-0', slugCounts.current),
+    h4: makeHeading('h4', 'mb-2 mt-6 text-lg font-medium font-sans text-ink-soft tracking-tight first:mt-0', slugCounts.current),
+  }
+
   return (
     <div className="font-sans wrap-break-word">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath, remarkEmoji, remarkFootnotes as any, remarkGitHubAlerts]}
         rehypePlugins={[rehypeKatex, rehypeRaw]}
-        components={components}
+        components={{ ...headingComponents, ...components }}
       >
         {content}
       </ReactMarkdown>

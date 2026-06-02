@@ -61,6 +61,7 @@ function App() {
   const hydrated = useDocumentStore((s) => s._hydrated)
   const migrationCount = useDocumentStore((s) => s._migrationCount)
   const createDocument = useDocumentStore((s) => s.createDocument)
+  const createDocuments = useDocumentStore((s) => s.createDocuments)
   const updateContent = useDocumentStore((s) => s.updateContent)
   const updateTitle = useDocumentStore((s) => s.updateTitle)
   const setActiveDoc = useDocumentStore((s) => s.setActiveDoc)
@@ -228,6 +229,19 @@ function App() {
       }, 150)
     },
     [createDocument, setActiveDoc]
+  )
+
+  const handleFilesUpload = useCallback(
+    (files: { content: string; name: string }[]) => {
+      const entries = files.map((f) => ({ content: f.content, title: f.name || 'Untitled' }))
+      const ids = createDocuments(entries)
+      if (ids.length > 0) {
+        setActiveDoc(ids[0])
+      }
+      setNewDocOpen(false)
+      setTimeout(() => setHistoryOpen(true), 200)
+    },
+    [createDocuments, setActiveDoc]
   )
 
   const handleContentChange = useCallback(
@@ -457,6 +471,7 @@ function App() {
         onClose={() => setNewDocOpen(false)}
         onCreateBlank={handleNewDoc}
         onFileUpload={handleFileUpload}
+        onFilesUpload={handleFilesUpload}
         loading={creatingDoc}
       />
     </div>

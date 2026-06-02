@@ -26,6 +26,13 @@ export function extractTocHeadings(markdown: string): TocHeading[] {
     headings.push({ id, text, level })
   }
 
+  const seen = new Map<string, number>()
+  for (const h of headings) {
+    const count = seen.get(h.id) ?? 0
+    seen.set(h.id, count + 1)
+    if (count > 0) h.id = `${h.id}-${count + 1}`
+  }
+
   return headings
 }
 

@@ -33,8 +33,8 @@ export const TocSidebar = memo(function TocSidebar({ content }: TocSidebarProps)
 
   return (
     <nav ref={navRef} className="relative">
-      {headings.map((h: TocHeading) => (
-        <div key={h.id} className="relative flex">
+      {headings.map((h: TocHeading, i) => (
+        <div key={`${h.id}-${i}`} className="relative flex">
           {activeId === h.id && (
             <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full bg-accent" />
           )}
