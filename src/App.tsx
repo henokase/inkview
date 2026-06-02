@@ -13,7 +13,7 @@ import { TocSidebar } from './components/TocSidebar'
 import { HistoryModal } from './components/HistoryModal'
 import { NewDocModal } from './components/NewDocModal'
 import { Toast } from './components/Toast'
-import { parseShareUrl, fetchSharedContent, resolveTitleUnique } from './lib/share'
+import { parseShareUrl, fetchSharedContent, resolveImportEntries } from './lib/share'
 
 function findPreviewHeading(container: HTMLElement): string | null {
   const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6')
@@ -138,19 +138,35 @@ function App() {
         clearTimeout(timeoutId)
 
         if (data.documents && data.documents.length > 0) {
-          const allDocs = useDocumentStore.getState().documents
-          const entries = data.documents!.map((d) => ({
-            content: d.content,
-            title: resolveTitleUnique(d.title, allDocs),
-          }))
-          const ids = createDocuments(entries)
-          createFolder(data.folderName || 'Shared Documents', ids)
+          const state = useDocumentStore.getState()
+          const { entries: deduped, deleteIds } = resolveImportEntries(
+            data.documents!.map((d) => ({ title: d.title, content: d.content })),
+            state.documents
+          )
+          if (deleteIds.length > 0) state.removeDocuments(deleteIds)
+
+          const ids = createDocuments(deduped)
+
+          const folderName = data.folderName || 'Shared Documents'
+          const existingFolder = state.folders.find((f) => f.name === folderName)
+          if (existingFolder) {
+            state.moveDocumentsToFolder(existingFolder.id, ids)
+          } else {
+            createFolder(folderName, ids)
+          }
+
           setActiveDoc(ids[0])
           setShareLoading(false)
           window.history.replaceState(null, '', '/')
           showToast(`Imported ${ids.length} shared documents`, 'success')
         } else if (typeof data.content === 'string') {
-          const title = data.title || extractTitle(data.content) || 'Shared Document'
+          const state = useDocumentStore.getState()
+          const { entries: deduped, deleteIds } = resolveImportEntries(
+            [{ title: data.title || extractTitle(data.content) || 'Shared Document', content: data.content }],
+            state.documents
+          )
+          if (deleteIds.length > 0) state.removeDocuments(deleteIds)
+          const title = deduped[0].title
           const id = createDocument(data.content, title)
           setActiveDoc(id)
           setShareLoading(false)
@@ -245,7 +261,13 @@ function App() {
     (content: string, name: string) => {
       setCreatingDoc(true)
       setTimeout(() => {
-        const id = createDocument(content, name || 'Untitled')
+        const state = useDocumentStore.getState()
+        const { entries: deduped, deleteIds } = resolveImportEntries(
+          [{ title: name || 'Untitled', content }],
+          state.documents
+        )
+        if (deleteIds.length > 0) state.removeDocuments(deleteIds)
+        const id = createDocument(content, deduped[0].title)
         setActiveDoc(id)
         setNewDocOpen(false)
         setCreatingDoc(false)
@@ -256,8 +278,13 @@ function App() {
 
   const handleFilesUpload = useCallback(
     (files: { content: string; name: string }[]) => {
-      const entries = files.map((f) => ({ content: f.content, title: f.name || 'Untitled' }))
-      const ids = createDocuments(entries)
+      const state = useDocumentStore.getState()
+      const { entries: deduped, deleteIds } = resolveImportEntries(
+        files.map((f) => ({ title: f.name || 'Untitled', content: f.content })),
+        state.documents
+      )
+      if (deleteIds.length > 0) state.removeDocuments(deleteIds)
+      const ids = createDocuments(deduped)
       if (ids.length > 0) {
         setActiveDoc(ids[0])
       }
@@ -488,7 +515,7 @@ function App() {
       <Toast message={toastMsg} type={toastType} visible={toastVisible} onClose={hideToast} />
 
       {/* Modals */}
-      <HistoryModal key={String(historyOpen)} open={historyOpen} onClose={() => setHistoryOpen(false)} />
+      <HistoryModal key={String(historyOpen)} open={historyOpen} onClose={() => setHistoryOpen(false)} showToast={showToast} />
       <NewDocModal
         open={newDocOpen}
         onClose={() => setNewDocOpen(false)}

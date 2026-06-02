@@ -83,6 +83,43 @@ export async function fetchSharedContent(id: string): Promise<ShareResponse> {
   return data
 }
 
+export function resolveImportEntries(
+  entries: { title: string; content: string }[],
+  existingDocs: Pick<Document, 'title' | 'content'>[]
+): { entries: { title: string; content: string }[]; deleteIds: string[] } {
+  const deleteIds: string[] = []
+  const result: { title: string; content: string }[] = []
+
+  for (const entry of entries) {
+    const exactMatches = existingDocs.filter(
+      (d) => d.title === entry.title && d.content === entry.content
+    )
+    const titleOnly = existingDocs.filter(
+      (d) => d.title === entry.title && d.content !== entry.content
+    )
+
+    if (exactMatches.length > 0) {
+      exactMatches.forEach((d) => {
+        if ('id' in d) deleteIds.push((d as Document).id)
+      })
+      if (titleOnly.length > 0) {
+        const remaining = existingDocs.filter((d) => !exactMatches.includes(d))
+        result.push({ title: resolveTitleUnique(entry.title, remaining), content: entry.content })
+      } else {
+        result.push({ title: entry.title, content: entry.content })
+      }
+    } else {
+      if (titleOnly.length > 0) {
+        result.push({ title: resolveTitleUnique(entry.title, existingDocs), content: entry.content })
+      } else {
+        result.push({ title: entry.title, content: entry.content })
+      }
+    }
+  }
+
+  return { entries: result, deleteIds }
+}
+
 export function resolveTitleUnique(
   baseTitle: string,
   existingDocs: Pick<Document, 'title'>[]

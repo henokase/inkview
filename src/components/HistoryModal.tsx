@@ -13,6 +13,7 @@ import type { Document, Folder } from '../types'
 interface HistoryModalProps {
   open: boolean
   onClose: () => void
+  showToast?: (msg: string, type: 'success' | 'error') => void
 }
 
 function formatDate(ts: number) {
@@ -175,7 +176,7 @@ const FolderItem = memo(function FolderItem({
   )
 })
 
-export function HistoryModal({ open, onClose }: HistoryModalProps) {
+export function HistoryModal({ open, onClose, showToast }: HistoryModalProps) {
   const docsVersion = useDocumentStore((s) => s._docsVersion)
   const foldersVersion = useDocumentStore((s) => s._foldersVersion)
   const activeDocId = useDocumentStore((s) => s.activeDocId)
@@ -365,14 +366,19 @@ export function HistoryModal({ open, onClose }: HistoryModalProps) {
     setSelectedDocs(new Set())
   }, [])
 
-  const handleCreateFolder = useCallback(() => {
-    const name = newFolderName.trim()
-    if (!name) return
-    createFolder(name)
-    setNewFolderName('')
-    setShowNewFolder(false)
-    setActiveFolderId(null)
-  }, [newFolderName, createFolder])
+const handleCreateFolder = useCallback(() => {
+  const name = newFolderName.trim()
+  if (!name) return
+  const exists = folders.some((f) => f.name === name)
+  if (exists) {
+    showToast?.('A folder with that name already exists', 'error')
+    return
+  }
+  createFolder(name)
+  setNewFolderName('')
+  setShowNewFolder(false)
+  setActiveFolderId(null)
+}, [newFolderName, createFolder, folders, showToast])
 
   const handleNewFolderKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
