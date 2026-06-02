@@ -159,7 +159,8 @@ function App() {
         } else {
           setShareLoading(false)
           const keys = data ? Object.keys(data).join(', ') : 'null'
-          showToast(`Invalid shared content (keys: ${keys})`, 'error')
+          const contentType = data && 'content' in data ? typeof data.content : 'N/A'
+          showToast(`Invalid shared content (keys: ${keys}, content: ${contentType})`, 'error')
         }
       })
       .catch((err) => {
