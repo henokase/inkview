@@ -61,7 +61,7 @@ export async function fetchSharedContent(id: string): Promise<ShareResponse> {
   const res = await fetch(`/api/share?id=${encodeURIComponent(id)}`)
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
-    throw new Error(data.error || 'Shared document not found')
+    throw new Error(data.error || `Server returned ${res.status}`)
   }
   return res.json()
 }

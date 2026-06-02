@@ -161,10 +161,11 @@ function App() {
           showToast('Invalid shared content', 'error')
         }
       })
-      .catch(() => {
+      .catch((err) => {
         clearTimeout(timeoutId)
         setShareLoading(false)
-        showToast('Failed to load shared content. The link may have expired.', 'error')
+        const msg = err instanceof Error ? err.message : 'Failed to load shared content'
+        showToast(msg, 'error')
       })
   }, [createDocument, createDocuments, createFolder, setActiveDoc, showToast])
 
