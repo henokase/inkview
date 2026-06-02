@@ -149,7 +149,7 @@ function App() {
           setShareLoading(false)
           window.history.replaceState(null, '', '/')
           showToast(`Imported ${ids.length} shared documents`, 'success')
-        } else if (data.content) {
+        } else if (typeof data.content === 'string') {
           const title = extractTitle(data.content) || 'Shared Document'
           const id = createDocument(data.content, title)
           setActiveDoc(id)
