@@ -1,24 +1,25 @@
 export function TocIcon({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <circle cx="7.5" cy="8" r="1.5" fill="currentColor" />
-      <line x1="11" y1="8" x2="19" y2="8" />
-      <circle cx="9.5" cy="13" r="1" fill="currentColor" />
-      <line x1="13" y1="13" x2="19" y2="13" />
-      <circle cx="9.5" cy="18" r="1" fill="currentColor" />
-      <line x1="13" y1="18" x2="19" y2="18" />
+      <line x1="4" y1="6" x2="20" y2="6" />
+      <line x1="8" y1="10" x2="20" y2="10" />
+      <line x1="8" y1="14" x2="20" y2="14" />
+      <line x1="4" y1="18" x2="16" y2="18" />
     </svg>
   )
 }
 
 export function DocListIcon({ size = 18 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-      <line x1="9" y1="10" x2="15" y2="10" />
-      <line x1="9" y1="14" x2="15" y2="14" />
-      <line x1="9" y1="18" x2="13" y2="18" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M2 20 L2 4 L3 4 L6 6 L18 6 L18 10 L22 10 L22 20 Z" />
+      <path d="M6 3 L6 12 L16 12 L16 5 L14 3 Z" />
+      <rect x="8" y="5" width="2" height="2" fill="white" />
+      <rect x="8" y="8" width="2" height="2" fill="white" />
+      <rect x="8" y="11" width="2" height="2" fill="white" />
+      <rect x="11" y="5.5" width="4" height="0.8" fill="white" />
+      <rect x="11" y="8.5" width="4" height="0.8" fill="white" />
+      <rect x="11" y="11.5" width="4" height="0.8" fill="white" />
     </svg>
   )
 }

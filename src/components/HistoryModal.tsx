@@ -1,7 +1,7 @@
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  Search, Trash2, FileText, CheckSquare, Square, Clock, X, BookOpen,
+  Search, Trash2, FileText, CheckSquare, Square, Clock, X,
   Folder as FolderIcon, FolderOpen, Plus, Share2, Edit3, ChevronDown,
 } from 'lucide-react'
 import { useDocumentStore } from '../stores/document-store'
@@ -9,6 +9,7 @@ import { ConfirmModal } from './ConfirmModal'
 import { extractTitle } from '../lib/toc'
 import { createBatchShareLink } from '../lib/share'
 import type { Document, Folder } from '../types'
+import { DocListIcon } from './CustomIcons'
 
 interface HistoryModalProps {
   open: boolean
@@ -137,7 +138,7 @@ const FolderItem = memo(function FolderItem({
 
   return (
     <div
-      className={`relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm cursor-pointer transition-colors ${
+      className={`relative flex items-center gap-2 rounded-lg pl-3 py-2 text-sm cursor-pointer transition-colors ${
         isActive
           ? 'bg-accent-bg text-accent font-medium'
           : 'text-ink-soft hover:bg-surface-alt hover:text-ink'
@@ -497,7 +498,7 @@ const handleCreateFolder = useCallback(() => {
         <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
           <div className="flex items-center gap-2.5">
             <div className="rounded-lg bg-accent-bg p-1.5">
-              <BookOpen size={18} className="text-accent" />
+              <DocListIcon />
             </div>
             <h2 className="font-sans text-base font-semibold text-ink">Documents</h2>
             <span className="rounded-md bg-surface-alt px-2 py-0.5 text-[11px] font-medium text-ink-faint">
