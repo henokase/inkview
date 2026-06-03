@@ -12,6 +12,7 @@ import { MarkdownRenderer } from './components/MarkdownRenderer'
 import { TocSidebar } from './components/TocSidebar'
 import { HistoryModal } from './components/HistoryModal'
 import { NewDocModal } from './components/NewDocModal'
+import { ThemeToggle } from './components/ThemeToggle'
 import { Toast } from './components/Toast'
 import { parseShareUrl, fetchSharedContent, resolveImportEntries, resolveTitleUnique } from './lib/share'
 
@@ -536,6 +537,11 @@ function App() {
 
       {/* Toast */}
       <Toast message={toastMsg} type={toastType} visible={toastVisible} onClose={hideToast} />
+
+      {/* Theme toggle — bottom-right, outside reading flow */}
+      <div className="fixed bottom-4 right-4 z-40">
+        <ThemeToggle />
+      </div>
 
       {/* Modals */}
       <HistoryModal key={String(historyOpen)} open={historyOpen} onClose={() => setHistoryOpen(false)} showToast={showToast} />

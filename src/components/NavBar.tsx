@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { BookOpen, Columns2, Clock, Eye, FileEdit, List, Plus, WifiOff } from 'lucide-react'
-import { ThemeToggle } from './ThemeToggle'
+import { BookMarked, BookOpen, Columns2, Eye, FileEdit, List, Plus, WifiOff } from 'lucide-react'
 import { ShareButton } from './ShareButton'
 
 import type { EditorMode } from '../types'
@@ -194,6 +193,26 @@ export function NavBar({
           </div>
         )}
 
+        <button
+          onClick={onNewDoc}
+          title="New document (Ctrl+N)"
+          className="rounded-lg p-2 sm:p-2.5 text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors"
+        >
+          <Plus size={18} />
+        </button>
+
+        {showContent && <ShareButton content={content} title={title} />}
+
+        {showContent && (
+        <button
+          onClick={onHistory}
+          title="Document history (Ctrl+H)"
+          className="rounded-lg p-2 sm:p-2.5 text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors"
+        >
+          <List size={18} />
+        </button>
+        )}
+
         {showContent && editorMode !== 'edit' && hasHeadings && (
           <button
             onClick={onTocToggle}
@@ -202,31 +221,9 @@ export function NavBar({
               tocOpen ? 'text-accent bg-accent-bg' : 'text-ink-faint hover:text-ink hover:bg-surface-alt'
             }`}
           >
-            <List size={18} />
+            <BookMarked size={18} />
           </button>
         )}
-
-        {showContent && <ShareButton content={content} title={title} />}
-
-        <>
-          <button
-            onClick={onNewDoc}
-            title="New document (Ctrl+N)"
-            className="rounded-lg p-2 sm:p-2.5 text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors"
-          >
-            <Plus size={18} />
-          </button>
-
-          {showContent && (
-          <button
-            onClick={onHistory}
-            title="Document history (Ctrl+H)"
-            className="rounded-lg p-2 sm:p-2.5 text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors"
-          >
-            <Clock size={18} />
-          </button>
-        )}
-        </>
 
         {!isOnline && (
           <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-note/10 text-note text-[10px] font-medium mr-0.5 sm:mr-1">
@@ -234,9 +231,6 @@ export function NavBar({
             <span className="hidden sm:inline">Offline</span>
           </div>
         )}
-        <div className="ml-0.5 sm:ml-1.5 pl-1 sm:pl-1.5 border-l border-border/60">
-          <ThemeToggle />
-        </div>
       </div>
     </header>
   )
