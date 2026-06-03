@@ -71,6 +71,7 @@ function App() {
   const setEditorMode = useUiStore((s) => s.setEditorMode)
 
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [pendingFolderId, setPendingFolderId] = useState<string | null>(null)
   const [newDocOpen, setNewDocOpen] = useState(false)
   const [creatingDoc, setCreatingDoc] = useState(false)
   const [shareLoading, setShareLoading] = useState(false)
@@ -148,16 +149,21 @@ function App() {
           const ids = createDocuments(deduped)
 
           const folderName = data.folderName || 'Shared Documents'
+          let folderId: string
           const existingFolder = state.folders.find((f) => f.name === folderName)
           if (existingFolder) {
             state.moveDocumentsToFolder(existingFolder.id, ids)
+            folderId = existingFolder.id
           } else {
-            createFolder(folderName, ids)
+            const newFolder = createFolder(folderName, ids)
+            folderId = newFolder
           }
 
           setActiveDoc(ids[0])
           setShareLoading(false)
           window.history.replaceState(null, '', '/')
+          setPendingFolderId(folderId)
+          setHistoryOpen(true)
           showToast(`Imported ${ids.length} shared documents`, 'success')
         } else if (typeof data.content === 'string') {
           const state = useDocumentStore.getState()
@@ -294,9 +300,23 @@ function App() {
         setActiveDoc(ids[0])
       }
       setNewDocOpen(false)
+      if (ids.length > 1) {
+        const folderName = new Date().toLocaleDateString()
+        const existingFolder = state.folders.find((f) => f.name === folderName)
+        let folderId: string
+        if (existingFolder) {
+          state.moveDocumentsToFolder(existingFolder.id, ids)
+          folderId = existingFolder.id
+        } else {
+          folderId = createFolder(folderName, ids)
+        }
+        setPendingFolderId(folderId)
+      } else {
+        setPendingFolderId(null)
+      }
       setTimeout(() => setHistoryOpen(true), 200)
     },
-    [createDocuments, setActiveDoc]
+    [createDocuments, createFolder, setActiveDoc]
   )
 
   const handleContentChange = useCallback(
@@ -538,7 +558,7 @@ function App() {
       <Toast message={toastMsg} type={toastType} visible={toastVisible} onClose={hideToast} />
 
       {/* Modals */}
-      <HistoryModal key={String(historyOpen)} open={historyOpen} onClose={() => setHistoryOpen(false)} showToast={showToast} />
+      <HistoryModal key={String(historyOpen)} open={historyOpen} onClose={() => { setHistoryOpen(false); setPendingFolderId(null) }} showToast={showToast} initialFolderId={pendingFolderId} />
       <NewDocModal
         open={newDocOpen}
         onClose={() => setNewDocOpen(false)}

@@ -14,6 +14,7 @@ interface HistoryModalProps {
   open: boolean
   onClose: () => void
   showToast?: (msg: string, type: 'success' | 'error') => void
+  initialFolderId?: string | null
 }
 
 function formatDate(ts: number) {
@@ -176,7 +177,7 @@ const FolderItem = memo(function FolderItem({
   )
 })
 
-export function HistoryModal({ open, onClose, showToast }: HistoryModalProps) {
+export function HistoryModal({ open, onClose, showToast, initialFolderId }: HistoryModalProps) {
   const docsVersion = useDocumentStore((s) => s._docsVersion)
   const foldersVersion = useDocumentStore((s) => s._foldersVersion)
   const activeDocId = useDocumentStore((s) => s.activeDocId)
@@ -221,6 +222,12 @@ export function HistoryModal({ open, onClose, showToast }: HistoryModalProps) {
     setDocuments(docs)
     setFolders(flds)
   }, [docsVersion, foldersVersion])
+
+  useEffect(() => {
+    if (open && initialFolderId) {
+      setActiveFolderId(initialFolderId)
+    }
+  }, [open, initialFolderId])
 
   useEffect(() => {
     if (showNewFolder && newFolderInputRef.current) {
