@@ -1,6 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
-import { BookMarked, BookOpen, Columns2, Eye, FileEdit, List, Plus, WifiOff } from 'lucide-react'
+import { BookOpen, Columns2, Eye, FileEdit, Plus, WifiOff } from 'lucide-react'
 import { ShareButton } from './ShareButton'
+import { ThemeToggle } from './ThemeToggle'
+import { TocIcon, DocListIcon } from './CustomIcons'
 
 import type { EditorMode } from '../types'
 
@@ -84,14 +86,14 @@ export function NavBar({
     } ${showContent && hidden ? '-translate-y-full' : 'translate-y-0'}`}>
       {/* Left side */}
       {!showContent ? (
-        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 mr-2 flex-1">
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
           <div className="rounded-lg bg-accent-bg p-2 shrink-0">
             <BookOpen size={18} className="text-accent sm:size-5" />
           </div>
           <span className="font-sans text-sm sm:text-base font-bold text-ink tracking-tight shrink-0 hidden lg:inline">InkView</span>
         </div>
       ) : isMobile && variant === 'main' ? (
-        <div className="flex items-center min-w-0 mr-2 flex-1">
+        <div className="flex items-center min-w-0">
           <div className="flex items-center rounded-xl bg-surface-alt/80 border border-border/60 p-0.5">
             {filteredModes.map(({ mode, icon: Icon, label }) => (
               <button
@@ -110,7 +112,7 @@ export function NavBar({
           </div>
         </div>
       ) : variant === 'main' ? (
-        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 mr-2 flex-1">
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
           <div className="rounded-lg bg-accent-bg p-2 shrink-0">
             <BookOpen size={18} className="text-accent sm:size-5" />
           </div>
@@ -142,7 +144,7 @@ export function NavBar({
           )}
         </div>
       ) : isMobile ? (
-        <div className="flex items-center min-w-0 mr-2 flex-1">
+        <div className="flex items-center min-w-0">
           <div className="flex items-center rounded-xl bg-surface-alt/80 border border-border/60 p-0.5">
             {filteredModes.map(({ mode, icon: Icon, label }) => (
               <button
@@ -161,7 +163,7 @@ export function NavBar({
           </div>
         </div>
       ) : (
-        <div className="flex items-center gap-2.5 sm:gap-3 mr-2 min-w-0">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <div className="rounded-lg bg-accent-bg p-2 shrink-0">
             <BookOpen size={18} className="text-accent sm:size-5" />
           </div>
@@ -171,10 +173,10 @@ export function NavBar({
         </div>
       )}
 
-      {/* Right side */}
-      <div className="flex items-center gap-0.5 sm:gap-1.5 shrink-0">
-        {!isMobile && showContent && (
-          <div className="flex items-center rounded-xl bg-surface-alt/80 border border-border/60 p-0.5 mr-0.5 sm:mr-2">
+      {/* Center — mode selector (desktop only) */}
+      {showContent && !isMobile && (
+        <div className="flex-1 flex justify-center">
+          <div className="flex items-center rounded-xl bg-surface-alt/80 border border-border/60 p-0.5">
             {filteredModes.map(({ mode, icon: Icon, label }) => (
               <button
                 key={mode}
@@ -191,8 +193,11 @@ export function NavBar({
               </button>
             ))}
           </div>
-        )}
+        </div>
+      )}
 
+      {/* Right side */}
+      <div className="flex items-center gap-0.5 sm:gap-1.5 shrink-0">
         <button
           onClick={onNewDoc}
           title="New document (Ctrl+N)"
@@ -201,17 +206,17 @@ export function NavBar({
           <Plus size={18} />
         </button>
 
-        {showContent && <ShareButton content={content} title={title} />}
-
         {showContent && (
         <button
           onClick={onHistory}
           title="Document history (Ctrl+H)"
           className="rounded-lg p-2 sm:p-2.5 text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors"
         >
-          <List size={18} />
+          <DocListIcon />
         </button>
         )}
+
+        {showContent && <ShareButton content={content} title={title} />}
 
         {showContent && editorMode !== 'edit' && hasHeadings && (
           <button
@@ -221,7 +226,7 @@ export function NavBar({
               tocOpen ? 'text-accent bg-accent-bg' : 'text-ink-faint hover:text-ink hover:bg-surface-alt'
             }`}
           >
-            <BookMarked size={18} />
+            <TocIcon />
           </button>
         )}
 
@@ -231,6 +236,10 @@ export function NavBar({
             <span className="hidden sm:inline">Offline</span>
           </div>
         )}
+
+        <div className="ml-0.5 sm:ml-1.5 pl-1 sm:pl-1.5 border-l border-border/60">
+          <ThemeToggle />
+        </div>
       </div>
     </header>
   )
