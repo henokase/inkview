@@ -542,8 +542,8 @@ function App() {
             onCloseFullscreen={() => setEditorMode('preview')}
             isMobile={isMobile}
           />
-          <div className="flex-1 overflow-auto px-6 lg:px-12">
-            <div className="mx-auto h-full max-w-4xl bg-surface shadow-lg ring-1 ring-border/50 px-4 py-3">
+          <div className="flex-1 overflow-auto px-0 sm:px-6 lg:px-12">
+            <div className="mx-auto h-full max-w-4xl bg-surface shadow-lg ring-1 ring-border/50 px-2 sm:px-4 py-3">
               <MarkdownEditor
                 value={activeDoc.content}
                 onChange={handleContentChange}
