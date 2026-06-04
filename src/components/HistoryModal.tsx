@@ -155,7 +155,7 @@ const FolderItem = memo(function FolderItem({
   onDelete,
 }: FolderItemProps) {
   const [showActions, setShowActions] = useState(false)
-  const show = showActions || isActive
+  const show = showActions
 
   return (
     <div
