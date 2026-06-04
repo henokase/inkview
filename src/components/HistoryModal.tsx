@@ -52,6 +52,7 @@ interface DocListItemProps {
   onDocClick: (id: string) => void
   onDelete: (id: string) => void
   onToggleSelect: (id: string) => void
+  onRemoveFromFolder?: (id: string) => void
 }
 
 const DocListItem = memo(function DocListItem({
@@ -65,6 +66,7 @@ const DocListItem = memo(function DocListItem({
   onDocClick,
   onDelete,
   onToggleSelect,
+  onRemoveFromFolder,
 }: DocListItemProps) {
   const displayTitle = getItemTitle({ id, title, content } as Document)
 
@@ -111,13 +113,24 @@ const DocListItem = memo(function DocListItem({
           </div>
         </div>
       </button>
-      <button
-        onClick={() => onDelete(id)}
-        className="shrink-0 rounded-lg p-1.5 text-ink-faint/50 hover:text-red-400 hover:bg-red-500/10 transition-colors ml-1"
-        title="Delete document"
-      >
-        <Trash2 size={14} />
-      </button>
+      <div className="flex items-center gap-0.5 shrink-0 ml-1">
+        {onRemoveFromFolder && (
+          <button
+            onClick={() => onRemoveFromFolder(id)}
+            className="rounded-lg p-1.5 text-ink-faint/50 hover:text-accent hover:bg-accent-bg/50 transition-colors"
+            title="Remove from folder"
+          >
+            <X size={14} />
+          </button>
+        )}
+        <button
+          onClick={() => onDelete(id)}
+          className="rounded-lg p-1.5 text-ink-faint/50 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+          title="Delete document"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
     </div>
   )
 })
@@ -223,6 +236,8 @@ export function HistoryModal({ open, onClose, showToast, initialFolderId }: Hist
   const [shareError, setShareError] = useState<string | null>(null)
   const [shareSuccess, setShareSuccess] = useState<string | null>(null)
   const [showFolderPicker, setShowFolderPicker] = useState(false)
+  const [showBulkRemoveModal, setShowBulkRemoveModal] = useState(false)
+  const [removeTarget, setRemoveTarget] = useState<string | null>(null)
   const [showMoveConfirmModal, setShowMoveConfirmModal] = useState(false)
   const [pendingMoveFolderId, setPendingMoveFolderId] = useState<string | null>(null)
   const [moveConfirmDocCount, setMoveConfirmDocCount] = useState(0)
@@ -358,6 +373,12 @@ export function HistoryModal({ open, onClose, showToast, initialFolderId }: Hist
     return f?.name || ''
   }, [folderToDelete, folders])
 
+  const removeTargetTitle = useMemo(() => {
+    if (!removeTarget) return ''
+    const doc = documents.find((d) => d.id === removeTarget)
+    return doc ? getItemTitle(doc) : ''
+  }, [removeTarget, documents])
+
   const handleSelectAll = useCallback(() => {
     setSelectedDocs((prev) => {
       if (prev.size === filtered.length) {
@@ -409,11 +430,27 @@ export function HistoryModal({ open, onClose, showToast, initialFolderId }: Hist
     setShowDeleteModal(true)
   }, [])
 
-  const handleRemoveFromFolder = useCallback(() => {
+  const handleBulkRemoveFromFolder = useCallback(() => {
     if (!activeFolderId || selectedDocs.size === 0) return
+    setShowBulkRemoveModal(true)
+  }, [activeFolderId, selectedDocs])
+
+  const handleConfirmBulkRemove = useCallback(() => {
+    if (!activeFolderId) return
     removeDocumentsFromFolder(activeFolderId, Array.from(selectedDocs))
     setSelectedDocs(new Set())
+    setShowBulkRemoveModal(false)
   }, [activeFolderId, selectedDocs, removeDocumentsFromFolder])
+
+  const handleSingleRemoveClick = useCallback((id: string) => {
+    setRemoveTarget(id)
+  }, [])
+
+  const handleConfirmSingleRemove = useCallback(() => {
+    if (!activeFolderId || !removeTarget) return
+    removeDocumentsFromFolder(activeFolderId, [removeTarget])
+    setRemoveTarget(null)
+  }, [activeFolderId, removeTarget, removeDocumentsFromFolder])
 
   const clearSelection = useCallback(() => {
     setSelectedDocs(new Set())
@@ -899,7 +936,7 @@ const handleCreateFolder = useCallback(() => {
                     )
                   ) : (
                     <button
-                      onClick={handleRemoveFromFolder}
+                      onClick={handleBulkRemoveFromFolder}
                       disabled={selectedDocs.size === 0}
                       className="flex items-center gap-1.5 rounded-lg px-2 py-1 sm:px-2.5 text-xs text-ink-soft hover:text-ink hover:bg-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-sans whitespace-nowrap"
                     >
@@ -992,6 +1029,7 @@ const handleCreateFolder = useCallback(() => {
                       onDocClick={handleDocClick}
                       onDelete={handleDeleteClick}
                       onToggleSelect={handleToggleSelect}
+                      onRemoveFromFolder={activeFolderId !== null ? handleSingleRemoveClick : undefined}
                     />
                   ))}
                 </div>
@@ -1035,6 +1073,26 @@ const handleCreateFolder = useCallback(() => {
         destructive={false}
         onConfirm={handleConfirmMove}
         onCancel={handleCancelMove}
+      />
+
+      <ConfirmModal
+        open={showBulkRemoveModal}
+        title="Remove from folder"
+        message={`Remove ${selectedDocs.size} document${selectedDocs.size !== 1 ? 's' : ''} from "${folders.find((f) => f.id === activeFolderId)?.name || ''}"? The document${selectedDocs.size !== 1 ? 's' : ''} will remain in All Documents.`}
+        confirmLabel="Remove"
+        destructive={false}
+        onConfirm={handleConfirmBulkRemove}
+        onCancel={() => setShowBulkRemoveModal(false)}
+      />
+
+      <ConfirmModal
+        open={removeTarget !== null}
+        title="Remove from folder"
+        message={`Remove "${removeTargetTitle}" from "${folders.find((f) => f.id === activeFolderId)?.name || ''}"? The document will remain in All Documents.`}
+        confirmLabel="Remove"
+        destructive={false}
+        onConfirm={handleConfirmSingleRemove}
+        onCancel={() => setRemoveTarget(null)}
       />
     </div>,
     document.body
