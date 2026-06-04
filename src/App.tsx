@@ -558,7 +558,7 @@ function App() {
       <Toast message={toastMsg} type={toastType} visible={toastVisible} onClose={hideToast} />
 
       {/* Modals */}
-      <HistoryModal key={String(historyOpen)} open={historyOpen} onClose={() => { setHistoryOpen(false); setPendingFolderId(null) }} showToast={showToast} initialFolderId={pendingFolderId} />
+      <HistoryModal open={historyOpen} onClose={() => { setHistoryOpen(false); setPendingFolderId(null) }} showToast={showToast} initialFolderId={pendingFolderId} />
       <NewDocModal
         open={newDocOpen}
         onClose={() => setNewDocOpen(false)}
