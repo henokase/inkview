@@ -10,6 +10,7 @@ import { extractTitle } from '../lib/toc'
 import { createBatchShareLink } from '../lib/share'
 import type { Document, Folder } from '../types'
 import { DocListIcon } from './CustomIcons'
+import { AddToFolderModal } from './AddToFolderModal'
 
 interface HistoryModalProps {
   open: boolean
@@ -243,6 +244,7 @@ export function HistoryModal({ open, onClose, showToast, initialFolderId }: Hist
   const [moveConfirmDocCount, setMoveConfirmDocCount] = useState(0)
   const [moveConfirmOtherFolders, setMoveConfirmOtherFolders] = useState('')
   const [showMobileFolderList, setShowMobileFolderList] = useState(false)
+  const [showAddToFolderModal, setShowAddToFolderModal] = useState(false)
   const mobileFolderRef = useRef<HTMLDivElement>(null)
   const folderPickerRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -428,6 +430,10 @@ export function HistoryModal({ open, onClose, showToast, initialFolderId }: Hist
 
   const handleToolbarDelete = useCallback(() => {
     setShowDeleteModal(true)
+  }, [])
+
+  const handleOpenAddToFolder = useCallback(() => {
+    setShowAddToFolderModal(true)
   }, [])
 
   const handleBulkRemoveFromFolder = useCallback(() => {
@@ -880,7 +886,7 @@ const handleCreateFolder = useCallback(() => {
             {/* Toolbar */}
             <div className="flex items-center justify-evenly px-2 py-2">
               <div className="flex items-center sm:gap-2 shrink-0 min-w-0">
-                <div className="flex items-center sm:gap-2 flex-wrap justify-end">
+                <div className="flex items-center sm:gap-1 flex-wrap justify-end">
                   <button
                     onClick={handleSelectAll}
                     className="flex items-center gap-1.5 rounded-lg px-2 py-1 sm:px-2.5 text-xs text-ink-soft hover:text-ink hover:bg-surface-alt transition-colors font-sans whitespace-nowrap"
@@ -935,14 +941,23 @@ const handleCreateFolder = useCallback(() => {
                       </div>
                     )
                   ) : (
-                    <button
-                      onClick={handleBulkRemoveFromFolder}
-                      disabled={selectedDocs.size === 0}
-                      className="flex items-center gap-1.5 rounded-lg px-2 py-1 sm:px-2.5 text-xs text-ink-soft hover:text-ink hover:bg-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-sans whitespace-nowrap"
-                    >
-                      <X size={14} />
-                      Remove ({selectedDocs.size})
-                    </button>
+                    <>
+                      <button
+                        onClick={handleOpenAddToFolder}
+                        className="flex items-center gap-1.5 rounded-lg px-2 py-1 sm:px-2.5 text-xs text-accent hover:text-accent/80 hover:bg-accent-bg/50 transition-colors font-sans whitespace-nowrap"
+                      >
+                        <Plus size={14} />
+                        Add
+                      </button>
+                      <button
+                        onClick={handleBulkRemoveFromFolder}
+                        disabled={selectedDocs.size === 0}
+                        className="flex items-center gap-1.5 rounded-lg px-2 py-1 sm:px-2.5 text-xs text-ink-soft hover:text-ink hover:bg-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-sans whitespace-nowrap"
+                      >
+                        <X size={14} />
+                        Remove ({selectedDocs.size})
+                      </button>
+                    </>
                   )}
                   <button
                     onClick={handleToolbarDelete}
@@ -1009,10 +1024,19 @@ const handleCreateFolder = useCallback(() => {
                     {searchQuery
                       ? 'Try a different search term'
                       : activeFolderId
-                        ? 'Move documents here from the main list'
+                        ? 'Add documents to get started'
                         : 'Create or upload a document to get started'
                     }
                   </p>
+                  {activeFolderId && !searchQuery && (
+                    <button
+                      onClick={handleOpenAddToFolder}
+                      className="mt-4 flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-soft transition-colors font-sans"
+                    >
+                      <Plus size={16} />
+                      Add documents
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-0.5">
@@ -1094,6 +1118,16 @@ const handleCreateFolder = useCallback(() => {
         onConfirm={handleConfirmSingleRemove}
         onCancel={() => setRemoveTarget(null)}
       />
+
+      {activeFolderId && (
+        <AddToFolderModal
+          open={showAddToFolderModal}
+          onClose={() => setShowAddToFolderModal(false)}
+          folderId={activeFolderId}
+          folderName={folders.find((f) => f.id === activeFolderId)?.name || ''}
+          existingDocIds={folders.find((f) => f.id === activeFolderId)?.documentIds || []}
+        />
+      )}
     </div>,
     document.body
   )
