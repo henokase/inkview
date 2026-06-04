@@ -196,6 +196,7 @@ export function HistoryModal({ open, onClose, showToast, initialFolderId }: Hist
   const renameFolder = useDocumentStore((s) => s.renameFolder)
   const deleteFolderAction = useDocumentStore((s) => s.deleteFolder)
   const moveDocumentsToFolder = useDocumentStore((s) => s.moveDocumentsToFolder)
+  const removeDocumentsFromFolder = useDocumentStore((s) => s.removeDocumentsFromFolder)
 
   const [documents, setDocuments] = useState<Document[]>([])
   const [folders, setFolders] = useState<Folder[]>([])
@@ -407,6 +408,12 @@ export function HistoryModal({ open, onClose, showToast, initialFolderId }: Hist
   const handleToolbarDelete = useCallback(() => {
     setShowDeleteModal(true)
   }, [])
+
+  const handleRemoveFromFolder = useCallback(() => {
+    if (!activeFolderId || selectedDocs.size === 0) return
+    removeDocumentsFromFolder(activeFolderId, Array.from(selectedDocs))
+    setSelectedDocs(new Set())
+  }, [activeFolderId, selectedDocs, removeDocumentsFromFolder])
 
   const clearSelection = useCallback(() => {
     setSelectedDocs(new Set())
@@ -860,34 +867,45 @@ const handleCreateFolder = useCallback(() => {
                     )}
                     {sharingSelected ? 'Sharing...' : `Share (${selectedDocs.size})`}
                   </button>
-                  {folders.length > 0 && (
-                    <div ref={folderPickerRef} className="relative">
-                      <button
-                        onClick={() => setShowFolderPicker(!showFolderPicker)}
-                        disabled={selectedDocs.size === 0}
-                        className="flex items-center gap-1.5 rounded-lg px-2 py-1 sm:px-2.5 text-xs text-ink-soft hover:text-ink hover:bg-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-sans whitespace-nowrap"
-                      >
-                        <FolderIcon size={14} />
-                        Move
-                      </button>
-                      {showFolderPicker && (
-                        <div className="absolute top-full right-0 z-50 mt-1 w-44 rounded-xl border border-border bg-surface shadow-xl py-1">
-                          <p className="px-3 py-1.5 text-[11px] text-ink-faint uppercase tracking-wider font-semibold">
-                            Move to folder
-                          </p>
-                          {folders.map((f) => (
-                            <button
-                              key={f.id}
-                              onClick={() => handleMoveToFolder(f.id)}
-                              className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-ink-soft hover:text-ink hover:bg-surface-alt text-left transition-colors"
-                            >
-                              <FolderIcon size={14} className="shrink-0" />
-                              <span className="truncate">{f.name}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                  {activeFolderId === null ? (
+                    folders.length > 0 && (
+                      <div ref={folderPickerRef} className="relative">
+                        <button
+                          onClick={() => setShowFolderPicker(!showFolderPicker)}
+                          disabled={selectedDocs.size === 0}
+                          className="flex items-center gap-1.5 rounded-lg px-2 py-1 sm:px-2.5 text-xs text-ink-soft hover:text-ink hover:bg-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-sans whitespace-nowrap"
+                        >
+                          <FolderIcon size={14} />
+                          Move
+                        </button>
+                        {showFolderPicker && (
+                          <div className="absolute top-full right-0 z-50 mt-1 w-44 rounded-xl border border-border bg-surface shadow-xl py-1">
+                            <p className="px-3 py-1.5 text-[11px] text-ink-faint uppercase tracking-wider font-semibold">
+                              Move to folder
+                            </p>
+                            {folders.map((f) => (
+                              <button
+                                key={f.id}
+                                onClick={() => handleMoveToFolder(f.id)}
+                                className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-ink-soft hover:text-ink hover:bg-surface-alt text-left transition-colors"
+                              >
+                                <FolderIcon size={14} className="shrink-0" />
+                                <span className="truncate">{f.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  ) : (
+                    <button
+                      onClick={handleRemoveFromFolder}
+                      disabled={selectedDocs.size === 0}
+                      className="flex items-center gap-1.5 rounded-lg px-2 py-1 sm:px-2.5 text-xs text-ink-soft hover:text-ink hover:bg-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-sans whitespace-nowrap"
+                    >
+                      <X size={14} />
+                      Remove ({selectedDocs.size})
+                    </button>
                   )}
                   <button
                     onClick={handleToolbarDelete}
