@@ -48,6 +48,7 @@ interface DocListItemProps {
   updatedAt: number
   isActive: boolean
   isSelected: boolean
+  folderBadge?: string
   onDocClick: (id: string) => void
   onDelete: (id: string) => void
   onToggleSelect: (id: string) => void
@@ -60,6 +61,7 @@ const DocListItem = memo(function DocListItem({
   updatedAt,
   isActive,
   isSelected,
+  folderBadge,
   onDocClick,
   onDelete,
   onToggleSelect,
@@ -100,6 +102,12 @@ const DocListItem = memo(function DocListItem({
           <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-ink-faint font-sans">
             <Clock size={10} />
             <span>{formatDate(updatedAt)}</span>
+            {folderBadge && (
+              <span className="inline-flex items-center gap-0.5 rounded-md bg-accent-bg/60 px-1.5 py-0.5 text-[10px] font-medium text-accent ml-1">
+                <FolderIcon size={10} />
+                {folderBadge}
+              </span>
+            )}
           </div>
         </div>
       </button>
@@ -214,6 +222,10 @@ export function HistoryModal({ open, onClose, showToast, initialFolderId }: Hist
   const [shareError, setShareError] = useState<string | null>(null)
   const [shareSuccess, setShareSuccess] = useState<string | null>(null)
   const [showFolderPicker, setShowFolderPicker] = useState(false)
+  const [showMoveConfirmModal, setShowMoveConfirmModal] = useState(false)
+  const [pendingMoveFolderId, setPendingMoveFolderId] = useState<string | null>(null)
+  const [moveConfirmDocCount, setMoveConfirmDocCount] = useState(0)
+  const [moveConfirmOtherFolders, setMoveConfirmOtherFolders] = useState('')
   const [showMobileFolderList, setShowMobileFolderList] = useState(false)
   const mobileFolderRef = useRef<HTMLDivElement>(null)
   const folderPickerRef = useRef<HTMLDivElement>(null)
@@ -320,6 +332,18 @@ export function HistoryModal({ open, onClose, showToast, initialFolderId }: Hist
     }
     return counts
   }, [folders, documents])
+
+  const docFolderMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const f of folders) {
+      for (const docId of f.documentIds) {
+        if (!map[docId]) {
+          map[docId] = f.name
+        }
+      }
+    }
+    return map
+  }, [folders])
 
   const deleteTargetTitle = useMemo(() => {
     if (!deleteTarget) return ''
@@ -485,11 +509,54 @@ const handleCreateFolder = useCallback(() => {
 
   const handleMoveToFolder = useCallback((folderId: string) => {
     if (selectedDocs.size === 0) return
+
+    const currentFolders = useDocumentStore.getState().folders
+    const docsInOtherFolders: { folderName: string }[] = []
+    const seenFolders = new Set<string>()
+
+    for (const f of currentFolders) {
+      if (f.id === folderId) continue
+      for (const docId of selectedDocs) {
+        if (f.documentIds.includes(docId) && !seenFolders.has(f.id)) {
+          seenFolders.add(f.id)
+          docsInOtherFolders.push({ folderName: f.name })
+        }
+      }
+    }
+
+    if (activeFolderId === null && docsInOtherFolders.length > 0) {
+      const otherNames = [...new Set(docsInOtherFolders.map((d) => d.folderName))].join(', ')
+      setPendingMoveFolderId(folderId)
+      setMoveConfirmDocCount(selectedDocs.size)
+      setMoveConfirmOtherFolders(otherNames)
+      setShowMoveConfirmModal(true)
+      return
+    }
+
     moveDocumentsToFolder(folderId, Array.from(selectedDocs))
     setSelectedDocs(new Set())
     setShowFolderPicker(false)
     setActiveFolderId(folderId)
-  }, [selectedDocs, moveDocumentsToFolder])
+  }, [selectedDocs, moveDocumentsToFolder, activeFolderId])
+
+  const handleConfirmMove = useCallback(() => {
+    if (!pendingMoveFolderId) return
+    moveDocumentsToFolder(pendingMoveFolderId, Array.from(selectedDocs))
+    setSelectedDocs(new Set())
+    setShowFolderPicker(false)
+    setActiveFolderId(pendingMoveFolderId)
+    setShowMoveConfirmModal(false)
+    setPendingMoveFolderId(null)
+    setMoveConfirmDocCount(0)
+    setMoveConfirmOtherFolders('')
+  }, [pendingMoveFolderId, selectedDocs, moveDocumentsToFolder])
+
+  const handleCancelMove = useCallback(() => {
+    setShowMoveConfirmModal(false)
+    setPendingMoveFolderId(null)
+    setMoveConfirmDocCount(0)
+    setMoveConfirmOtherFolders('')
+  }, [])
 
   const handleConfirmDeleteFolder = useCallback(() => {
     if (!folderToDelete) return
@@ -903,6 +970,7 @@ const handleCreateFolder = useCallback(() => {
                       updatedAt={doc.updatedAt}
                       isActive={doc.id === activeDocId}
                       isSelected={selectedDocs.has(doc.id)}
+                      folderBadge={activeFolderId === null ? docFolderMap[doc.id] : undefined}
                       onDocClick={handleDocClick}
                       onDelete={handleDeleteClick}
                       onToggleSelect={handleToggleSelect}
@@ -939,6 +1007,16 @@ const handleCreateFolder = useCallback(() => {
         message={`Delete folder "${folderDeleteName}"? Documents inside will not be deleted.`}
         onConfirm={handleConfirmDeleteFolder}
         onCancel={() => { setShowDeleteFolderModal(false); setFolderToDelete(null) }}
+      />
+
+      <ConfirmModal
+        open={showMoveConfirmModal}
+        title="Move documents"
+        message={`${moveConfirmDocCount} of the selected document(s) belong to ${moveConfirmOtherFolders}. Continuing will remove them from their current folders and move them to the new one.`}
+        confirmLabel="Move"
+        destructive={false}
+        onConfirm={handleConfirmMove}
+        onCancel={handleCancelMove}
       />
     </div>,
     document.body

@@ -202,14 +202,22 @@ export const useDocumentStore = create<DocumentStore>()((set, get) => ({
   moveDocumentsToFolder: (folderId, docIds) => {
     set((s) => ({
       folders: s.folders.map((f) => {
-        if (f.id !== folderId) return f
+        if (f.id !== folderId) {
+          return {
+            ...f,
+            documentIds: f.documentIds.filter((did) => !docIds.includes(did)),
+            updatedAt: Date.now(),
+          }
+        }
         const merged = new Set([...f.documentIds, ...docIds])
         return { ...f, documentIds: Array.from(merged), updatedAt: Date.now() }
       }),
       _foldersVersion: s._foldersVersion + 1,
     }))
-    const folder = get().folders.find((f) => f.id === folderId)
-    if (folder) saveFolder(folder)
+    const allFolders = get().folders
+    for (const f of allFolders) {
+      saveFolder(f)
+    }
   },
 
   removeDocumentsFromFolder: (folderId, docIds) => {
