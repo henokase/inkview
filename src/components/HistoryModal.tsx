@@ -217,6 +217,7 @@ export function HistoryModal({ open, onClose, showToast, initialFolderId }: Hist
   const [showMobileFolderList, setShowMobileFolderList] = useState(false)
   const mobileFolderRef = useRef<HTMLDivElement>(null)
   const folderPickerRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const { documents: docs, folders: flds } = useDocumentStore.getState()
@@ -277,6 +278,19 @@ export function HistoryModal({ open, onClose, showToast, initialFolderId }: Hist
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [showFolderPicker])
+
+  useEffect(() => {
+    if (!open) return
+    const mediaQuery = window.matchMedia('(min-width: 640px)')
+    const handleFocus = () => {
+      if (mediaQuery.matches && searchInputRef.current) {
+        searchInputRef.current.focus()
+      }
+    }
+    mediaQuery.addEventListener('change', handleFocus)
+    handleFocus()
+    return () => mediaQuery.removeEventListener('change', handleFocus)
+  }, [open])
 
   const docsByFolder = useMemo(() => {
     if (!activeFolderId) return documents
@@ -610,6 +624,7 @@ const handleCreateFolder = useCallback(() => {
                   className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
                 />
                 <input
+                  ref={searchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
