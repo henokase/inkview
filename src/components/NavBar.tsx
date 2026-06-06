@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { BookOpen, Columns2, Eye, FileEdit, Plus, WifiOff } from 'lucide-react'
+import { BookOpen, Columns2, Eye, FileEdit, MessageSquarePlus, Plus, WifiOff } from 'lucide-react'
 import { ShareButton } from './ShareButton'
 import { ThemeToggle } from './ThemeToggle'
 import { TocIcon, DocListIcon } from './CustomIcons'
@@ -16,6 +16,9 @@ interface NavBarProps {
   onTocToggle?: () => void
   onNewDoc?: () => void
   onHistory?: () => void
+  onChatToggle?: () => void
+  chatOpen?: boolean
+  chatPanelWidth?: number
   variant?: 'main' | 'fullscreen'
   onCloseFullscreen?: () => void
   isMobile?: boolean
@@ -47,6 +50,9 @@ export function NavBar({
   hidden = false,
   isOnline = true,
   hasHeadings = true,
+  onChatToggle,
+  chatOpen = false,
+  chatPanelWidth,
 }: NavBarProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(title)
@@ -82,8 +88,9 @@ export function NavBar({
 
   return (
     <header  className={`flex items-center justify-between border-b border-border/80 bg-surface/70 backdrop-blur-lg px-4 py-2.5 sm:px-6 sm:py-3 select-none transition-transform duration-300 ${
-      showContent && variant !== 'fullscreen' ? 'fixed top-0 left-0 right-0 z-20' : ''
-    } ${showContent && hidden ? '-translate-y-full' : 'translate-y-0'}`}>
+      showContent && variant !== 'fullscreen' ? 'fixed top-0 left-0 z-20' : ''
+    } ${showContent && hidden ? '-translate-y-full' : 'translate-y-0'}`}
+      style={showContent && variant !== 'fullscreen' ? { right: chatOpen && chatPanelWidth ? chatPanelWidth : 0 } : undefined}>
       {/* Left side */}
       {!showContent ? (
         <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
@@ -217,6 +224,18 @@ export function NavBar({
         )}
 
         {showContent && <ShareButton content={content} title={title} />}
+
+        {showContent && onChatToggle && (
+          <button
+            onClick={onChatToggle}
+            title="AI Chat"
+            className={`rounded-lg p-2 sm:p-2.5 transition-colors ${
+              chatOpen ? 'text-accent bg-accent-bg' : 'text-ink-faint hover:text-ink hover:bg-surface-alt'
+            }`}
+          >
+            <MessageSquarePlus size={18} />
+          </button>
+        )}
 
         {showContent && editorMode !== 'edit' && hasHeadings && (
           <button

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useDeferredValue } f
 import { FileText, Loader2, Plus, RefreshCw, X } from 'lucide-react'
 import { useDocumentStore } from './stores/document-store'
 import { useUiStore } from './stores/ui-store'
+import { useChatStore } from './stores/chat-store'
 import { useKeyboard } from './lib/use-keyboard'
 import { extractTitle, extractTocHeadings } from './lib/toc'
 import { useHideOnScroll } from './lib/use-hide-on-scroll'
@@ -13,6 +14,8 @@ import { TocSidebar } from './components/TocSidebar'
 import { HistoryModal } from './components/HistoryModal'
 import { NewDocModal } from './components/NewDocModal'
 import { Toast } from './components/Toast'
+import { ChatPanel } from './components/ChatPanel'
+import { SelectionToolbar } from './components/SelectionToolbar'
 import { parseShareUrl, fetchSharedContent, resolveImportEntries, resolveTitleUnique } from './lib/share'
 
 function findPreviewHeading(container: HTMLElement): string | null {
@@ -95,6 +98,15 @@ function App() {
   const editorHandleRef = useRef<MarkdownEditorHandle>(null)
   const previewScrollRef = useRef<HTMLDivElement>(null)
   const [isMobile, setIsMobile] = useState(false)
+
+  const isChatOpen = useChatStore((s) => s.isChatOpen)
+  const setChatOpen = useChatStore((s) => s.setChatOpen)
+  const setSelectedText = useChatStore((s) => s.setSelectedText)
+  const setContextText = useChatStore((s) => s.setContextText)
+  const chatInit = useChatStore((s) => s.init)
+  const chatPanelWidth = useChatStore((s) => s.chatPanelWidth)
+
+  const [selectionPosition, setSelectionPosition] = useState<{ x: number; y: number } | null>(null)
   const [isOnline, setIsOnline] = useState(navigator.onLine)
 
   useEffect(() => {
@@ -120,6 +132,40 @@ function App() {
     window.addEventListener('resize', checkSize)
     return () => window.removeEventListener('resize', checkSize)
   }, [editorMode, setEditorMode])
+
+  useEffect(() => {
+    if (activeDocId) {
+      chatInit(activeDocId)
+    }
+  }, [activeDocId, chatInit])
+
+  const handlePreviewMouseUp = useCallback(() => {
+    const selection = window.getSelection()
+    if (!selection || selection.isCollapsed || !selection.toString().trim()) {
+      setSelectionPosition(null)
+      return
+    }
+
+    const previewNode = previewScrollRef.current
+    if (!previewNode || !previewNode.contains(selection.anchorNode)) {
+      setSelectionPosition(null)
+      return
+    }
+
+    const range = selection.getRangeAt(0)
+    const rect = range.getBoundingClientRect()
+    setSelectionPosition({ x: rect.left, y: rect.bottom })
+    setSelectedText(selection.toString().trim())
+  }, [setSelectedText])
+
+  const handleAskAi = useCallback(() => {
+    const selected = useChatStore.getState().selectedText
+    if (!selected) return
+    setSelectionPosition(null)
+    setContextText(selected)
+    setSelectedText('')
+    if (!isChatOpen) setChatOpen(true)
+  }, [setContextText, setSelectedText, setChatOpen, isChatOpen])
 
   const shareProcessed = useRef(false)
 
@@ -397,6 +443,9 @@ function App() {
             onTocToggle={() => setTocOpen(!tocOpen)}
             onNewDoc={() => setNewDocOpen(true)}
             onHistory={() => setHistoryOpen(true)}
+            onChatToggle={() => setChatOpen(!isChatOpen)}
+            chatOpen={isChatOpen}
+            chatPanelWidth={chatPanelWidth}
             isMobile={isMobile}
             content={content}
             hidden={navbarHidden}
@@ -481,7 +530,7 @@ function App() {
                     className="flex flex-col overflow-hidden"
                     style={editorMode === 'split' ? { width: `${(1 - splitRatio) * 100}%` } : { flex: '1' }}
                   >
-                    <div ref={previewScrollRef} className="flex-1 overflow-y-auto pl-6 pr-6 lg:px-10 xl:px-16 py-8" data-preview-scroll>
+                    <div ref={previewScrollRef} className="flex-1 overflow-y-auto pl-6 pr-6 lg:px-10 xl:px-16 py-8" data-preview-scroll onMouseUp={handlePreviewMouseUp}>
                       <article className="mx-auto max-w-4xl xl:max-w-5xl wrap-break-word">
                         <MarkdownRenderer content={displayContent} />
                       </article>
@@ -493,7 +542,6 @@ function App() {
               {/* TOC sidebar */}
               {editorMode !== 'edit' && tocOpen && hasHeadings && (
                 <>
-                  {/* Backdrop overlay for mobile TOC */}
                   <div
                     className="fixed inset-0 z-30 bg-black/20 backdrop-blur-xs lg:hidden"
                     onClick={() => setTocOpen(false)}
@@ -517,10 +565,19 @@ function App() {
                   </aside>
                 </>
               )}
+
+              {(editorMode === 'preview' || editorMode === 'split') && (
+                <SelectionToolbar
+                  position={selectionPosition}
+                  onAskAi={handleAskAi}
+                />
+              )}
             </>
           ) : null}
         </div>
       </main>
+
+      <ChatPanel />
 
       {/* Fullscreen editor mode */}
       {editorMode === 'edit' && showContent && activeDoc && (
@@ -538,9 +595,15 @@ function App() {
             onTocToggle={() => setTocOpen(!tocOpen)}
             onNewDoc={() => setNewDocOpen(true)}
             onHistory={() => setHistoryOpen(true)}
+            onChatToggle={() => setChatOpen(!isChatOpen)}
+            chatOpen={isChatOpen}
+            chatPanelWidth={chatPanelWidth}
             variant="fullscreen"
             onCloseFullscreen={() => setEditorMode('preview')}
             isMobile={isMobile}
+            content={content}
+            isOnline={isOnline}
+            hasHeadings={hasHeadings}
           />
           <div className="flex-1 overflow-auto px-0 sm:px-6 lg:px-12">
             <div className="mx-auto h-full max-w-4xl bg-surface shadow-lg ring-1 ring-border/50 px-2 sm:px-4 py-3">

@@ -66,4 +66,9 @@
   ::-webkit-scrollbar-thumb:hover {
     background: var(--color-ink-soft);
   }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-ink-faint) transparent;
+  }
 }

@@ -176,7 +176,7 @@ export function AddToFolderModal({ open, onClose, folderId, folderName, existing
   }, [selected, folderId, moveDocumentsToFolder, onClose])
 
   return createPortal(
-    <div className={`fixed inset-0 z-[60] flex items-center justify-center transition-opacity duration-200 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+    <div className={`fixed inset-0 z-60 flex items-center justify-center transition-opacity duration-200 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
       <div className="absolute inset-0 bg-black/40" onClick={handleCancel} />
 
       <div className="relative flex h-[70vh] w-[calc(100%-1rem)] sm:w-full sm:max-w-lg flex-col rounded-2xl border border-border bg-surface shadow-2xl">

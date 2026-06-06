@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Document, Folder } from '../types'
+import type { Document, Folder, Conversation, Message } from '../types'
 
 const LOCALSTORAGE_KEY = 'inkview-documents'
 const ACTIVE_DOC_KEY = 'inkview-active-doc'
@@ -7,6 +7,8 @@ const ACTIVE_DOC_KEY = 'inkview-active-doc'
 const db = new Dexie('InkViewDB') as Dexie & {
   documents: EntityTable<Document, 'id'>
   folders: EntityTable<Folder, 'id'>
+  conversations: EntityTable<Conversation, 'id'>
+  messages: EntityTable<Message, 'id'>
 }
 
 db.version(1).stores({
@@ -16,6 +18,13 @@ db.version(1).stores({
 db.version(2).stores({
   documents: 'id, updatedAt',
   folders: 'id, name',
+})
+
+db.version(3).stores({
+  documents: 'id, updatedAt',
+  folders: 'id, name',
+  conversations: 'id, documentId, updatedAt',
+  messages: 'id, conversationId, createdAt',
 })
 
 function extractFirstHeading(markdown: string): string | null {
@@ -104,6 +113,41 @@ export function persistActiveDocId(id: string | null): void {
 
 export function loadActiveDocId(): string | null {
   return localStorage.getItem(ACTIVE_DOC_KEY)
+}
+
+export async function loadConversationsForDocument(documentId: string): Promise<Conversation[]> {
+  return db.conversations
+    .where('documentId')
+    .equals(documentId)
+    .reverse()
+    .sortBy('updatedAt')
+}
+
+export async function saveConversation(conv: Conversation): Promise<void> {
+  await db.conversations.put(conv)
+}
+
+export async function deleteConversation(id: string): Promise<void> {
+  await db.conversations.delete(id)
+  await db.messages.where('conversationId').equals(id).delete()
+}
+
+export async function deleteConversationsForDocument(documentId: string): Promise<void> {
+  const convs = await db.conversations.where('documentId').equals(documentId).toArray()
+  const convIds = convs.map(c => c.id)
+  await db.conversations.bulkDelete(convIds)
+  await db.messages.where('conversationId').anyOf(convIds).delete()
+}
+
+export async function loadMessagesForConversation(conversationId: string): Promise<Message[]> {
+  return db.messages
+    .where('conversationId')
+    .equals(conversationId)
+    .sortBy('createdAt')
+}
+
+export async function saveMessage(msg: Message): Promise<void> {
+  await db.messages.put(msg)
 }
 
 export { db }
