@@ -71,4 +71,16 @@
     scrollbar-width: thin;
     scrollbar-color: var(--color-ink-faint) transparent;
   }
+
+  .chat-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .chat-table tbody tr:nth-child(even) td {
+    background-color: var(--color-surface-alt);
+  }
+
+  .chat-table tbody tr:hover td {
+    background-color: var(--color-accent-bg);
+  }
 }

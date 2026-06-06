@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Bot, MessageSquare } from 'lucide-react'
+import { MessageSquare } from 'lucide-react'
 import type { Message } from '../types'
 
 interface ChatMessagesProps {
@@ -47,12 +47,12 @@ function ChatMarkdown({ content }: { content: string }) {
         ),
         hr: () => <hr className="my-4 border-border/40" />,
         table: ({ children }) => (
-          <div className="mb-2.5 overflow-x-auto rounded-lg border border-border/60">
-            <table className="w-full border-collapse text-xs">{children}</table>
+          <div className="mb-3 overflow-hidden rounded-xl border border-border/50 shadow-xs">
+            <table className="w-full border-collapse text-xs chat-table">{children}</table>
           </div>
         ),
-        th: ({ children }) => <th className="bg-surface-alt/80 px-3 py-1.5 text-left font-semibold text-ink border-b border-border/60">{children}</th>,
-        td: ({ children }) => <td className="px-3 py-1.5 border-b border-border/60 text-[13px]">{children}</td>,
+        th: ({ children }) => <th className="bg-surface-alt/90 px-3.5 py-2 text-left font-semibold text-ink text-[11px] tracking-wider uppercase border-b border-border/40">{children}</th>,
+        td: ({ children }) => <td className="px-3.5 py-2 border-b border-border/30 text-[13px] leading-relaxed">{children}</td>,
         h1: ({ children }) => <h1 className="mb-2.5 mt-4 text-base font-bold text-ink first:mt-0 tracking-tight">{children}</h1>,
         h2: ({ children }) => <h2 className="mb-2 mt-3.5 text-sm font-bold text-ink first:mt-0 tracking-tight">{children}</h2>,
         h3: ({ children }) => <h3 className="mb-1.5 mt-3 text-[13px] font-bold text-ink first:mt-0 tracking-tight">{children}</h3>,
@@ -113,19 +113,14 @@ export function ChatMessages({ messages, isStreaming }: ChatMessagesProps) {
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in duration-200`}
+          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in duration-200`}
           >
-            <div className="flex items-start gap-2 max-w-[88%]">
-              {msg.role === 'assistant' && (
-                <div className="shrink-0 w-6 h-6 rounded-full bg-linear-to-br from-accent/15 to-accent/5 flex items-center justify-center mt-1 border border-accent/10">
-                  <Bot size={12} className="text-accent/60" />
-                </div>
-              )}
+            <div className={`${msg.role === 'user' ? 'max-w-[88%]' : 'w-full'}`}>
               <div
                 className={`relative ${
                   msg.role === 'user'
                     ? 'bg-linear-to-br from-accent to-accent-soft text-white rounded-2xl rounded-br-md shadow-sm shadow-accent/15'
-                    : 'bg-surface-alt/70 text-ink border border-border/40 rounded-2xl rounded-bl-md shadow-sm'
+                    : 'bg-surface-alt/70 text-ink border border-border/40 rounded-2xl shadow-sm'
                 } ${msg.role === 'user' ? 'px-3.5 py-2.5' : 'px-4 py-3'}`}
               >
                 {msg.role === 'user' ? (

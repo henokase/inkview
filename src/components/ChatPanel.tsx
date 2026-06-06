@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect } from 'react'
 import { Plus, X, MessageSquare } from 'lucide-react'
 import { useChatStore } from '../stores/chat-store'
 import { useDocumentStore } from '../stores/document-store'
@@ -6,23 +6,7 @@ import { ConversationList } from './ConversationList'
 import { ChatMessages } from './ChatMessages'
 import { ChatInput } from './ChatInput'
 
-const STORAGE_KEY = 'inkview-chat-width'
-const MIN_WIDTH = 300
-const MAX_WIDTH = 600
-
-function loadWidth(): number {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) return Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Number(saved)))
-  } catch {}
-  return 380
-}
-
-function saveWidth(w: number) {
-  try {
-    localStorage.setItem(STORAGE_KEY, String(w))
-  } catch {}
-}
+const CHAT_WIDTH = 500
 
 export function ChatPanel() {
   const conversationsByDoc = useChatStore((s) => s.conversationsByDoc)
@@ -43,45 +27,9 @@ export function ChatPanel() {
     return id ? docs.find((d) => d.id === id) : undefined
   })
 
-  const [width, setWidth] = useState(loadWidth)
-  const isDragging = useRef(false)
-
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    isDragging.current = true
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
-  }, [])
-
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging.current) return
-      const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, window.innerWidth - e.clientX))
-      setWidth(newWidth)
-    }
-    const handleMouseUp = () => {
-      if (isDragging.current) {
-        isDragging.current = false
-        document.body.style.cursor = ''
-        document.body.style.userSelect = ''
-        setWidth((w) => {
-          saveWidth(w)
-          setChatPanelWidth(w)
-          return w
-        })
-      }
-    }
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-    }
+    setChatPanelWidth(CHAT_WIDTH)
   }, [setChatPanelWidth])
-
-  useEffect(() => {
-    setChatPanelWidth(width)
-  }, [width, setChatPanelWidth])
 
   if (!isChatOpen) return null
 
@@ -121,19 +69,10 @@ export function ChatPanel() {
       />
 
       <aside
-        className="fixed inset-y-0 right-0 z-40 lg:relative lg:shrink-0 flex flex-col border-l border-border/60 bg-surface shadow-2xl lg:shadow-xl animate-in slide-in-from-right duration-200"
-        style={{ width }}
+        className="fixed inset-y-0 right-0 z-40 lg:relative lg:shrink-0 flex flex-col border-l border-border/40 bg-surface shadow-2xl lg:shadow-[-8px_0_32px_-8px_rgba(0,0,0,0.12)] animate-in slide-in-from-right duration-200"
+        style={{ width: CHAT_WIDTH }}
       >
-        <div
-          onMouseDown={handleMouseDown}
-          className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize group z-10"
-        >
-          <div className="absolute left-0 top-0 bottom-0 w-px bg-border/40 group-hover:bg-accent/40 transition-colors duration-300" />
-          <div className="absolute left-0 top-0 bottom-0 w-0.5 opacity-0 group-hover:opacity-100 bg-linear-to-b from-accent/60 via-accent/30 to-accent/60 transition-opacity duration-300" />
-        </div>
-
         <div className="relative shrink-0">
-          <div className="absolute top-0 left-0 right-0 h-0.5 bg-linear-to-r from-accent/80 via-accent-soft/60 to-transparent" />
           <div className="flex items-center justify-between px-4 pt-5 pb-3">
             <div className="flex items-center gap-2 min-w-0">
               <div className="flex items-center gap-1.5 shrink-0">

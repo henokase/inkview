@@ -46,7 +46,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   selectedText: '',
   contextText: '',
   isChatOpen: false,
-  chatPanelWidth: 380,
+  chatPanelWidth: 500,
   draftConversations: {},
   _hydrated: false,
 
