@@ -72,35 +72,40 @@ export function ChatPanel() {
         className="fixed inset-y-0 right-0 z-40 lg:relative lg:shrink-0 flex flex-col border-l border-border/40 bg-surface shadow-2xl lg:shadow-[-8px_0_32px_-8px_rgba(0,0,0,0.12)] animate-in slide-in-from-right duration-200"
         style={{ width: CHAT_WIDTH }}
       >
-        <div className="relative shrink-0">
-          <div className="flex items-center justify-between px-4 pt-5 pb-3">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="flex items-center gap-1.5 shrink-0">
-                <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-accent/10 text-accent">
-                  <MessageSquare size={14} />
-                </div>
-                <h2 className="text-sm font-bold text-ink font-sans tracking-tight">AI Chat</h2>
+        <div className="relative shrink-0 pb-3">
+          <div className="flex items-center justify-between px-4 pt-4 pb-1.5">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-accent/10 text-accent ring-1 ring-accent/15">
+                <MessageSquare size={13} />
               </div>
+              <h2 className="text-sm font-bold text-ink font-sans tracking-tight">AI Chat</h2>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handleCreate}
+                className="rounded-lg p-1.5 text-ink-faint/60 hover:text-accent hover:bg-accent/8 transition-all duration-200 active:scale-95"
+                title="New session"
+              >
+                <Plus size={15} />
+              </button>
+              <button
+                onClick={() => setChatOpen(false)}
+                className="shrink-0 rounded-lg p-1.5 text-ink-faint/50 hover:text-ink hover:bg-surface-alt/80 transition-all duration-200 active:scale-95"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 px-4">
+            <span className="text-[10px] font-medium text-ink-faint/40 font-sans tracking-widest uppercase">Session</span>
+            <div className="flex-1 min-w-0">
               <ConversationList
                 conversations={conversations}
                 activeId={activeConversationId}
                 onSelect={handleSelect}
                 onDelete={handleDelete}
               />
-              <button
-                onClick={handleCreate}
-                className="rounded-lg p-1 text-ink-faint hover:text-accent hover:bg-accent/8 transition-all duration-200 active:scale-95"
-                title="New session"
-              >
-                <Plus size={14} />
-              </button>
             </div>
-            <button
-              onClick={() => setChatOpen(false)}
-              className="shrink-0 rounded-lg p-1.5 text-ink-faint hover:text-ink hover:bg-surface-alt/80 transition-all duration-200 active:scale-95"
-            >
-              <X size={15} />
-            </button>
           </div>
         </div>
 

@@ -34,10 +34,10 @@ export function ConversationList({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium text-ink-soft hover:text-ink hover:bg-surface-alt/70 transition-all duration-200 max-w-35 group"
+        className="w-full flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-ink-soft hover:text-ink hover:bg-surface-alt/60 border border-transparent hover:border-border/40 transition-all duration-200 group"
       >
-        <span className="truncate">{activeConv?.title || 'Select session'}</span>
-        <ChevronDown size={11} className={`shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        <span className="flex-1 truncate text-left">{activeConv?.title || 'Select session'}</span>
+        <ChevronDown size={11} className={`shrink-0 text-ink-faint/40 group-hover:text-ink-faint/70 transition-all duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
