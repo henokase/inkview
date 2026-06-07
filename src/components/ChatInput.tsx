@@ -22,6 +22,16 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     }
   }, [])
 
+  // Autofocus after AI finishes responding on larger screens
+  useEffect(() => {
+    if (!isStreaming) {
+      const mq = window.matchMedia('(min-width: 1024px)')
+      if (mq.matches && textareaRef.current) {
+        textareaRef.current.focus()
+      }
+    }
+  }, [isStreaming])
+
   const handleSend = useCallback(() => {
     const trimmed = value.trim()
     if (!trimmed || disabled || isStreaming) return

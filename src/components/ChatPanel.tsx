@@ -7,10 +7,13 @@ import { ChatMessages } from './ChatMessages'
 import { ChatInput } from './ChatInput'
 import { ConfirmModal } from './ConfirmModal'
 
-const CHAT_WIDTH = 500
+const CHAT_WIDTH_SM = 340
+const CHAT_WIDTH_MD = 400
+const CHAT_WIDTH_LG = 500
 
 export function ChatPanel() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [screenWidth, setScreenWidth] = useState(window.innerWidth)
 
   const conversationsByDoc = useChatStore((s) => s.conversationsByDoc)
   const activeConversationId = useChatStore((s) => s.activeConversationId)
@@ -34,8 +37,22 @@ export function ChatPanel() {
   })
 
   useEffect(() => {
-    setChatPanelWidth(CHAT_WIDTH)
-  }, [setChatPanelWidth])
+    const handleResize = () => {
+      setScreenWidth(window.innerWidth)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  const getChatWidth = () => {
+    if (screenWidth < 768) return CHAT_WIDTH_SM
+    if (screenWidth < 1024) return CHAT_WIDTH_MD
+    return CHAT_WIDTH_LG
+  }
+
+  useEffect(() => {
+    setChatPanelWidth(getChatWidth())
+  }, [screenWidth, setChatPanelWidth])
 
   if (!isChatOpen) return null
 
@@ -91,7 +108,7 @@ export function ChatPanel() {
 
       <aside
         className="fixed inset-y-0 right-0 z-40 lg:relative lg:shrink-0 flex flex-col border-l border-border/40 bg-surface shadow-2xl lg:shadow-[-8px_0_32px_-8px_rgba(0,0,0,0.12)] animate-in slide-in-from-right duration-200"
-        style={{ width: CHAT_WIDTH }}
+        style={{ width: getChatWidth() }}
       >
         <div className="relative shrink-0 pb-3">
           <div className="flex items-center justify-between px-4 pt-4 pb-1.5">
@@ -99,7 +116,7 @@ export function ChatPanel() {
               <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-accent/10 text-accent ring-1 ring-accent/15">
                 <MessageSquare size={13} />
               </div>
-              <h2 className="text-sm font-bold text-ink font-sans tracking-tight">AI Chat</h2>
+              <h2 className="text-sm font-bold text-ink font-sans tracking-tight">Chat</h2>
             </div>
             <div className="flex items-center gap-1">
               <button
