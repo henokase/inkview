@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState } from 'react'
+import { useRef, useCallback, useState, useEffect } from 'react'
 import { Send, Square, X, Quote } from 'lucide-react'
 import { useChatStore } from '../stores/chat-store'
 
@@ -14,6 +14,13 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const stopGeneration = useChatStore((s) => s.stopGeneration)
   const [value, setValue] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)')
+    if (mq.matches && textareaRef.current) {
+      textareaRef.current.focus()
+    }
+  }, [])
 
   const handleSend = useCallback(() => {
     const trimmed = value.trim()

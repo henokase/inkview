@@ -6,10 +6,12 @@ import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
 import { MessageSquare, Copy, Pencil, Check, X } from 'lucide-react'
 import type { Message } from '../types'
+import { ThinkingView } from './ThinkingView'
 
 interface ChatMessagesProps {
   messages: Message[]
   isStreaming: boolean
+  activeThinking?: string
   onEdit?: (msgId: string, newContent: string) => void
 }
 
@@ -195,7 +197,7 @@ function useKeydown(active: boolean, onSave: () => void, onCancel: () => void) {
   }, [active, onSave, onCancel])
 }
 
-export function ChatMessages({ messages, isStreaming, onEdit }: ChatMessagesProps) {
+export function ChatMessages({ messages, isStreaming, activeThinking, onEdit }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [userScrolledUp, setUserScrolledUp] = useState(false)
   const prevLengthRef = useRef(messages.length)
@@ -232,6 +234,9 @@ export function ChatMessages({ messages, isStreaming, onEdit }: ChatMessagesProp
     setUserScrolledUp(!isAtBottom)
   }
 
+  const lastMsg = messages[messages.length - 1]
+  const isThinkingPhase = isStreaming && lastMsg?.role === 'assistant' && !lastMsg.content
+
   if (messages.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-8 py-12">
@@ -253,15 +258,20 @@ export function ChatMessages({ messages, isStreaming, onEdit }: ChatMessagesProp
         className="h-full overflow-y-auto px-2.5 pt-4 scroll-smooth"
       >
         <div className="space-y-4">
-          {messages.map((msg, index) => (
-            <MessageBubble
-              key={msg.id}
-              msg={msg}
-              isLastStreaming={isStreaming && msg.role === 'assistant' && index === messages.length - 1}
-              isLastUserMessage={msg.role === 'user' && index === lastUserMsgIndex}
-              onEdit={onEdit}
-            />
-          ))}
+          {messages.map((msg, index) => {
+            if (isThinkingPhase && index === messages.length - 1) {
+              return <ThinkingView key={msg.id} thinking={activeThinking} />
+            }
+            return (
+              <MessageBubble
+                key={msg.id}
+                msg={msg}
+                isLastStreaming={isStreaming && msg.role === 'assistant' && index === messages.length - 1}
+                isLastUserMessage={msg.role === 'user' && index === lastUserMsgIndex}
+                onEdit={onEdit}
+              />
+            )
+          })}
         </div>
         <div className="h-20" />
       </div>

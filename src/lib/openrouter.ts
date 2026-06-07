@@ -4,6 +4,7 @@ const BASE_URL = '/api-ai'
 
 interface StreamChunk {
   content: string
+  reasoning: string
   done: boolean
 }
 
@@ -21,6 +22,7 @@ export async function* streamChat(
   if (!API_KEY) {
     yield {
       content: 'API key not configured. Set VITE_AI_API_KEY in your environment.',
+      reasoning: '',
       done: true,
     }
     return
@@ -50,13 +52,13 @@ export async function* streamChat(
         errorMsg = err.error?.message || err.message || errorMsg
       } catch {}
     } catch {}
-    yield { content: errorMsg, done: true }
+    yield { content: errorMsg, reasoning: '', done: true }
     return
   }
 
   const reader = response.body?.getReader()
   if (!reader) {
-    yield { content: 'Failed to read response stream', done: true }
+    yield { content: 'Failed to read response stream', reasoning: '', done: true }
     return
   }
 
@@ -78,18 +80,19 @@ export async function* streamChat(
 
         const data = trimmed.slice(6)
         if (data === '[DONE]') {
-          yield { content: '', done: true }
+          yield { content: '', reasoning: '', done: true }
           return
         }
 
         try {
           const parsed = JSON.parse(data)
+          const reasoning = parsed.choices?.[0]?.delta?.reasoning_content || ''
           const content = parsed.choices?.[0]?.delta?.content || ''
-          if (content) {
-            yield { content, done: false }
+          if (reasoning || content) {
+            yield { reasoning, content, done: false }
           }
           if (parsed.choices?.[0]?.finish_reason === 'stop') {
-            yield { content: '', done: true }
+            yield { content: '', reasoning: '', done: true }
             return
           }
         } catch {}
@@ -99,5 +102,5 @@ export async function* streamChat(
     reader.cancel().catch(() => {})
   }
 
-  yield { content: '', done: true }
+  yield { content: '', reasoning: '', done: true }
 }

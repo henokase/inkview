@@ -16,12 +16,14 @@ export function ChatPanel() {
   const activeConversationId = useChatStore((s) => s.activeConversationId)
   const messagesByConv = useChatStore((s) => s.messagesByConv)
   const isStreaming = useChatStore((s) => s.isStreaming)
+  const activeThinking = useChatStore((s) => s.activeThinking)
   const isChatOpen = useChatStore((s) => s.isChatOpen)
   const setChatOpen = useChatStore((s) => s.setChatOpen)
   const createConversation = useChatStore((s) => s.createConversation)
   const deleteConversation = useChatStore((s) => s.deleteConversation)
   const setActiveConversation = useChatStore((s) => s.setActiveConversation)
   const setChatPanelWidth = useChatStore((s) => s.setChatPanelWidth)
+  const draftConversations = useChatStore((s) => s.draftConversations)
   const sendMessage = useChatStore((s) => s.sendMessage)
   const editMessage = useChatStore((s) => s.editMessage)
 
@@ -38,7 +40,8 @@ export function ChatPanel() {
   if (!isChatOpen) return null
 
   const activeDocId = activeDoc?.id || ''
-  const conversations = conversationsByDoc[activeDocId] || []
+  const allConversations = conversationsByDoc[activeDocId] || []
+  const conversations = allConversations.filter(c => !draftConversations[c.id])
   const messages = activeConversationId ? messagesByConv[activeConversationId] || [] : []
   const deleteConv = conversations.find((c) => c.id === deleteConfirmId)
 
@@ -127,10 +130,10 @@ export function ChatPanel() {
           </div>
         </div>
 
-        <ChatMessages messages={messages} isStreaming={isStreaming} onEdit={handleEdit} />
+        <ChatMessages messages={messages} isStreaming={isStreaming} activeThinking={activeThinking} onEdit={handleEdit} />
 
         <div className="shrink-0 border-t border-border/50">
-          <ChatInput onSend={handleSend} />
+          <ChatInput key={activeConversationId ?? 'no-session'} onSend={handleSend} />
         </div>
       </aside>
 

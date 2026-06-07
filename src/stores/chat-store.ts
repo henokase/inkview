@@ -15,6 +15,7 @@ interface ChatStore {
   messagesByConv: Record<string, Message[]>
   activeConversationId: string | null
   isStreaming: boolean
+  activeThinking: string
   selectedText: string
   contextText: string
   isChatOpen: boolean
@@ -34,6 +35,7 @@ interface ChatStore {
   setActiveConversation: (id: string | null) => void
 
   sendMessage: (content: string, documentContent: string, documentId?: string) => Promise<void>
+  clearActiveThinking: () => void
   editMessage: (convId: string, msgId: string, newContent: string, documentContent: string) => Promise<void>
   _streamResponse: (convId: string, documentContent: string) => Promise<void>
   stopGeneration: () => void
@@ -46,6 +48,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   messagesByConv: {},
   activeConversationId: null,
   isStreaming: false,
+  activeThinking: '',
   selectedText: '',
   contextText: '',
   isChatOpen: false,
@@ -57,6 +60,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   setContextText: (text) => set({ contextText: text }),
   setChatOpen: (open) => set({ isChatOpen: open }),
   setChatPanelWidth: (width) => set({ chatPanelWidth: width }),
+  clearActiveThinking: () => set({ activeThinking: '' }),
 
   init: async (documentId) => {
     const convs = await loadConversationsForDocument(documentId)
@@ -272,6 +276,8 @@ Instructions:
 
     try {
       let fullContent = ''
+      let accumulatedThinking = ''
+      let hasContentStarted = false
       let flushRaf: number | null = null
       const flush = () => {
         flushRaf = null
@@ -286,9 +292,31 @@ Instructions:
       }
       for await (const chunk of streamChat(apiMessages, abortController.signal)) {
         if (chunk.done) break
-        fullContent += chunk.content
-        if (flushRaf === null) {
-          flushRaf = requestAnimationFrame(flush)
+        if (chunk.reasoning) {
+          accumulatedThinking += chunk.reasoning
+          if (!hasContentStarted) {
+            set({ activeThinking: accumulatedThinking })
+          }
+        }
+        if (chunk.content) {
+          if (!hasContentStarted && accumulatedThinking) {
+            set((s) => ({
+              activeThinking: '',
+              messagesByConv: {
+                ...s.messagesByConv,
+                [convId]: (s.messagesByConv[convId] || []).map((m) =>
+                  m.id === assistantId ? { ...m, thinking: accumulatedThinking } : m
+                ),
+              },
+            }))
+          }
+          hasContentStarted = true
+        }
+        if (chunk.content) {
+          fullContent += chunk.content
+          if (flushRaf === null) {
+            flushRaf = requestAnimationFrame(flush)
+          }
         }
       }
       if (flushRaf !== null) cancelAnimationFrame(flushRaf)
@@ -317,7 +345,7 @@ Instructions:
       }
     } finally {
       abortControllers.delete(convId)
-      set({ isStreaming: false })
+      set({ isStreaming: false, activeThinking: '' })
     }
   },
 
