@@ -1,8 +1,5 @@
 {
   "rewrites": [
-    {
-      "source": "/api-ai/(.*)",
-      "destination": "${VITE_AI_BASE_URL}/$1"
-    }
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
