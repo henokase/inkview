@@ -247,9 +247,9 @@ Instructions:
 
     try {
       let fullContent = ''
-      for await (const chunk of streamChat(apiMessages, abortController.signal)) {
-        if (chunk.done) break
-        fullContent += chunk.content
+      let flushRaf: number | null = null
+      const flush = () => {
+        flushRaf = null
         set((s) => ({
           messagesByConv: {
             ...s.messagesByConv,
@@ -259,6 +259,15 @@ Instructions:
           },
         }))
       }
+      for await (const chunk of streamChat(apiMessages, abortController.signal)) {
+        if (chunk.done) break
+        fullContent += chunk.content
+        if (flushRaf === null) {
+          flushRaf = requestAnimationFrame(flush)
+        }
+      }
+      if (flushRaf !== null) cancelAnimationFrame(flushRaf)
+      flush()
 
       const final = get().messagesByConv[convId!]?.find((m) => m.id === assistantId)
       if (final) {

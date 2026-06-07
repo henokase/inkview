@@ -12,7 +12,6 @@ A modern Markdown viewer and editor built with React 19, TypeScript 6, Vite 8, a
 - **Inline title editing** — click the document title in the navbar to rename
 - **File import** — drag-and-drop or click to upload `.md` files
 - **Dark/Light theme** with system preference support, solarized light + warm dark palette, anti-FOUC
-- **Draggable split divider** with direct DOM manipulation (zero re-renders during drag)
 - **Persistent state** — documents and theme saved to `localStorage`
 
 ## Tech Stack

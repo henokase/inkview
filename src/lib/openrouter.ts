@@ -1,6 +1,8 @@
-const BASE_URL = import.meta.env.VITE_AI_BASE_URL || 'https://openrouter.ai/api/v1'
+const RAW_BASE_URL = import.meta.env.VITE_AI_BASE_URL || 'https://openrouter.ai/api/v1'
 const API_KEY = import.meta.env.VITE_AI_API_KEY
 const MODEL = import.meta.env.VITE_AI_MODEL || 'openrouter/free'
+
+const BASE_URL = import.meta.env.DEV ? '/api-ai' : RAW_BASE_URL
 
 interface StreamChunk {
   content: string
@@ -38,7 +40,11 @@ export async function generateTitle(firstMessage: string): Promise<string> {
       }),
     })
 
-    if (!response.ok) return ''
+    if (!response.ok) {
+      const body = await response.text()
+      console.error(`[API] generateTitle ${response.status}:`, body)
+      return ''
+    }
     const data = await response.json()
     const title = data.choices?.[0]?.message?.content?.trim() || ''
     return title.replace(/^["'\s]+|["'\s]+$/g, '')
@@ -76,8 +82,12 @@ export async function* streamChat(
   if (!response.ok) {
     let errorMsg = `API error (${response.status})`
     try {
-      const err = await response.json()
-      errorMsg = err.error?.message || errorMsg
+      const body = await response.text()
+      console.error(`[API] ${response.status} response:`, body)
+      try {
+        const err = JSON.parse(body)
+        errorMsg = err.error?.message || err.message || errorMsg
+      } catch {}
     } catch {}
     yield { content: errorMsg, done: true }
     return

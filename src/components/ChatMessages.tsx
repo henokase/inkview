@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { MessageSquare } from 'lucide-react'
@@ -29,7 +29,7 @@ function ChatMarkdown({ content }: { content: string }) {
           if (match) {
             return (
               <div className="my-2.5 rounded-lg border border-border/60 bg-surface-alt/80 overflow-x-auto backdrop-blur-sm">
-                <pre className="px-3.5 py-2.5 text-xs font-mono leading-relaxed text-ink whitespace-pre">
+                <pre className="px-3.5 py-2.5 text-xs font-mono leading-relaxed text-ink w-max min-w-full">
                   <code>{code}</code>
                 </pre>
               </div>
@@ -47,8 +47,8 @@ function ChatMarkdown({ content }: { content: string }) {
         ),
         hr: () => <hr className="my-4 border-border/40" />,
         table: ({ children }) => (
-          <div className="mb-3 overflow-hidden rounded-xl border border-border/50 shadow-xs">
-            <table className="w-full border-collapse text-xs chat-table">{children}</table>
+          <div className="mb-3 overflow-x-auto rounded-xl border border-border/50 shadow-xs">
+            <table className="w-max min-w-full border-collapse text-xs chat-table">{children}</table>
           </div>
         ),
         th: ({ children }) => <th className="bg-surface-alt/90 px-3.5 py-2 text-left font-semibold text-ink text-[11px] tracking-wider uppercase border-b border-border/40">{children}</th>,
@@ -63,6 +63,50 @@ function ChatMarkdown({ content }: { content: string }) {
   )
 }
 
+const ChatMarkdownMemo = memo(ChatMarkdown)
+
+interface MessageBubbleProps {
+  msg: Message
+  isLastStreaming: boolean
+}
+
+const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming }: MessageBubbleProps) {
+  return (
+    <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in duration-200`}>
+      <div className={`${msg.role === 'user' ? 'max-w-[88%]' : 'w-full'}`}>
+        <div
+          className={`relative ${
+            msg.role === 'user'
+              ? 'bg-linear-to-br from-accent to-accent-soft text-white rounded-2xl rounded-br-md shadow-sm shadow-accent/15'
+              : 'bg-surface-alt/70 text-ink border border-border/40 rounded-2xl shadow-sm'
+          } ${msg.role === 'user' ? 'px-3.5 py-2.5' : 'px-4 py-3'}`}
+        >
+          {msg.role === 'user' ? (
+            <p className="whitespace-pre-wrap text-[13px] leading-relaxed font-medium">{msg.content}</p>
+          ) : msg.content ? (
+            isLastStreaming ? (
+              <>
+                <p className="whitespace-pre-wrap text-[13px] leading-relaxed">{msg.content}</p>
+                <span className="inline-block w-1.5 h-4 bg-accent ml-0.5 rounded-sm animate-pulse align-text-bottom" />
+              </>
+            ) : (
+              <div className="prose prose-sm max-w-none">
+                <ChatMarkdownMemo content={msg.content} />
+              </div>
+            )
+          ) : (
+            <div className="flex items-center gap-2 text-ink-faint">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+})
+
 export function ChatMessages({ messages, isStreaming }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [userScrolledUp, setUserScrolledUp] = useState(false)
@@ -72,16 +116,11 @@ export function ChatMessages({ messages, isStreaming }: ChatMessagesProps) {
     const el = scrollRef.current
     if (!el) return
     const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100
-    setUserScrolledUp(!isAtBottom)
-  }, [messages.length])
-
-  useEffect(() => {
-    const length = messages.length
-    if (length > prevLengthRef.current && !userScrolledUp && scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    if (messages.length > prevLengthRef.current && isAtBottom) {
+      el.scrollTop = el.scrollHeight
     }
-    prevLengthRef.current = length
-  }, [messages.length, userScrolledUp])
+    prevLengthRef.current = messages.length
+  }, [messages.length])
 
   const handleScroll = () => {
     const el = scrollRef.current
@@ -108,40 +147,14 @@ export function ChatMessages({ messages, isStreaming }: ChatMessagesProps) {
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="h-full overflow-y-auto px-3 py-4 space-y-4 scroll-smooth"
+        className="h-full overflow-y-auto px-2.5 py-4 space-y-4 scroll-smooth"
       >
-        {messages.map((msg) => (
-          <div
+        {messages.map((msg, index) => (
+          <MessageBubble
             key={msg.id}
-          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in duration-200`}
-          >
-            <div className={`${msg.role === 'user' ? 'max-w-[88%]' : 'w-full'}`}>
-              <div
-                className={`relative ${
-                  msg.role === 'user'
-                    ? 'bg-linear-to-br from-accent to-accent-soft text-white rounded-2xl rounded-br-md shadow-sm shadow-accent/15'
-                    : 'bg-surface-alt/70 text-ink border border-border/40 rounded-2xl shadow-sm'
-                } ${msg.role === 'user' ? 'px-3.5 py-2.5' : 'px-4 py-3'}`}
-              >
-                {msg.role === 'user' ? (
-                  <p className="whitespace-pre-wrap text-[13px] leading-relaxed font-medium">{msg.content}</p>
-                ) : msg.content ? (
-                  <div className="prose prose-sm max-w-none">
-                    <ChatMarkdown content={msg.content} />
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-ink-faint">
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </div>
-                )}
-                {isStreaming && msg === messages[messages.length - 1] && msg.role === 'assistant' && msg.content && (
-                  <span className="inline-block w-1.5 h-4 bg-accent ml-0.5 rounded-sm animate-pulse align-text-bottom" />
-                )}
-              </div>
-            </div>
-          </div>
+            msg={msg}
+            isLastStreaming={isStreaming && msg.role === 'assistant' && index === messages.length - 1}
+          />
         ))}
       </div>
 
