@@ -111,16 +111,40 @@ export function ChatMessages({ messages, isStreaming }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [userScrolledUp, setUserScrolledUp] = useState(false)
   const prevLengthRef = useRef(messages.length)
+  const prevLastContentRef = useRef('')
+  const mountedRef = useRef(false)
+
+  const lastMsgContent = messages[messages.length - 1]?.content || ''
 
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
-    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100
-    if (messages.length > prevLengthRef.current && isAtBottom) {
+
+    if (!mountedRef.current) {
+      mountedRef.current = true
       el.scrollTop = el.scrollHeight
+      prevLengthRef.current = messages.length
+      prevLastContentRef.current = lastMsgContent
+      return
     }
-    prevLengthRef.current = messages.length
-  }, [messages.length])
+
+    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100
+    if (messages.length > prevLengthRef.current) {
+      prevLengthRef.current = messages.length
+      prevLastContentRef.current = lastMsgContent
+      if (isAtBottom) {
+        el.scrollTop = el.scrollHeight
+      }
+      return
+    }
+
+    if (lastMsgContent !== prevLastContentRef.current) {
+      prevLastContentRef.current = lastMsgContent
+      if (!userScrolledUp) {
+        el.scrollTop = el.scrollHeight
+      }
+    }
+  }, [messages.length, lastMsgContent, userScrolledUp])
 
   const handleScroll = () => {
     const el = scrollRef.current
@@ -147,15 +171,18 @@ export function ChatMessages({ messages, isStreaming }: ChatMessagesProps) {
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="h-full overflow-y-auto px-2.5 py-4 space-y-4 scroll-smooth"
+        className="h-full overflow-y-auto px-2.5 pt-4 scroll-smooth"
       >
-        {messages.map((msg, index) => (
-          <MessageBubble
-            key={msg.id}
-            msg={msg}
-            isLastStreaming={isStreaming && msg.role === 'assistant' && index === messages.length - 1}
-          />
-        ))}
+        <div className="space-y-4">
+          {messages.map((msg, index) => (
+            <MessageBubble
+              key={msg.id}
+              msg={msg}
+              isLastStreaming={isStreaming && msg.role === 'assistant' && index === messages.length - 1}
+            />
+          ))}
+        </div>
+        <div className="h-20" />
       </div>
 
       {userScrolledUp && (

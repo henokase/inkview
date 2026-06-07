@@ -208,14 +208,13 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
 
     const systemMessage = {
       role: 'system',
-      content: `You are a helpful AI assistant analyzing a document. Use the document content below to answer questions.
+      content: `You are a helpful AI assistant analyzing a document. I'll as questions based on the below document, and you provid the answer accrodingly.
 
 DOCUMENT CONTENT:
 ${documentContent}
 
 Instructions:
-- Base your answers only on the provided document context.
-- If the answer isn't in the document, say so directly.
+- When answering you may use the document as context, but not solely depend on it.
 - Use markdown formatting in your responses.`,
     }
 
