@@ -38,6 +38,7 @@ export async function* streamChat(
       model: MODEL,
       messages: buildMessages(messages),
       stream: true,
+      reasoning_effort: 'low',
     }),
     signal,
   })
