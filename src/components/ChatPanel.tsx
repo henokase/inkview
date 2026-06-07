@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Plus, X, MessageSquare } from 'lucide-react'
 import { useChatStore } from '../stores/chat-store'
 import { useDocumentStore } from '../stores/document-store'
 import { ConversationList } from './ConversationList'
 import { ChatMessages } from './ChatMessages'
-import { ChatInput } from './ChatInput'
+import { ChatInput, type ChatInputHandle } from './ChatInput'
 import { ConfirmModal } from './ConfirmModal'
 
 const CHAT_WIDTH_SM = 340
@@ -14,6 +14,7 @@ const CHAT_WIDTH_LG = 500
 export function ChatPanel() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [screenWidth, setScreenWidth] = useState(window.innerWidth)
+  const chatInputRef = useRef<ChatInputHandle>(null)
 
   const conversationsByDoc = useChatStore((s) => s.conversationsByDoc)
   const activeConversationId = useChatStore((s) => s.activeConversationId)
@@ -92,6 +93,8 @@ export function ChatPanel() {
       }
       deleteConversation(deleteConfirmId)
       setDeleteConfirmId(null)
+      // Focus input after deletion
+      setTimeout(() => chatInputRef.current?.focus(), 0)
     }
   }
 
@@ -110,15 +113,23 @@ export function ChatPanel() {
         className="fixed inset-y-0 right-0 z-40 lg:relative lg:shrink-0 flex flex-col border-l border-border/40 bg-surface shadow-2xl lg:shadow-[-8px_0_32px_-8px_rgba(0,0,0,0.12)] animate-in slide-in-from-right duration-200"
         style={{ width: getChatWidth() }}
       >
-        <div className="relative shrink-0 pb-3">
-          <div className="flex items-center justify-between px-4 pt-4 pb-1.5">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-accent/10 text-accent ring-1 ring-accent/15">
+        <div className="relative shrink-0 pb-0">
+          <div className="flex items-center justify-between px-4 pt-4 pb-1.5 gap-2">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-accent/10 text-accent ring-1 ring-accent/15 shrink-0">
                 <MessageSquare size={13} />
               </div>
-              <h2 className="text-sm font-bold text-ink font-sans tracking-tight">Chat</h2>
+              {/* <h2 className="text-sm font-bold text-ink font-sans tracking-tight shrink-0">Chat</h2> */}
+              <div className="flex-1 min-w-0">
+                <ConversationList
+                  conversations={conversations}
+                  activeId={activeConversationId}
+                  onSelect={handleSelect}
+                  onDelete={handleDelete}
+                />
+              </div>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 shrink-0">
               <button
                 onClick={handleCreate}
                 className="rounded-lg p-1.5 text-ink-faint hover:text-accent hover:bg-accent/8 transition-all duration-200 active:scale-95"
@@ -134,23 +145,12 @@ export function ChatPanel() {
               </button>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 px-4">
-            <span className="text-[10px] font-bold text-slate-700 dark:text-slate-400 font-sans tracking-widest uppercase">Session</span>
-            <div className="flex-1 min-w-0">
-              <ConversationList
-                conversations={conversations}
-                activeId={activeConversationId}
-                onSelect={handleSelect}
-                onDelete={handleDelete}
-              />
-            </div>
-          </div>
         </div>
 
         <ChatMessages messages={messages} isStreaming={isStreaming} activeThinking={activeThinking} onEdit={handleEdit} />
 
         <div className="shrink-0 border-t border-border/50">
-          <ChatInput key={activeConversationId ?? 'no-session'} onSend={handleSend} />
+          <ChatInput ref={chatInputRef} key={activeConversationId ?? 'no-session'} onSend={handleSend} />
         </div>
       </aside>
 

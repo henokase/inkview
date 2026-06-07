@@ -154,7 +154,7 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
           )}
         </div>
 
-        <div className={`flex items-center gap-1 mt-1.5 px-1 ${editing ? 'justify-end' : ''}`}>
+        <div className={`flex items-center gap-1 mt-1.5 px-1 justify-end ${editing ? 'justify-end' : ''}`}>
           {editing ? (
             <>
               <button onClick={handleCancel} className="rounded-md p-1.5 text-ink-faint/70 hover:text-ink hover:bg-surface-alt transition-all duration-150" title="Cancel">

@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState, useEffect } from 'react'
+import { useRef, useCallback, useState, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { Send, Square, X, Quote } from 'lucide-react'
 import { useChatStore } from '../stores/chat-store'
 
@@ -7,7 +7,12 @@ interface ChatInputProps {
   disabled?: boolean
 }
 
-export function ChatInput({ onSend, disabled }: ChatInputProps) {
+export interface ChatInputHandle {
+  focus: () => void
+}
+
+const ChatInputComponent = forwardRef<ChatInputHandle, ChatInputProps>(
+  ({ onSend, disabled }, ref) => {
   const contextText = useChatStore((s) => s.contextText)
   const setContextText = useChatStore((s) => s.setContextText)
   const isStreaming = useChatStore((s) => s.isStreaming)
@@ -31,6 +36,12 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
       }
     }
   }, [isStreaming])
+
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      textareaRef.current?.focus()
+    }
+  }), [])
 
   const handleSend = useCallback(() => {
     const trimmed = value.trim()
@@ -115,4 +126,8 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
       </div>
     </div>
   )
-}
+})
+
+ChatInputComponent.displayName = 'ChatInput'
+
+export const ChatInput = ChatInputComponent
