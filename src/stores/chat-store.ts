@@ -7,7 +7,7 @@ import {
   loadMessagesForConversation,
   saveMessage,
 } from '../lib/db'
-import { streamChat, generateTitle } from '../lib/openrouter'
+import { streamChat } from '../lib/openrouter'
 
 interface ChatStore {
   conversationsByDoc: Record<string, Conversation[]>
@@ -57,26 +57,16 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
 
   init: async (documentId) => {
     const convs = await loadConversationsForDocument(documentId)
+    const msgsByConv: Record<string, Message[]> = {}
+    for (const conv of convs) {
+      msgsByConv[conv.id] = await loadMessagesForConversation(conv.id)
+    }
     set((s) => ({
       conversationsByDoc: { ...s.conversationsByDoc, [documentId]: convs },
+      messagesByConv: { ...s.messagesByConv, ...msgsByConv },
+      activeConversationId: null,
       _hydrated: true,
     }))
-
-    const currentActive = get().activeConversationId
-    const belongsToDoc = convs.some((c) => c.id === currentActive)
-
-    if (!belongsToDoc) {
-      if (convs.length > 0) {
-        const latest = convs[convs.length - 1]
-        set({ activeConversationId: latest.id })
-        const msgs = await loadMessagesForConversation(latest.id)
-        set((s) => ({
-          messagesByConv: { ...s.messagesByConv, [latest.id]: msgs },
-        }))
-      } else {
-        set({ activeConversationId: null })
-      }
-    }
   },
 
   createConversation: (documentId) => {
@@ -204,6 +194,10 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
       contextText: '',
     }))
 
+    if (isFirstMessage) {
+      get().renameConversation(convId, content)
+    }
+
     const currentMessages = get().messagesByConv[convId!] || []
 
     const systemMessage = {
@@ -271,14 +265,6 @@ Instructions:
       const final = get().messagesByConv[convId!]?.find((m) => m.id === assistantId)
       if (final) {
         saveMessage(final)
-      }
-
-      if (isFirstMessage && final && final.content) {
-        generateTitle(userContent).then((title) => {
-          if (title) {
-            get().renameConversation(convId, title)
-          }
-        })
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {

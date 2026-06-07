@@ -1,6 +1,9 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
+import 'katex/dist/katex.min.css'
 import { MessageSquare } from 'lucide-react'
 import type { Message } from '../types'
 
@@ -12,7 +15,8 @@ interface ChatMessagesProps {
 function ChatMarkdown({ content }: { content: string }) {
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
+      remarkPlugins={[remarkGfm, remarkMath]}
+      rehypePlugins={[rehypeKatex]}
       components={{
         p: ({ children }) => <p className="mb-2.5 last:mb-0 leading-relaxed text-[13px]">{children}</p>,
         ul: ({ children }) => <ul className="mb-2.5 ml-4 list-disc space-y-0.5">{children}</ul>,
@@ -111,10 +115,7 @@ export function ChatMessages({ messages, isStreaming }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [userScrolledUp, setUserScrolledUp] = useState(false)
   const prevLengthRef = useRef(messages.length)
-  const prevLastContentRef = useRef('')
   const mountedRef = useRef(false)
-
-  const lastMsgContent = messages[messages.length - 1]?.content || ''
 
   useEffect(() => {
     const el = scrollRef.current
@@ -124,27 +125,14 @@ export function ChatMessages({ messages, isStreaming }: ChatMessagesProps) {
       mountedRef.current = true
       el.scrollTop = el.scrollHeight
       prevLengthRef.current = messages.length
-      prevLastContentRef.current = lastMsgContent
       return
     }
 
-    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100
     if (messages.length > prevLengthRef.current) {
       prevLengthRef.current = messages.length
-      prevLastContentRef.current = lastMsgContent
-      if (isAtBottom) {
-        el.scrollTop = el.scrollHeight
-      }
-      return
+      el.scrollTop = el.scrollHeight
     }
-
-    if (lastMsgContent !== prevLastContentRef.current) {
-      prevLastContentRef.current = lastMsgContent
-      if (!userScrolledUp) {
-        el.scrollTop = el.scrollHeight
-      }
-    }
-  }, [messages.length, lastMsgContent, userScrolledUp])
+  }, [messages.length])
 
   const handleScroll = () => {
     const el = scrollRef.current

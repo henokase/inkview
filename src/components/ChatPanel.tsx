@@ -83,21 +83,21 @@ export function ChatPanel() {
             <div className="flex items-center gap-1">
               <button
                 onClick={handleCreate}
-                className="rounded-lg p-1.5 text-ink-faint/60 hover:text-accent hover:bg-accent/8 transition-all duration-200 active:scale-95"
+                className="rounded-lg p-1.5 text-ink-faint hover:text-accent hover:bg-accent/8 transition-all duration-200 active:scale-95"
                 title="New session"
               >
                 <Plus size={15} />
               </button>
               <button
                 onClick={() => setChatOpen(false)}
-                className="shrink-0 rounded-lg p-1.5 text-ink-faint/50 hover:text-ink hover:bg-surface-alt/80 transition-all duration-200 active:scale-95"
+                className="shrink-0 rounded-lg p-1.5 text-ink-faint hover:text-ink hover:bg-surface-alt/80 transition-all duration-200 active:scale-95"
               >
                 <X size={15} />
               </button>
             </div>
           </div>
           <div className="flex items-center gap-1.5 px-4">
-            <span className="text-[10px] font-medium text-ink-faint/40 font-sans tracking-widest uppercase">Session</span>
+            <span className="text-[10px] font-bold text-slate-700 dark:text-slate-400 font-sans tracking-widest uppercase">Session</span>
             <div className="flex-1 min-w-0">
               <ConversationList
                 conversations={conversations}
