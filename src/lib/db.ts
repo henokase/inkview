@@ -150,4 +150,12 @@ export async function saveMessage(msg: Message): Promise<void> {
   await db.messages.put(msg)
 }
 
+export async function deleteMessagesSince(conversationId: string, sinceCreatedAt: number): Promise<void> {
+  await db.messages
+    .where('conversationId')
+    .equals(conversationId)
+    .filter((m) => m.createdAt >= sinceCreatedAt)
+    .delete()
+}
+
 export { db }

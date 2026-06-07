@@ -1,14 +1,17 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus, X, MessageSquare } from 'lucide-react'
 import { useChatStore } from '../stores/chat-store'
 import { useDocumentStore } from '../stores/document-store'
 import { ConversationList } from './ConversationList'
 import { ChatMessages } from './ChatMessages'
 import { ChatInput } from './ChatInput'
+import { ConfirmModal } from './ConfirmModal'
 
 const CHAT_WIDTH = 500
 
 export function ChatPanel() {
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+
   const conversationsByDoc = useChatStore((s) => s.conversationsByDoc)
   const activeConversationId = useChatStore((s) => s.activeConversationId)
   const messagesByConv = useChatStore((s) => s.messagesByConv)
@@ -20,6 +23,7 @@ export function ChatPanel() {
   const setActiveConversation = useChatStore((s) => s.setActiveConversation)
   const setChatPanelWidth = useChatStore((s) => s.setChatPanelWidth)
   const sendMessage = useChatStore((s) => s.sendMessage)
+  const editMessage = useChatStore((s) => s.editMessage)
 
   const activeDoc = useDocumentStore((s) => {
     const docs = s.documents
@@ -36,6 +40,7 @@ export function ChatPanel() {
   const activeDocId = activeDoc?.id || ''
   const conversations = conversationsByDoc[activeDocId] || []
   const messages = activeConversationId ? messagesByConv[activeConversationId] || [] : []
+  const deleteConv = conversations.find((c) => c.id === deleteConfirmId)
 
   const handleSend = (content: string) => {
     sendMessage(content, activeDoc?.content || '', activeDocId)
@@ -50,11 +55,24 @@ export function ChatPanel() {
     }
   }
 
-  const handleDelete = (id: string) => {
-    if (id === activeConversationId) {
-      setActiveConversation(null)
+  const handleEdit = (msgId: string, newContent: string) => {
+    if (activeConversationId) {
+      editMessage(activeConversationId, msgId, newContent, activeDoc?.content || '')
     }
-    deleteConversation(id)
+  }
+
+  const handleDelete = (id: string) => {
+    setDeleteConfirmId(id)
+  }
+
+  const confirmDelete = () => {
+    if (deleteConfirmId) {
+      if (deleteConfirmId === activeConversationId) {
+        setActiveConversation(null)
+      }
+      deleteConversation(deleteConfirmId)
+      setDeleteConfirmId(null)
+    }
   }
 
   const handleSelect = (id: string) => {
@@ -109,12 +127,22 @@ export function ChatPanel() {
           </div>
         </div>
 
-        <ChatMessages messages={messages} isStreaming={isStreaming} />
+        <ChatMessages messages={messages} isStreaming={isStreaming} onEdit={handleEdit} />
 
         <div className="shrink-0 border-t border-border/50">
           <ChatInput onSend={handleSend} />
         </div>
       </aside>
+
+      <ConfirmModal
+        open={!!deleteConfirmId}
+        title="Delete session"
+        message={`Are you sure you want to delete "${deleteConv?.title || 'this session'}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
     </>
   )
 }

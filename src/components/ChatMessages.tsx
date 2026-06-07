@@ -1,15 +1,16 @@
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
-import { MessageSquare } from 'lucide-react'
+import { MessageSquare, Copy, Pencil, Check, X } from 'lucide-react'
 import type { Message } from '../types'
 
 interface ChatMessagesProps {
   messages: Message[]
   isStreaming: boolean
+  onEdit?: (msgId: string, newContent: string) => void
 }
 
 function ChatMarkdown({ content }: { content: string }) {
@@ -72,20 +73,64 @@ const ChatMarkdownMemo = memo(ChatMarkdown)
 interface MessageBubbleProps {
   msg: Message
   isLastStreaming: boolean
+  isLastUserMessage: boolean
+  onEdit?: (msgId: string, newContent: string) => void
 }
 
-const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming }: MessageBubbleProps) {
+const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLastUserMessage, onEdit }: MessageBubbleProps) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(msg.content)
+  const [copied, setCopied] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (editing && textareaRef.current) {
+      textareaRef.current.focus()
+      textareaRef.current.setSelectionRange(draft.length, draft.length)
+    }
+  }, [editing])
+
+  const handleCopy = useCallback(async () => {
+    await navigator.clipboard.writeText(msg.content)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }, [msg.content])
+
+  const handleSave = useCallback(() => {
+    if (draft.trim() && draft !== msg.content) {
+      onEdit?.(msg.id, draft)
+    }
+    setEditing(false)
+  }, [draft, msg.content, msg.id, onEdit])
+
+  const handleCancel = useCallback(() => {
+    setDraft(msg.content)
+    setEditing(false)
+  }, [msg.content])
+
+  useKeydown(editing, handleSave, handleCancel)
+
+  const isUser = msg.role === 'user'
+
   return (
-    <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in duration-200`}>
-      <div className={`${msg.role === 'user' ? 'max-w-[88%]' : 'w-full'}`}>
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-in fade-in duration-200`}>
+      <div className={`${isUser ? (editing ? 'w-full' : 'max-w-[88%]') : 'w-full'}`}>
         <div
           className={`relative ${
-            msg.role === 'user'
-              ? 'bg-linear-to-br from-accent to-accent-soft text-white rounded-2xl rounded-br-md shadow-sm shadow-accent/15'
-              : 'bg-surface-alt/70 text-ink border border-border/40 rounded-2xl shadow-sm'
-          } ${msg.role === 'user' ? 'px-3.5 py-2.5' : 'px-4 py-3'}`}
+            isUser
+              ? 'bg-linear-to-br from-accent to-accent-soft text-white rounded-xl rounded-br-md shadow-sm shadow-accent/15'
+              : 'bg-surface-alt text-ink border border-border/40 rounded-md'
+          } ${isUser ? `${editing ? 'p-2 border-2 border-slate-500' : 'px-3.5 py-2.5'}` : 'px-4 py-3'}`}
         >
-          {msg.role === 'user' ? (
+          {editing ? (
+            <textarea
+              ref={textareaRef}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              className="w-full rounded-lg text-[13px] leading-relaxed font-medium text-white resize-none outline-none"
+              rows={3}
+            />
+          ) : isUser ? (
             <p className="whitespace-pre-wrap text-[13px] leading-relaxed font-medium">{msg.content}</p>
           ) : msg.content ? (
             isLastStreaming ? (
@@ -106,16 +151,62 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming }: Mess
             </div>
           )}
         </div>
+
+        <div className={`flex items-center gap-1 mt-1.5 px-1 ${editing ? 'justify-end' : ''}`}>
+          {editing ? (
+            <>
+              <button onClick={handleCancel} className="rounded-md p-1.5 text-ink-faint/70 hover:text-ink hover:bg-surface-alt transition-all duration-150" title="Cancel">
+                <X size={13} />
+              </button>
+              <button onClick={handleSave} className="rounded-md p-1.5 text-accent hover:bg-accent/10 transition-all duration-150" title="Save">
+                <Check size={13} />
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={handleCopy} className="rounded-md p-1.5 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-all duration-150" title="Copy">
+                {copied ? <Check size={12} className="text-accent" /> : <Copy size={12} />}
+              </button>
+              {isUser && isLastUserMessage && (
+                <button onClick={() => { setEditing(true); setDraft(msg.content) }} className="rounded-md p-1.5 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-all duration-150" title="Edit">
+                  <Pencil size={12} />
+                </button>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   )
 })
 
-export function ChatMessages({ messages, isStreaming }: ChatMessagesProps) {
+function useKeydown(active: boolean, onSave: () => void, onCancel: () => void) {
+  useEffect(() => {
+    if (!active) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && (e.metaKey || e.shiftKey)) {
+        onSave()
+      } else if (e.key === 'Escape') {
+        onCancel()
+      }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [active, onSave, onCancel])
+}
+
+export function ChatMessages({ messages, isStreaming, onEdit }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [userScrolledUp, setUserScrolledUp] = useState(false)
   const prevLengthRef = useRef(messages.length)
   const mountedRef = useRef(false)
+
+  const lastUserMsgIndex = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') return i
+    }
+    return -1
+  })()
 
   useEffect(() => {
     const el = scrollRef.current
@@ -167,6 +258,8 @@ export function ChatMessages({ messages, isStreaming }: ChatMessagesProps) {
               key={msg.id}
               msg={msg}
               isLastStreaming={isStreaming && msg.role === 'assistant' && index === messages.length - 1}
+              isLastUserMessage={msg.role === 'user' && index === lastUserMsgIndex}
+              onEdit={onEdit}
             />
           ))}
         </div>
@@ -181,7 +274,7 @@ export function ChatMessages({ messages, isStreaming }: ChatMessagesProps) {
           }}
           className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-surface/90 backdrop-blur-sm border border-border/60 px-3.5 py-1.5 text-xs text-ink-soft hover:text-ink shadow-lg shadow-black/5 transition-all duration-200 hover:scale-105 active:scale-95"
         >
-          Jump to latest ↓
+          ↓
         </button>
       )}
     </div>

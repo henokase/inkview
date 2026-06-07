@@ -4,6 +4,7 @@ import {
   loadConversationsForDocument,
   saveConversation,
   deleteConversation,
+  deleteMessagesSince,
   loadMessagesForConversation,
   saveMessage,
 } from '../lib/db'
@@ -33,6 +34,8 @@ interface ChatStore {
   setActiveConversation: (id: string | null) => void
 
   sendMessage: (content: string, documentContent: string, documentId?: string) => Promise<void>
+  editMessage: (convId: string, msgId: string, newContent: string, documentContent: string) => Promise<void>
+  _streamResponse: (convId: string, documentContent: string) => Promise<void>
   stopGeneration: () => void
 }
 
@@ -198,7 +201,37 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
       get().renameConversation(convId, content)
     }
 
-    const currentMessages = get().messagesByConv[convId!] || []
+    await get()._streamResponse(convId, documentContent)
+  },
+
+  editMessage: async (convId, msgId, newContent, documentContent) => {
+    const messages = get().messagesByConv[convId]
+    if (!messages) return
+
+    const msgIndex = messages.findIndex((m) => m.id === msgId)
+    if (msgIndex === -1) return
+    if (messages[msgIndex].content === newContent) return
+
+    const editedMsg = { ...messages[msgIndex], content: newContent }
+    const truncated = messages.slice(0, msgIndex).concat([editedMsg])
+
+    saveMessage(editedMsg)
+    deleteMessagesSince(convId, editedMsg.createdAt + 1)
+
+    set((s) => ({
+      messagesByConv: {
+        ...s.messagesByConv,
+        [convId]: truncated,
+      },
+    }))
+
+    await get()._streamResponse(convId, documentContent)
+  },
+
+  _streamResponse: async (convId, documentContent) => {
+    if (get().isStreaming) return
+
+    const messages = get().messagesByConv[convId] || []
 
     const systemMessage = {
       role: 'system',
@@ -214,24 +247,23 @@ Instructions:
 
     const apiMessages = [
       systemMessage,
-      ...currentMessages.map((m) => ({ role: m.role, content: m.content })),
+      ...messages.map((m) => ({ role: m.role, content: m.content })),
     ]
 
     const assistantId = crypto.randomUUID()
-    const now2 = Date.now()
     const assistantMsg: Message = {
       id: assistantId,
       conversationId: convId,
       role: 'assistant',
       content: '',
-      createdAt: now2,
+      createdAt: Date.now(),
     }
 
     set((s) => ({
       isStreaming: true,
       messagesByConv: {
         ...s.messagesByConv,
-        [convId!]: [...(s.messagesByConv[convId!] || []), assistantMsg],
+        [convId]: [...(s.messagesByConv[convId] || []), assistantMsg],
       },
     }))
 
@@ -246,7 +278,7 @@ Instructions:
         set((s) => ({
           messagesByConv: {
             ...s.messagesByConv,
-            [convId!]: (s.messagesByConv[convId!] || []).map((m) =>
+            [convId]: (s.messagesByConv[convId] || []).map((m) =>
               m.id === assistantId ? { ...m, content: fullContent } : m
             ),
           },
@@ -262,13 +294,13 @@ Instructions:
       if (flushRaf !== null) cancelAnimationFrame(flushRaf)
       flush()
 
-      const final = get().messagesByConv[convId!]?.find((m) => m.id === assistantId)
+      const final = get().messagesByConv[convId]?.find((m) => m.id === assistantId)
       if (final) {
         saveMessage(final)
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
-        const finalMsg = get().messagesByConv[convId!]?.find((m) => m.id === assistantId)
+        const finalMsg = get().messagesByConv[convId]?.find((m) => m.id === assistantId)
         if (finalMsg && finalMsg.content) {
           saveMessage(finalMsg)
         }
@@ -277,7 +309,7 @@ Instructions:
         set((s) => ({
           messagesByConv: {
             ...s.messagesByConv,
-            [convId!]: (s.messagesByConv[convId!] || []).map((m) =>
+            [convId]: (s.messagesByConv[convId] || []).map((m) =>
               m.id === assistantId ? { ...m, content: errorText } : m
             ),
           },

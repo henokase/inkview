@@ -89,7 +89,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           <button
             onClick={handleSend}
             disabled={!value.trim() || disabled}
-            className="shrink-0 rounded-xl bg-gradient-to-br from-accent to-accent-soft p-2.5 text-white shadow-sm shadow-accent/20 hover:shadow-md hover:shadow-accent/25 hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-sm"
+            className="shrink-0 rounded-xl bg-linear-to-br from-accent to-accent-soft p-2.5 text-white shadow-sm shadow-accent/20 hover:shadow-md hover:shadow-accent/25 hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-sm"
             title="Send message"
           >
             <Send size={15} />
