@@ -14,6 +14,7 @@ import { TocSidebar } from './components/TocSidebar'
 import { HistoryModal } from './components/HistoryModal'
 import { NewDocModal } from './components/NewDocModal'
 import { Toast } from './components/Toast'
+import { Notice } from './components/Notice'
 import { ChatPanel } from './components/ChatPanel'
 import { SelectionToolbar } from './components/SelectionToolbar'
 import { parseShareUrl, fetchSharedContent, resolveImportEntries, resolveTitleUnique } from './lib/share'
@@ -83,6 +84,7 @@ function App() {
   const [toastMsg, setToastMsg] = useState('')
   const [toastType, setToastType] = useState<'success' | 'error'>('success')
   const [toastVisible, setToastVisible] = useState(false)
+  const [showChatNotice, setShowChatNotice] = useState(false)
 
   const showToast = useCallback((msg: string, type: 'success' | 'error') => {
     setToastMsg(msg)
@@ -90,6 +92,11 @@ function App() {
     setToastVisible(true)
   }, [])
   const hideToast = useCallback(() => setToastVisible(false), [])
+  
+  const handleDismissChatNotice = useCallback(() => {
+    localStorage.setItem('chat_feature_notice_dismissed', 'true')
+    setShowChatNotice(false)
+  }, [])
   const isDragging = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const editorPaneRef = useRef<HTMLDivElement>(null)
@@ -132,6 +139,22 @@ function App() {
     window.addEventListener('resize', checkSize)
     return () => window.removeEventListener('resize', checkSize)
   }, [editorMode, setEditorMode])
+
+  // Check for AI chat feature notice
+  useEffect(() => {
+    const now = new Date()
+    const nextMonth = new Date(2026, 6, 1) // July 1, 2026
+    
+    // Only show notice if current date is before July 2026
+    if (now < nextMonth) {
+      const noticeKey = 'chat_feature_notice_dismissed'
+      const isDismissed = localStorage.getItem(noticeKey) === 'true'
+      
+      if (!isDismissed) {
+        setShowChatNotice(true)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (activeDocId) {
@@ -619,6 +642,14 @@ function App() {
 
       {/* Toast */}
       <Toast message={toastMsg} type={toastType} visible={toastVisible} onClose={hideToast} />
+
+      {/* Chat Feature Notice */}
+      <Notice 
+        title="New Feature: AI Chat"
+        message="Chat with AI about your documents. Ask questions, get summaries, and more. The AI sidebar is now available on all your documents."
+        visible={showChatNotice}
+        onClose={handleDismissChatNotice}
+      />
 
       {/* Modals */}
       <HistoryModal open={historyOpen} onClose={() => { setHistoryOpen(false); setPendingFolderId(null) }} showToast={showToast} initialFolderId={pendingFolderId} />
