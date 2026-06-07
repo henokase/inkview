@@ -119,8 +119,8 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
           className={`relative ${
             isUser
               ? 'bg-linear-to-br from-accent to-accent-soft text-white rounded-xl rounded-br-md shadow-sm shadow-accent/15'
-              : 'bg-surface-alt text-ink border border-border/40 rounded-md'
-          } ${isUser ? `${editing ? 'p-2 border-2 border-slate-500' : 'px-3.5 py-2.5'}` : 'px-4 py-3'}`}
+              : `text-ink ${msg.content ? 'bg-surface-alt border border-border/40 rounded-xl rounded-tl-md' : ''}`
+          } ${isUser ? `${editing ? 'p-2 border-2 border-slate-500' : 'p-2'}` : 'p-2'}`}
         >
           {editing ? (
             <textarea

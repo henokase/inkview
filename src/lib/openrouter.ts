@@ -1,7 +1,6 @@
-const RAW_BASE_URL = import.meta.env.VITE_AI_BASE_URL || 'https://openrouter.ai/api/v1'
 const API_KEY = import.meta.env.VITE_AI_API_KEY
 const MODEL = import.meta.env.VITE_AI_MODEL || 'openrouter/free'
-const BASE_URL = import.meta.env.DEV ? '/api-ai' : RAW_BASE_URL
+const BASE_URL = '/api-ai'
 
 interface StreamChunk {
   content: string
