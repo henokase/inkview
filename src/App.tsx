@@ -604,8 +604,8 @@ function App() {
       {/* Fullscreen editor mode */}
       {editorMode === 'edit' && showContent && activeDoc && (
         <div
-          className="fixed inset-0 z-50 flex flex-col bg-surface-alt"
-          style={{ animation: 'fadeIn 200ms' }}
+          className="fixed inset-0 z-50 flex flex-col bg-surface-alt transition-[padding] duration-200"
+          style={{ animation: 'fadeIn 200ms', paddingRight: isChatOpen ? chatPanelWidth : 0 }}
         >
           <NavBar
             title={title}

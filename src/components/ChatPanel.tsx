@@ -105,12 +105,12 @@ export function ChatPanel() {
   return (
     <>
       <div
-        className="fixed inset-0 z-30 bg-black/20 backdrop-blur-xs lg:hidden"
+        className="fixed inset-0 z-55 bg-black/20 backdrop-blur-xs lg:hidden"
         onClick={() => setChatOpen(false)}
       />
 
       <aside
-        className="fixed inset-y-0 right-0 z-40 lg:relative lg:shrink-0 flex flex-col border-l border-border/40 bg-surface shadow-2xl lg:shadow-[-8px_0_32px_-8px_rgba(0,0,0,0.12)] animate-in slide-in-from-right duration-200"
+        className="fixed inset-y-0 right-0 z-60 lg:relative lg:shrink-0 flex flex-col border-l border-border/40 bg-surface shadow-2xl lg:shadow-[-8px_0_32px_-8px_rgba(0,0,0,0.12)] animate-in slide-in-from-right duration-200"
         style={{ width: getChatWidth() }}
       >
         <div className="relative shrink-0 pb-0">

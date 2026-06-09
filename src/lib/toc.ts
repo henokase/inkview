@@ -1,5 +1,16 @@
 import type { TocHeading } from '../types'
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1') // bold
+    .replace(/__(.+?)__/g, '$1') // bold (alt)
+    .replace(/\*(.+?)\*/g, '$1') // italic
+    .replace(/_(.+?)_/g, '$1') // italic (alt)
+    .replace(/~~(.+?)~~/g, '$1') // strikethrough
+    .replace(/`(.+?)`/g, '$1') // inline code
+    .trim()
+}
+
 export function extractTocHeadings(markdown: string): TocHeading[] {
   const lines = markdown.split('\n')
   const headings: TocHeading[] = []
@@ -16,7 +27,7 @@ export function extractTocHeadings(markdown: string): TocHeading[] {
     if (!match) continue
 
     const level = match[1].length
-    const text = match[2].trim()
+    const text = stripMarkdown(match[2])
     const id = text
       .toLowerCase()
       .replace(/[^\w\s-]/g, '')
@@ -46,7 +57,7 @@ export function extractTitle(markdown: string): string | null {
     }
     if (inCodeBlock) continue
     const match = /^#\s+(.+)/.exec(line)
-    if (match) return match[1].trim()
+    if (match) return stripMarkdown(match[1])
   }
   return null
 }

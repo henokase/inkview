@@ -27,6 +27,17 @@ db.version(3).stores({
   messages: 'id, conversationId, createdAt',
 })
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1') // bold
+    .replace(/__(.+?)__/g, '$1') // bold (alt)
+    .replace(/\*(.+?)\*/g, '$1') // italic
+    .replace(/_(.+?)_/g, '$1') // italic (alt)
+    .replace(/~~(.+?)~~/g, '$1') // strikethrough
+    .replace(/`(.+?)`/g, '$1') // inline code
+    .trim()
+}
+
 function extractFirstHeading(markdown: string): string | null {
   const lines = markdown.trim().split('\n')
   let inCodeBlock = false
@@ -37,7 +48,7 @@ function extractFirstHeading(markdown: string): string | null {
     }
     if (inCodeBlock) continue
     const match = /^#\s+(.+)$/.exec(line)
-    if (match) return match[1].trim()
+    if (match) return stripMarkdown(match[1])
   }
   return null
 }
