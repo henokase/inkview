@@ -145,13 +145,15 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
                 <ChatMarkdownMemo content={msg.content} />
               </div>
             )
-          ) : (
+          ) : msg.thinking ? (
+            <ThinkingView thinking={msg.thinking} loading={false} />
+          ) : isLastStreaming ? (
             <div className="flex items-center gap-2 text-ink-faint">
               <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '0ms' }} />
               <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '150ms' }} />
               <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '300ms' }} />
             </div>
-          )}
+          ) : null}
         </div>
 
         <div className={`flex items-center gap-1 mt-1.5 px-1 justify-end ${editing ? 'justify-end' : ''}`}>

@@ -2,11 +2,13 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { sseProxyPlugin } from './vite-plugin-sse-proxy.mjs'
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), 'VITE_AI_')
+  const env = loadEnv(mode, process.cwd(), '')
+  const aiApiKey = env.AI_API_KEY
   const aiBaseUrl = env.VITE_AI_BASE_URL || 'https://openrouter.ai/api/v1'
-  console.log(`[proxy] AI API target: ${aiBaseUrl}`)
+  console.log(`[config] AI API target: ${aiBaseUrl}`)
 
   return {
     plugins: [
@@ -72,29 +74,11 @@ export default defineConfig(({ mode }) => {
           ],
         },
       }),
+      sseProxyPlugin(aiBaseUrl, aiApiKey),
     ],
     server: {
       host: '0.0.0.0',
       port: 3000,
-      proxy: {
-        '/api-ai': {
-          target: aiBaseUrl,
-          changeOrigin: true,
-          secure: false,
-          rewrite: (path) => path.replace(/^\/api-ai/, ''),
-          configure: (proxy) => {
-            proxy.on('proxyReq', (proxyReq) => {
-              console.log(`[proxy] → ${proxyReq.method} ${proxyReq.path}`)
-            })
-            proxy.on('proxyRes', (proxyRes, req) => {
-              console.log(`[proxy] ← ${proxyRes.statusCode} ${req.url}`)
-            })
-            proxy.on('error', (err) => {
-              console.error(`[proxy] ⚠ ${err.message}`)
-            })
-          },
-        },
-      },
     },
   }
 })

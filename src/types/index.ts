@@ -41,7 +41,7 @@ export type EditorMode = 'edit' | 'preview' | 'split'
 export interface Message {
   id: string
   conversationId: string
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'system'
   content: string
   thinking?: string
   createdAt: number

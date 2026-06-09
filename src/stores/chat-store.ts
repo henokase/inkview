@@ -8,7 +8,8 @@ import {
   loadMessagesForConversation,
   saveMessage,
 } from '../lib/db'
-import { streamChat } from '../lib/openrouter'
+import { StreamEngine } from '../lib/llm/stream-engine'
+import type { Usage } from '../lib/llm/types'
 
 interface ChatStore {
   conversationsByDoc: Record<string, Conversation[]>
@@ -22,6 +23,7 @@ interface ChatStore {
   chatPanelWidth: number
   draftConversations: Record<string, boolean>
   _hydrated: boolean
+  _engine: StreamEngine
 
   setSelectedText: (text: string) => void
   setContextText: (text: string) => void
@@ -41,8 +43,6 @@ interface ChatStore {
   stopGeneration: () => void
 }
 
-const abortControllers = new Map<string, AbortController>()
-
 export const useChatStore = create<ChatStore>()((set, get) => ({
   conversationsByDoc: {},
   messagesByConv: {},
@@ -55,6 +55,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   chatPanelWidth: 500,
   draftConversations: {},
   _hydrated: false,
+  _engine: new StreamEngine(),
 
   setSelectedText: (text) => set({ selectedText: text }),
   setContextText: (text) => set({ contextText: text }),
@@ -100,6 +101,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
 
   deleteConversation: (convId) => {
     const state = get()
+    state._engine.stop(convId)
     if (!state.draftConversations[convId]) {
       deleteConversation(convId)
     }
@@ -238,8 +240,8 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     const messages = get().messagesByConv[convId] || []
 
     const systemMessage = {
-      role: 'system',
-      content: `You are a helpful AI assistant analyzing a document. I'll as questions based on the below document, and you provid the answer accrodingly.
+      role: 'system' as const,
+      content: `You are a helpful AI assistant analyzing a document. I will ask questions based on the below document, and you will provide the answer accordingly.
 
 DOCUMENT CONTENT:
 ${documentContent}
@@ -251,7 +253,7 @@ Instructions:
 
     const apiMessages = [
       systemMessage,
-      ...messages.map((m) => ({ role: m.role, content: m.content })),
+      ...messages.map((m) => ({ role: m.role as 'user' | 'assistant' | 'system', content: m.content })),
     ]
 
     const assistantId = crypto.randomUUID()
@@ -271,37 +273,51 @@ Instructions:
       },
     }))
 
-    const abortController = new AbortController()
-    abortControllers.set(convId, abortController)
+    const engine = get()._engine
+    let fullContent = ''
+    let accumulatedThinking = ''
+    let hasContentStarted = false
+    let finalUsage: Usage | undefined
 
     try {
-      let fullContent = ''
-      let accumulatedThinking = ''
-      let hasContentStarted = false
-      let flushRaf: number | null = null
-      const flush = () => {
-        flushRaf = null
-        set((s) => ({
-          messagesByConv: {
-            ...s.messagesByConv,
-            [convId]: (s.messagesByConv[convId] || []).map((m) =>
-              m.id === assistantId ? { ...m, content: fullContent } : m
-            ),
-          },
-        }))
-      }
-      for await (const chunk of streamChat(apiMessages, abortController.signal)) {
-        if (chunk.done) break
-        if (chunk.reasoning) {
-          accumulatedThinking += chunk.reasoning
-          if (!hasContentStarted) {
-            set({ activeThinking: accumulatedThinking })
+      await engine.start(convId, apiMessages, {
+        onChunk: (chunk) => {
+          if (chunk.reasoning) {
+            accumulatedThinking += chunk.reasoning
+            if (!hasContentStarted) {
+              set({ activeThinking: accumulatedThinking })
+            }
           }
-        }
-        if (chunk.content) {
-          if (!hasContentStarted && accumulatedThinking) {
+          if (chunk.content) {
+            if (!hasContentStarted && accumulatedThinking) {
+              set((s) => ({
+                activeThinking: '',
+                messagesByConv: {
+                  ...s.messagesByConv,
+                  [convId]: (s.messagesByConv[convId] || []).map((m) =>
+                    m.id === assistantId ? { ...m, thinking: accumulatedThinking } : m
+                  ),
+                },
+              }))
+            }
+            hasContentStarted = true
+            fullContent += chunk.content
             set((s) => ({
-              activeThinking: '',
+              messagesByConv: {
+                ...s.messagesByConv,
+                [convId]: (s.messagesByConv[convId] || []).map((m) =>
+                  m.id === assistantId ? { ...m, content: fullContent } : m
+                ),
+              },
+            }))
+          }
+        },
+        onUsage: (usage) => {
+          finalUsage = usage
+        },
+        onDone: () => {
+          if (!fullContent && accumulatedThinking) {
+            set((s) => ({
               messagesByConv: {
                 ...s.messagesByConv,
                 [convId]: (s.messagesByConv[convId] || []).map((m) =>
@@ -310,41 +326,37 @@ Instructions:
               },
             }))
           }
-          hasContentStarted = true
-        }
-        if (chunk.content) {
-          fullContent += chunk.content
-          if (flushRaf === null) {
-            flushRaf = requestAnimationFrame(flush)
+          const final = get().messagesByConv[convId]?.find((m) => m.id === assistantId)
+          if (final) {
+            saveMessage({
+              ...final,
+              tokensPrompt: finalUsage?.promptTokens,
+              tokensCompletion: finalUsage?.completionTokens,
+            })
           }
-        }
-      }
-      if (flushRaf !== null) cancelAnimationFrame(flushRaf)
-      flush()
-
-      const final = get().messagesByConv[convId]?.find((m) => m.id === assistantId)
-      if (final) {
-        saveMessage(final)
-      }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        const finalMsg = get().messagesByConv[convId]?.find((m) => m.id === assistantId)
-        if (finalMsg && finalMsg.content) {
-          saveMessage(finalMsg)
-        }
-      } else {
-        const errorText = err instanceof Error ? err.message : 'An error occurred'
-        set((s) => ({
-          messagesByConv: {
-            ...s.messagesByConv,
-            [convId]: (s.messagesByConv[convId] || []).map((m) =>
-              m.id === assistantId ? { ...m, content: errorText } : m
-            ),
-          },
-        }))
-      }
+        },
+        onError: (err) => {
+          const errorText = err instanceof Error ? err.message : 'An error occurred'
+          const errorMsg: Message = {
+            id: assistantId,
+            conversationId: convId,
+            role: 'assistant',
+            content: errorText,
+            createdAt: Date.now(),
+            thinking: accumulatedThinking || undefined,
+          }
+          set((s) => ({
+            messagesByConv: {
+              ...s.messagesByConv,
+              [convId]: (s.messagesByConv[convId] || []).map((m) =>
+                m.id === assistantId ? errorMsg : m
+              ),
+            },
+          }))
+          saveMessage(errorMsg)
+        },
+      })
     } finally {
-      abortControllers.delete(convId)
       set({ isStreaming: false, activeThinking: '' })
     }
   },
@@ -352,7 +364,7 @@ Instructions:
   stopGeneration: () => {
     const state = get()
     if (state.activeConversationId) {
-      abortControllers.get(state.activeConversationId)?.abort()
+      state._engine.stop(state.activeConversationId)
     }
   },
 }))

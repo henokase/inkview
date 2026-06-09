@@ -249,7 +249,6 @@ function App() {
           showToast('Shared document imported successfully', 'success')
         } else {
           setShareLoading(false)
-          console.error('Share response:', JSON.stringify(data, null, 2))
           const keys = Object.keys(data || {}).join(', ')
           const t = data && 'content' in data ? typeof data.content : 'NO_KEY'
           showToast(`Bad response (keys: ${keys}, content: ${t})`, 'error')
