@@ -1,7 +1,7 @@
 import type { PermissionRule, ToolDefinition } from './types'
 import { evaluatePermission, DEFAULT_PERMISSIONS } from './permission'
 
-class ToolRegistry {
+export class ToolRegistry {
   private tools = new Map<string, ToolDefinition>()
 
   register(tool: ToolDefinition): void {

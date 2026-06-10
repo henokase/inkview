@@ -54,10 +54,13 @@ export class LLMClient {
   }
 
   private buildMessages(messages: ApiMessage[]) {
-    return messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }))
+    return messages.map((m) => {
+      const msg: Record<string, unknown> = { role: m.role }
+      if (m.content !== null && m.content !== undefined) msg.content = m.content
+      if (m.tool_calls) msg.tool_calls = m.tool_calls
+      if (m.tool_call_id) msg.tool_call_id = m.tool_call_id
+      return msg
+    })
   }
 
   private static mapUsage(usage: {

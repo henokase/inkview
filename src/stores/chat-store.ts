@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Conversation, Message } from '../types'
+import type { Conversation, Message, ToolCallPart, ToolResultPart } from '../types'
 import {
   loadConversationsForDocument,
   saveConversation,
@@ -9,7 +9,12 @@ import {
   saveMessage,
 } from '../lib/db'
 import { StreamEngine } from '../lib/llm/stream-engine'
-import type { Usage } from '../lib/llm/types'
+import type { ApiMessage, Usage } from '../lib/llm/types'
+import { AgentEngine, type AgentLoopOptions } from '../lib/agent/agent-engine'
+import { registerDefaultTools } from '../lib/agent/tools'
+import type { ToolCallState } from '../lib/agent/types'
+
+registerDefaultTools()
 
 interface ChatStore {
   conversationsByDoc: Record<string, Conversation[]>
@@ -24,11 +29,14 @@ interface ChatStore {
   draftConversations: Record<string, boolean>
   _hydrated: boolean
   _engine: StreamEngine
+  _agentEngine: AgentEngine
+  agentMode: boolean
 
   setSelectedText: (text: string) => void
   setContextText: (text: string) => void
   setChatOpen: (open: boolean) => void
   setChatPanelWidth: (width: number) => void
+  setAgentMode: (mode: boolean) => void
 
   init: (documentId: string) => Promise<void>
   createConversation: (documentId: string) => string
@@ -40,6 +48,7 @@ interface ChatStore {
   clearActiveThinking: () => void
   editMessage: (convId: string, msgId: string, newContent: string, documentContent: string) => Promise<void>
   _streamResponse: (convId: string, documentContent: string) => Promise<void>
+  _streamAgentResponse: (convId: string) => Promise<void>
   stopGeneration: () => void
 }
 
@@ -56,12 +65,15 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   draftConversations: {},
   _hydrated: false,
   _engine: new StreamEngine(),
+  _agentEngine: new AgentEngine(),
+  agentMode: false,
 
   setSelectedText: (text) => set({ selectedText: text }),
   setContextText: (text) => set({ contextText: text }),
   setChatOpen: (open) => set({ isChatOpen: open }),
   setChatPanelWidth: (width) => set({ chatPanelWidth: width }),
   clearActiveThinking: () => set({ activeThinking: '' }),
+  setAgentMode: (mode) => set({ agentMode: mode }),
 
   init: async (documentId) => {
     const convs = await loadConversationsForDocument(documentId)
@@ -207,7 +219,11 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
       get().renameConversation(convId, content)
     }
 
-    await get()._streamResponse(convId, documentContent)
+    if (get().agentMode) {
+      await get()._streamAgentResponse(convId)
+    } else {
+      await get()._streamResponse(convId, documentContent)
+    }
   },
 
   editMessage: async (convId, msgId, newContent, documentContent) => {
@@ -231,7 +247,11 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
       },
     }))
 
-    await get()._streamResponse(convId, documentContent)
+    if (get().agentMode) {
+      await get()._streamAgentResponse(convId)
+    } else {
+      await get()._streamResponse(convId, documentContent)
+    }
   },
 
   _streamResponse: async (convId, documentContent) => {
@@ -314,6 +334,189 @@ Instructions:
         },
         onUsage: (usage) => {
           finalUsage = usage
+        },
+        onDone: () => {
+          if (!fullContent && accumulatedThinking) {
+            set((s) => ({
+              messagesByConv: {
+                ...s.messagesByConv,
+                [convId]: (s.messagesByConv[convId] || []).map((m) =>
+                  m.id === assistantId ? { ...m, thinking: accumulatedThinking } : m
+                ),
+              },
+            }))
+          }
+          const final = get().messagesByConv[convId]?.find((m) => m.id === assistantId)
+          if (final) {
+            saveMessage({
+              ...final,
+              tokensPrompt: finalUsage?.promptTokens,
+              tokensCompletion: finalUsage?.completionTokens,
+            })
+          }
+        },
+        onError: (err) => {
+          const errorText = err instanceof Error ? err.message : 'An error occurred'
+          const errorMsg: Message = {
+            id: assistantId,
+            conversationId: convId,
+            role: 'assistant',
+            content: errorText,
+            createdAt: Date.now(),
+            thinking: accumulatedThinking || undefined,
+          }
+          set((s) => ({
+            messagesByConv: {
+              ...s.messagesByConv,
+              [convId]: (s.messagesByConv[convId] || []).map((m) =>
+                m.id === assistantId ? errorMsg : m
+              ),
+            },
+          }))
+          saveMessage(errorMsg)
+        },
+      })
+    } finally {
+      set({ isStreaming: false, activeThinking: '' })
+    }
+  },
+
+  _streamAgentResponse: async (convId) => {
+    if (get().isStreaming) return
+
+    const messages = get().messagesByConv[convId] || []
+
+    const systemMessage = {
+      role: 'system' as const,
+      content: `You are an AI assistant for the InkView document editor.
+You have access to tools to read, search, create, and edit documents.
+
+Guidelines:
+- Use readDoc to read documents when asked about their content
+- Use searchDocs to search across documents
+- Use markdown formatting in your responses
+- If you need more information, ask the user`,
+    }
+
+    const apiMessages: ApiMessage[] = [
+      systemMessage,
+      ...messages.map((m) => ({
+        role: m.role as 'user' | 'assistant' | 'system',
+        content: m.content,
+        tool_calls: m.toolCalls?.map((tc) => ({
+          id: tc.id,
+          type: 'function' as const,
+          function: { name: tc.name, arguments: JSON.stringify(tc.arguments) },
+        })),
+      })),
+    ]
+
+    const assistantId = crypto.randomUUID()
+    const assistantMsg: Message = {
+      id: assistantId,
+      conversationId: convId,
+      role: 'assistant',
+      content: '',
+      createdAt: Date.now(),
+      toolCalls: [],
+      toolResults: [],
+    }
+
+    set((s) => ({
+      isStreaming: true,
+      messagesByConv: {
+        ...s.messagesByConv,
+        [convId]: [...(s.messagesByConv[convId] || []), assistantMsg],
+      },
+    }))
+
+    let fullContent = ''
+    let accumulatedThinking = ''
+    let hasContentStarted = false
+    let finalUsage: Usage | undefined
+
+    const engine = get()._agentEngine
+    const abortController = new AbortController()
+
+    try {
+      await engine.agentLoop(apiMessages, {
+        signal: abortController.signal,
+        onChunk: (chunk) => {
+          if (chunk.reasoning) {
+            accumulatedThinking += chunk.reasoning
+            if (!hasContentStarted) {
+              set({ activeThinking: accumulatedThinking })
+            }
+          }
+          if (chunk.content) {
+            if (!hasContentStarted && accumulatedThinking) {
+              set((s) => ({
+                activeThinking: '',
+                messagesByConv: {
+                  ...s.messagesByConv,
+                  [convId]: (s.messagesByConv[convId] || []).map((m) =>
+                    m.id === assistantId ? { ...m, thinking: accumulatedThinking } : m
+                  ),
+                },
+              }))
+            }
+            hasContentStarted = true
+            fullContent += chunk.content
+            set((s) => ({
+              messagesByConv: {
+                ...s.messagesByConv,
+                [convId]: (s.messagesByConv[convId] || []).map((m) =>
+                  m.id === assistantId ? { ...m, content: fullContent } : m
+                ),
+              },
+            }))
+          }
+        },
+        onUsage: (usage) => {
+          finalUsage = usage
+        },
+        onToolCall: (call) => {
+          set((s) => {
+            const existing = s.messagesByConv[convId] || []
+            const msgs = existing.map((m) => {
+              if (m.id !== assistantId) return m
+              const part: ToolCallPart = {
+                id: call.id,
+                type: 'tool_call',
+                name: call.name,
+                arguments: call.args,
+              }
+              return {
+                ...m,
+                toolCalls: [...(m.toolCalls || []), part],
+              }
+            })
+            return {
+              messagesByConv: { ...s.messagesByConv, [convId]: msgs },
+            }
+          })
+        },
+        onToolResult: (result) => {
+          set((s) => {
+            const existing = s.messagesByConv[convId] || []
+            const msgs = existing.map((m) => {
+              if (m.id !== assistantId) return m
+              const part: ToolResultPart = {
+                id: result.id,
+                type: 'tool_result',
+                name: result.name,
+                result: result.result?.output || result.error || '',
+                isError: result.status === 'failed',
+              }
+              return {
+                ...m,
+                toolResults: [...(m.toolResults || []), part],
+              }
+            })
+            return {
+              messagesByConv: { ...s.messagesByConv, [convId]: msgs },
+            }
+          })
         },
         onDone: () => {
           if (!fullContent && accumulatedThinking) {

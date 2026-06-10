@@ -1,5 +1,5 @@
 import type { ToolDefinition, ToolContext, ToolResult } from '../types'
-import { useDocumentStore } from '../../stores/document-store'
+import { useDocumentStore } from '../../../stores/document-store'
 
 const jsonSchema = {
   type: 'object',
