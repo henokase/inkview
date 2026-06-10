@@ -30,6 +30,7 @@ interface ChatStore {
   _hydrated: boolean
   _engine: StreamEngine
   _agentEngine: AgentEngine
+  _agentAbortController: AbortController | null
   agentMode: boolean
 
   setSelectedText: (text: string) => void
@@ -66,6 +67,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   _hydrated: false,
   _engine: new StreamEngine(),
   _agentEngine: new AgentEngine(),
+  _agentAbortController: null,
   agentMode: false,
 
   setSelectedText: (text) => set({ selectedText: text }),
@@ -437,6 +439,8 @@ Guidelines:
 
     const engine = get()._agentEngine
     const abortController = new AbortController()
+    engine.setAbortController(abortController)
+    set({ _agentAbortController: abortController })
 
     try {
       await engine.agentLoop(apiMessages, {
@@ -495,6 +499,10 @@ Guidelines:
               messagesByConv: { ...s.messagesByConv, [convId]: msgs },
             }
           })
+        },
+        onPermissionRequest: async () => {
+          console.warn('[chat-store] Permission request auto-allowed (no UI dialog yet)')
+          return 'allow'
         },
         onToolResult: (result) => {
           set((s) => {
@@ -560,7 +568,7 @@ Guidelines:
         },
       })
     } finally {
-      set({ isStreaming: false, activeThinking: '' })
+      set({ isStreaming: false, activeThinking: '', _agentAbortController: null })
     }
   },
 
@@ -568,6 +576,9 @@ Guidelines:
     const state = get()
     if (state.activeConversationId) {
       state._engine.stop(state.activeConversationId)
+      state._agentEngine.stop()
+      state._agentAbortController?.abort()
+      set({ _agentAbortController: null, isStreaming: false })
     }
   },
 }))

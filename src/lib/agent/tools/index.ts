@@ -1,8 +1,20 @@
 import readDoc from './read-doc'
+import writeDoc from './write-doc'
+import editDoc from './edit-doc'
+import searchDocs from './search-docs'
+import listDocs from './list-docs'
+import createDoc from './create-doc'
+import deleteDoc from './delete-doc'
 import { toolRegistry } from '../tool-registry'
 
 const allTools = [
   readDoc,
+  writeDoc,
+  editDoc,
+  searchDocs,
+  listDocs,
+  createDoc,
+  deleteDoc,
 ]
 
 export function registerDefaultTools(): void {

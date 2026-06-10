@@ -20,6 +20,7 @@ function isValidChunkShape(value: unknown): value is {
   choices?: Array<{
     delta?: {
       content?: string
+      reasoning?: string
       reasoning_content?: string
       thinking?: string
       thinking_content?: string
@@ -252,7 +253,7 @@ export class LLMClient {
 
             const delta = parsed.choices?.[0]?.delta
             const message = parsed.choices?.[0]?.message
-            const reasoning = delta?.reasoning_content ?? delta?.thinking ?? delta?.thinking_content ?? ''
+            const reasoning = delta?.reasoning ?? delta?.reasoning_content ?? delta?.thinking ?? delta?.thinking_content ?? ''
             const content = (delta?.content || message?.content) ?? ''
 
             const rawToolCalls = delta?.tool_calls

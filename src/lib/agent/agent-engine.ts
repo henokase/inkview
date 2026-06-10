@@ -4,6 +4,13 @@ import { ToolRegistry, toolRegistry } from './tool-registry'
 import { evaluatePermission } from './permission'
 import type { ToolDefinition, ToolCallState, PermissionRule, ToolResult } from './types'
 
+export interface PermissionRequest {
+  id: string
+  permission: string
+  toolName: string
+  args: Record<string, unknown>
+}
+
 export interface AgentLoopOptions {
   signal: AbortSignal
   maxTurns?: number
@@ -15,6 +22,7 @@ export interface AgentLoopOptions {
   onUsage?: (usage: Usage) => void
   onDone?: () => void
   onError?: (error: Error) => void
+  onPermissionRequest?: (request: PermissionRequest) => Promise<'allow' | 'deny'>
 }
 
 export class AgentEngine {
@@ -115,6 +123,40 @@ export class AgentEngine {
           continue
         }
 
+        if (action === 'ask') {
+          if (!options.onPermissionRequest) {
+            state.status = 'failed'
+            state.error = `Permission required: ${toolDef.permission}`
+            state.endTime = Date.now()
+            options.onToolResult?.({ ...state })
+            toolResults.push({ id: tc.id, error: state.error })
+            continue
+          }
+          try {
+            const decision = await options.onPermissionRequest({
+              id: tc.id,
+              permission: toolDef.permission,
+              toolName: tc.function.name,
+              args: this._parseArgs(tc.function.arguments),
+            })
+            if (decision === 'deny') {
+              state.status = 'failed'
+              state.error = `Permission denied by user: ${toolDef.permission}`
+              state.endTime = Date.now()
+              options.onToolResult?.({ ...state })
+              toolResults.push({ id: tc.id, error: state.error })
+              continue
+            }
+          } catch {
+            state.status = 'failed'
+            state.error = `Permission request cancelled: ${toolDef.permission}`
+            state.endTime = Date.now()
+            options.onToolResult?.({ ...state })
+            toolResults.push({ id: tc.id, error: state.error })
+            continue
+          }
+        }
+
         try {
           const args = this._parseArgs(tc.function.arguments)
           const result = await toolDef.execute(args, {
@@ -168,8 +210,15 @@ export class AgentEngine {
     options.onDone?.()
   }
 
+  private _abortController: AbortController | null = null
+
+  setAbortController(ctrl: AbortController): void {
+    this._abortController = ctrl
+  }
+
   stop(): void {
-    //
+    this._abortController?.abort()
+    this._abortController = null
   }
 
   private _parseArgs(argsStr: string): Record<string, unknown> {
