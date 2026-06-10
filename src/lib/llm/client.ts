@@ -1,4 +1,4 @@
-import type { StreamChunk, ApiMessage, LLMConfig } from './types'
+import type { StreamChunk, ApiMessage, ApiTool, LLMConfig, ToolCallChunk } from './types'
 import {
   LLMError,
   NetworkError,
@@ -9,9 +9,22 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+interface DeltaToolCall {
+  index: number
+  id?: string
+  type?: string
+  function?: { name?: string; arguments?: string }
+}
+
 function isValidChunkShape(value: unknown): value is {
   choices?: Array<{
-    delta?: { content?: string; reasoning_content?: string }
+    delta?: {
+      content?: string
+      reasoning_content?: string
+      thinking?: string
+      thinking_content?: string
+      tool_calls?: DeltaToolCall[]
+    }
     message?: { content?: string }
     finish_reason?: string | null
   }>
@@ -60,6 +73,7 @@ export class LLMClient {
   async *streamChat(
     messages: ApiMessage[],
     signal?: AbortSignal,
+    tools?: ApiTool[],
   ): AsyncGenerator<StreamChunk> {
     const parsedMessages = this.buildMessages(messages)
 
@@ -81,16 +95,22 @@ export class LLMClient {
 
       try {
         const url = `${this.config.baseUrl}/chat/completions`
+        const body: Record<string, unknown> = {
+          model: this.config.model,
+          messages: parsedMessages,
+          stream: true,
+        }
+        if (tools && tools.length > 0) {
+          body.tools = tools
+          body.tool_choice = 'auto'
+        }
+
         const response = await fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            model: this.config.model,
-            messages: parsedMessages,
-            stream: true,
-          }),
+          body: JSON.stringify(body),
           signal: combinedSignal,
         })
 
@@ -175,6 +195,27 @@ export class LLMClient {
   ): AsyncGenerator<StreamChunk> {
     const decoder = new TextDecoder()
     let buffer = ''
+    const toolCallAccumulator = new Map<number, {
+      id: string
+      name: string
+      arguments: string
+    }>()
+
+    function flushToolCalls(): ToolCallChunk[] | undefined {
+      if (toolCallAccumulator.size === 0) return undefined
+      const calls: ToolCallChunk[] = []
+      const sorted = Array.from(toolCallAccumulator.entries()).sort(([a], [b]) => a - b)
+      for (const [, tc] of sorted) {
+        calls.push({
+          id: tc.id,
+          index: calls.length,
+          type: 'function',
+          function: { name: tc.name, arguments: tc.arguments },
+        })
+      }
+      toolCallAccumulator.clear()
+      return calls
+    }
 
     try {
       while (true) {
@@ -191,7 +232,12 @@ export class LLMClient {
 
           const data = trimmed.slice(6)
           if (data === '[DONE]') {
-            yield { content: '', reasoning: '', done: true }
+            const toolCalls = flushToolCalls()
+            if (toolCalls) {
+              yield { content: '', reasoning: '', toolCalls, done: true }
+            } else {
+              yield { content: '', reasoning: '', done: true }
+            }
             return
           }
 
@@ -206,11 +252,41 @@ export class LLMClient {
             const reasoning = delta?.reasoning_content ?? delta?.thinking ?? delta?.thinking_content ?? ''
             const content = (delta?.content || message?.content) ?? ''
 
-            if (reasoning || content) {
+            const rawToolCalls = delta?.tool_calls
+            if (rawToolCalls && Array.isArray(rawToolCalls)) {
+              for (const tc of rawToolCalls) {
+                const idx = tc.index
+                let acc = toolCallAccumulator.get(idx)
+                if (!acc) {
+                  acc = { id: tc.id || '', name: tc.function?.name || '', arguments: '' }
+                  toolCallAccumulator.set(idx, acc)
+                }
+                if (tc.id) acc.id = tc.id
+                if (tc.function?.name) acc.name = tc.function.name
+                if (tc.function?.arguments) acc.arguments += tc.function.arguments
+              }
+            }
+
+            const finishReason = parsed.choices?.[0]?.finish_reason
+
+            if (finishReason === 'tool_calls') {
+              const toolCalls = flushToolCalls()
+              const usage = parsed.usage
+                ? LLMClient.mapUsage(parsed.usage)
+                : undefined
+              if (content || reasoning) {
+                yield { reasoning, content, toolCalls, done: true, usage }
+              } else {
+                yield { content: '', reasoning: '', toolCalls, done: true, usage }
+              }
+              return
+            }
+
+            if (content || reasoning) {
               yield { reasoning, content, done: false }
             }
 
-            if (parsed.choices?.[0]?.finish_reason) {
+            if (finishReason) {
               if (!content && message?.content) {
                 yield { reasoning: '', content: message.content, done: false }
               }

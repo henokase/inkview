@@ -1,4 +1,4 @@
-import type { ApiMessage, StreamCallbacks, StreamChunk, Usage } from './types'
+import type { ApiMessage, ApiTool, StreamCallbacks, StreamChunk, Usage } from './types'
 import { AbortError } from './errors'
 import { LLMClient } from './client'
 
@@ -15,6 +15,7 @@ export class StreamEngine {
     id: string,
     messages: ApiMessage[],
     callbacks: StreamCallbacks,
+    tools?: ApiTool[],
   ): Promise<void> {
     const abortController = new AbortController()
     this.abortControllers.set(id, abortController)
@@ -54,7 +55,12 @@ export class StreamEngine {
       for await (const chunk of this.client.streamChat(
         messages,
         abortController.signal,
+        tools,
       )) {
+        if (chunk.toolCalls) {
+          callbacks.onToolCalls?.(chunk.toolCalls)
+        }
+
         if (chunk.done) {
           if (chunk.content) {
             currentChunks.push(chunk)
