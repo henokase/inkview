@@ -651,7 +651,6 @@ function App() {
       />
 
       {/* Modals */}
-      <HistoryModal open={historyOpen} onClose={() => { setHistoryOpen(false); setPendingFolderId(null) }} showToast={showToast} initialFolderId={pendingFolderId} />
       <NewDocModal
         open={newDocOpen}
         onClose={() => setNewDocOpen(false)}
@@ -660,6 +659,7 @@ function App() {
         onFilesUpload={handleFilesUpload}
         loading={creatingDoc}
       />
+      <HistoryModal open={historyOpen} onClose={() => { setHistoryOpen(false); setPendingFolderId(null) }} showToast={showToast} initialFolderId={pendingFolderId} />
     </div>
   )
 }

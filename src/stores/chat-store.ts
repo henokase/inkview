@@ -400,18 +400,30 @@ Guidelines:
 - If you need more information, ask the user`,
     }
 
-    const apiMessages: ApiMessage[] = [
-      systemMessage,
-      ...messages.map((m) => ({
+    const apiMessages: ApiMessage[] = [systemMessage]
+    for (const m of messages) {
+      const entry: ApiMessage = {
         role: m.role as 'user' | 'assistant' | 'system',
         content: m.content,
-        tool_calls: m.toolCalls?.map((tc) => ({
+      }
+      if (m.toolCalls?.length) {
+        entry.tool_calls = m.toolCalls.map((tc) => ({
           id: tc.id,
           type: 'function' as const,
           function: { name: tc.name, arguments: JSON.stringify(tc.arguments) },
-        })),
-      })),
-    ]
+        }))
+      }
+      apiMessages.push(entry)
+      if (m.toolResults?.length) {
+        for (const tr of m.toolResults) {
+          apiMessages.push({
+            role: 'tool',
+            tool_call_id: tr.id,
+            content: tr.result,
+          })
+        }
+      }
+    }
 
     const assistantId = crypto.randomUUID()
     const assistantMsg: Message = {
@@ -433,6 +445,7 @@ Guidelines:
     }))
 
     let fullContent = ''
+    let contentParts: string[] = ['']
     let accumulatedThinking = ''
     let hasContentStarted = false
     let finalUsage: Usage | undefined
@@ -452,7 +465,7 @@ Guidelines:
               set({ activeThinking: accumulatedThinking })
             }
           }
-          if (chunk.content) {
+            if (chunk.content) {
             if (!hasContentStarted && accumulatedThinking) {
               set((s) => ({
                 activeThinking: '',
@@ -466,11 +479,12 @@ Guidelines:
             }
             hasContentStarted = true
             fullContent += chunk.content
+            contentParts[contentParts.length - 1] += chunk.content
             set((s) => ({
               messagesByConv: {
                 ...s.messagesByConv,
                 [convId]: (s.messagesByConv[convId] || []).map((m) =>
-                  m.id === assistantId ? { ...m, content: fullContent } : m
+                  m.id === assistantId ? { ...m, content: fullContent, contentParts: [...contentParts] } : m
                 ),
               },
             }))
@@ -480,6 +494,7 @@ Guidelines:
           finalUsage = usage
         },
         onToolCall: (call) => {
+          contentParts.push('')
           set((s) => {
             const existing = s.messagesByConv[convId] || []
             const msgs = existing.map((m) => {
@@ -493,6 +508,7 @@ Guidelines:
               return {
                 ...m,
                 toolCalls: [...(m.toolCalls || []), part],
+                contentParts: [...contentParts],
               }
             })
             return {
@@ -519,6 +535,7 @@ Guidelines:
               return {
                 ...m,
                 toolResults: [...(m.toolResults || []), part],
+                contentParts: [...contentParts],
               }
             })
             return {
@@ -527,6 +544,14 @@ Guidelines:
           })
         },
         onDone: () => {
+          set((s) => ({
+            messagesByConv: {
+              ...s.messagesByConv,
+              [convId]: (s.messagesByConv[convId] || []).map((m) =>
+                m.id === assistantId ? { ...m, contentParts: [...contentParts] } : m
+              ),
+            },
+          }))
           if (!fullContent && accumulatedThinking) {
             set((s) => ({
               messagesByConv: {

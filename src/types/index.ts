@@ -64,6 +64,7 @@ export interface Message {
   tokensCompletion?: number
   toolCalls?: ToolCallPart[]
   toolResults?: ToolResultPart[]
+  contentParts?: string[]
 }
 
 export interface Conversation {
