@@ -15,11 +15,22 @@ export interface ToolParameter {
   properties?: Record<string, ToolParameter>
 }
 
+export interface PendingChangeInfo {
+  documentId: string
+  toolName: string
+  title: string
+  originalContent: string
+  newContent: string
+  oldString?: string
+  newString?: string
+}
+
 export interface ToolContext {
   sessionId: string
   callId: string
   abortSignal: AbortSignal
   evaluatePermission: (permission: string, pattern: string) => PermissionAction
+  onPendingChange?: (change: PendingChangeInfo) => void
 }
 
 export interface ToolResult {

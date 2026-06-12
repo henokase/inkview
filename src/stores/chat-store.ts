@@ -12,7 +12,10 @@ import { StreamEngine } from '../lib/llm/stream-engine'
 import type { ApiMessage, Usage } from '../lib/llm/types'
 import { AgentEngine, type AgentLoopOptions } from '../lib/agent/agent-engine'
 import { registerDefaultTools } from '../lib/agent/tools'
-import type { ToolCallState } from '../lib/agent/types'
+import { DEFAULT_PERMISSIONS } from '../lib/agent/permission'
+import type { PermissionRule, ToolCallState } from '../lib/agent/types'
+import { useAgentStore } from './agent-store'
+import { usePendingChangesStore } from './pending-changes-store'
 
 registerDefaultTools()
 
@@ -455,9 +458,13 @@ Guidelines:
     engine.setAbortController(abortController)
     set({ _agentAbortController: abortController })
 
+    const alwaysAllowRules = useAgentStore.getState().persistentPermissions
+    const agentPermissions: PermissionRule[] = [...DEFAULT_PERMISSIONS, ...alwaysAllowRules]
+
     try {
       await engine.agentLoop(apiMessages, {
         signal: abortController.signal,
+        agentPermissions,
         onChunk: (chunk) => {
           if (chunk.reasoning) {
             accumulatedThinking += chunk.reasoning
@@ -516,9 +523,48 @@ Guidelines:
             }
           })
         },
-        onPermissionRequest: async () => {
-          console.warn('[chat-store] Permission request auto-allowed (no UI dialog yet)')
-          return 'allow'
+        onPermissionRequest: async (request) => {
+          const agentState = useAgentStore.getState()
+          const existingRule = agentState.persistentPermissions.find(
+            (r) => r.permission === request.permission
+          )
+          if (existingRule) return existingRule.action === 'allow' ? 'allow' : 'deny'
+
+          return new Promise<'allow' | 'deny'>((resolve) => {
+            agentState.queuePermissionRequest({
+              id: request.id,
+              permission: request.permission,
+              toolName: request.toolName,
+              args: request.args,
+              resolve: (action: 'allow' | 'always' | 'deny') => {
+                if (action === 'always') {
+                  useAgentStore.getState().addPersistentPermission({
+                    permission: request.permission,
+                    pattern: '*',
+                    action: 'allow',
+                  })
+                  resolve('allow')
+                } else if (action === 'allow') {
+                  resolve('allow')
+                } else {
+                  resolve('deny')
+                }
+              },
+            })
+          })
+        },
+        onPendingChange: (change) => {
+          usePendingChangesStore.getState().addChange({
+            id: crypto.randomUUID(),
+            documentId: change.documentId,
+            toolName: change.toolName,
+            title: change.title,
+            originalContent: change.originalContent,
+            newContent: change.newContent,
+            createdAt: Date.now(),
+            oldString: change.oldString,
+            newString: change.newString,
+          })
         },
         onToolResult: (result) => {
           set((s) => {

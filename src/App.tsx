@@ -18,6 +18,7 @@ import { Notice } from './components/Notice'
 import { ChatPanel } from './components/ChatPanel'
 import { SelectionToolbar } from './components/SelectionToolbar'
 import { parseShareUrl, fetchSharedContent, resolveImportEntries, resolveTitleUnique } from './lib/share'
+import { usePendingChangesStore } from './stores/pending-changes-store'
 
 function findPreviewHeading(container: HTMLElement): string | null {
   const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6')
@@ -155,6 +156,20 @@ function App() {
       }
     }
   }, [])
+
+  const allPendingChanges = usePendingChangesStore((s) => s.changes)
+  const activeDocChanges = useMemo(
+    () => allPendingChanges.filter((c) => c.documentId === activeDocId),
+    [allPendingChanges, activeDocId]
+  )
+  const prevActiveCount = useRef(0)
+  useEffect(() => {
+    const count = activeDocChanges.length
+    if (count > 0 && prevActiveCount.current === 0 && editorMode === 'preview') {
+      setEditorMode('edit')
+    }
+    prevActiveCount.current = count
+  }, [activeDocChanges, editorMode, setEditorMode])
 
   useEffect(() => {
     if (activeDocId) {
@@ -520,11 +535,14 @@ function App() {
                         ? 'pl-6 lg:pl-10 xl:pl-16 pr-0'
                         : 'px-6 lg:px-10 xl:px-16'
                     }`}>
-                      <MarkdownEditor
-                        ref={editorHandleRef}
-                        value={activeDoc.content}
-                        onChange={handleContentChange}
-                      />
+                      <div className="flex-1 min-h-0">
+                        <MarkdownEditor
+                          ref={editorHandleRef}
+                          value={activeDoc.content}
+                          onChange={handleContentChange}
+                          pendingChanges={activeDocChanges}
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
@@ -628,11 +646,12 @@ function App() {
             hasHeadings={hasHeadings}
           />
           <div className="flex-1 overflow-auto px-0 sm:px-6 lg:px-12">
-            <div className="mx-auto h-full max-w-4xl bg-surface shadow-lg ring-1 ring-border/50 px-2 sm:px-4 py-3">
+            <div className="mx-auto h-full max-w-4xl bg-surface shadow-lg ring-1 ring-border/50 px-2 sm:px-4 py-3 flex flex-col min-h-0">
               <MarkdownEditor
                 value={activeDoc.content}
                 onChange={handleContentChange}
                 autoFocus
+                pendingChanges={activeDocChanges}
               />
             </div>
           </div>

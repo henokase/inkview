@@ -16,6 +16,7 @@ interface AgentStore {
   permissionQueue: PermissionRequest[]
   agentTurn: number
   agentMaxTurns: number
+  persistentPermissions: PermissionRule[]
 
   setCurrentAgent: (id: string) => void
   registerAgents: (agents: AgentInfo[]) => void
@@ -26,6 +27,7 @@ interface AgentStore {
   queuePermissionRequest: (request: PermissionRequest) => void
   resolvePermission: (id: string, action: 'allow' | 'always' | 'deny') => void
   clearPermissionQueue: () => void
+  addPersistentPermission: (rule: PermissionRule) => void
 }
 
 const DEFAULT_AGENTS: AgentInfo[] = [
@@ -51,6 +53,7 @@ export const useAgentStore = create<AgentStore>()((set) => ({
   permissionQueue: [],
   agentTurn: 0,
   agentMaxTurns: 10,
+  persistentPermissions: [],
 
   setCurrentAgent: (id) => set({ currentAgentId: id }),
 
@@ -94,6 +97,13 @@ export const useAgentStore = create<AgentStore>()((set) => ({
     for (const r of queue) r.resolve('deny')
     set({ permissionQueue: [] })
   },
+
+  addPersistentPermission: (rule) =>
+    set((s) => ({
+      persistentPermissions: [...s.persistentPermissions.filter(
+        (r) => !(r.permission === rule.permission && r.pattern === rule.pattern)
+      ), rule],
+    })),
 }))
 
 function get(): AgentStore {

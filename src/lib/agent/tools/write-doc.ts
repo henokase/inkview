@@ -57,6 +57,25 @@ const writeDoc: ToolDefinition = {
     const content = args.content as string
     let docId = args.documentId as string | undefined
 
+    if (ctx.onPendingChange) {
+      const existing = docId ? store.documents.find((d) => d.id === docId) : undefined
+      const pendingId = docId || crypto.randomUUID()
+      ctx.onPendingChange({
+        documentId: pendingId,
+        toolName: 'writeDoc',
+        title,
+        originalContent: existing?.content || '',
+        newContent: content,
+      })
+      return {
+        title,
+        output: existing
+          ? `Write pending approval for "${title}".`
+          : `Create pending approval for "${title}".`,
+        metadata: { id: pendingId, title, pending: true },
+      }
+    }
+
     if (docId) {
       const existing = store.documents.find((d) => d.id === docId)
       if (!existing) {

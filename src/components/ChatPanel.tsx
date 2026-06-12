@@ -2,10 +2,12 @@ import { useEffect, useState, useRef } from 'react'
 import { Plus, X, MessageSquare } from 'lucide-react'
 import { useChatStore } from '../stores/chat-store'
 import { useDocumentStore } from '../stores/document-store'
+import { useAgentStore } from '../stores/agent-store'
 import { ConversationList } from './ConversationList'
 import { ChatMessages } from './ChatMessages'
 import { ChatInput, type ChatInputHandle } from './ChatInput'
 import { ConfirmModal } from './ConfirmModal'
+import { PermissionDialog } from './PermissionDialog'
 
 const CHAT_WIDTH_SM = 340
 const CHAT_WIDTH_MD = 400
@@ -30,6 +32,9 @@ export function ChatPanel() {
   const draftConversations = useChatStore((s) => s.draftConversations)
   const sendMessage = useChatStore((s) => s.sendMessage)
   const editMessage = useChatStore((s) => s.editMessage)
+
+  const permissionQueue = useAgentStore((s) => s.permissionQueue)
+  const resolvePermission = useAgentStore((s) => s.resolvePermission)
 
   const activeDoc = useDocumentStore((s) => {
     const docs = s.documents
@@ -150,6 +155,16 @@ export function ChatPanel() {
         <ChatMessages messages={messages} isStreaming={isStreaming} activeThinking={activeThinking} onEdit={handleEdit} />
 
         <div className="shrink-0 border-t border-border/50">
+          {permissionQueue[0] && (
+            <div className="px-3 pt-2.5 pb-1">
+              <PermissionDialog
+                request={permissionQueue[0]}
+                onResolve={(action) => {
+                  resolvePermission(permissionQueue[0].id, action)
+                }}
+              />
+            </div>
+          )}
           <ChatInput ref={chatInputRef} key={activeConversationId ?? 'no-session'} onSend={handleSend} />
         </div>
       </aside>

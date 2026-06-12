@@ -46,6 +46,22 @@ const createDoc: ToolDefinition = {
     const title = (args.title as string) || 'Untitled'
     const content = (args.content as string) || ''
 
+    if (ctx.onPendingChange) {
+      const pendingId = crypto.randomUUID()
+      ctx.onPendingChange({
+        documentId: pendingId,
+        toolName: 'createDoc',
+        title,
+        originalContent: '',
+        newContent: content,
+      })
+      return {
+        title,
+        output: `Create pending approval for "${title}".`,
+        metadata: { id: pendingId, title, pending: true },
+      }
+    }
+
     const id = store.createDocument(content, title)
 
     return {

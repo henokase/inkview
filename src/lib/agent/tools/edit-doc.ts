@@ -232,6 +232,25 @@ const editDoc: ToolDefinition = {
         content.slice(0, match.startIndex) + newString + content.slice(match.endIndex)
     }
 
+    const actualOldString = content.slice(match.startIndex, match.endIndex)
+
+    if (ctx.onPendingChange) {
+      ctx.onPendingChange({
+        documentId: doc.id,
+        toolName: 'editDoc',
+        title: doc.title,
+        originalContent: doc.content,
+        newContent,
+        oldString: actualOldString,
+        newString,
+      })
+      return {
+        title: doc.title,
+        output: `Edit pending approval for "${doc.title}".`,
+        metadata: { id: doc.id, title: doc.title, pending: true, matchStrategy },
+      }
+    }
+
     store.updateContent(documentId, newContent)
 
     return {

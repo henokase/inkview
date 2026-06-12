@@ -2,7 +2,8 @@ import { LLMClient } from '../llm/client'
 import type { ApiMessage, StreamChunk, Usage, ToolCallChunk } from '../llm/types'
 import { ToolRegistry, toolRegistry } from './tool-registry'
 import { evaluatePermission } from './permission'
-import type { ToolDefinition, ToolCallState, PermissionRule, ToolResult } from './types'
+import type { PendingChangeInfo, ToolDefinition, ToolCallState, PermissionRule, ToolResult } from './types'
+import { useDocumentStore } from '../../stores/document-store'
 
 export interface PermissionRequest {
   id: string
@@ -23,6 +24,7 @@ export interface AgentLoopOptions {
   onDone?: () => void
   onError?: (error: Error) => void
   onPermissionRequest?: (request: PermissionRequest) => Promise<'allow' | 'deny'>
+  onPendingChange?: (change: PendingChangeInfo) => void
 }
 
 export class AgentEngine {
@@ -158,6 +160,16 @@ export class AgentEngine {
         }
 
         try {
+          const isModifyingTool = tc.function.name === 'editDoc' || tc.function.name === 'writeDoc' || tc.function.name === 'createDoc'
+          let docSnapshot: string | null = null
+          if (isModifyingTool) {
+            const docId = this._parseArgs(tc.function.arguments).documentId as string | undefined
+            if (docId) {
+              const doc = useDocumentStore.getState().documents.find((d) => d.id === docId)
+              docSnapshot = doc?.content ?? null
+            }
+          }
+
           const args = this._parseArgs(tc.function.arguments)
           const result = await toolDef.execute(args, {
             sessionId: '',
@@ -165,7 +177,16 @@ export class AgentEngine {
             abortSignal: options.signal,
             evaluatePermission: (perm, pattern) =>
               evaluatePermission(perm, pattern, options.agentPermissions ?? []),
+            onPendingChange: options.onPendingChange,
           })
+
+          if (docSnapshot !== null && result.metadata?.pending) {
+            const store = useDocumentStore.getState()
+            const doc = store.documents.find((d) => d.id === this._parseArgs(tc.function.arguments).documentId)
+            if (doc && doc.content !== docSnapshot) {
+              store.updateContent(doc.id, docSnapshot)
+            }
+          }
 
           state.status = 'completed'
           state.result = result

@@ -47,11 +47,11 @@ export const useDocumentStore = create<DocumentStore>()((set, get) => ({
   _docsVersion: 0,
   _foldersVersion: 0,
 
-  createDocument: (content = '', title = 'Untitled') => {
+  createDocument: (content = '', title = 'Untitled', id?: string) => {
     const now = Date.now()
-    const id = crypto.randomUUID()
+    const docId = id ?? crypto.randomUUID()
     const doc: Document = {
-      id,
+      id: docId,
       title,
       content,
       createdAt: now,
@@ -61,12 +61,12 @@ export const useDocumentStore = create<DocumentStore>()((set, get) => ({
     }
     set((s) => ({
       documents: [...s.documents, doc],
-      activeDocId: id,
+      activeDocId: docId,
       _docsVersion: s._docsVersion + 1,
     }))
     saveDocument(doc)
-    persistActiveDocId(id)
-    return id
+    persistActiveDocId(docId)
+    return docId
   },
 
   createDocuments: (entries) => {

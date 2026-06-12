@@ -1,5 +1,6 @@
 import type { ToolDefinition, ToolContext, ToolResult } from '../types'
 import { useDocumentStore } from '../../../stores/document-store'
+import { getCumulativeContent } from '../../../stores/pending-changes-store'
 
 const jsonSchema = {
   type: 'object',
@@ -66,9 +67,12 @@ const readDoc: ToolDefinition = {
       }
     }
 
-    const lines = doc.content.split('\n')
+    const pendingContent = getCumulativeContent(doc.id)
+    const displayContent = pendingContent ?? doc.content
+
+    const lines = displayContent.split('\n')
     const maxLines = 2000
-    let output = `# ${doc.title}\n\n${doc.content}`
+    let output = `# ${doc.title}\n\n${displayContent}`
     if (lines.length > maxLines) {
       output = `# ${doc.title}\n\n${lines.slice(0, maxLines).join('\n')}\n\n*... (${lines.length - maxLines} more lines)*`
     }

@@ -6,6 +6,8 @@ import { languages } from '@codemirror/language-data'
 import { EditorView } from '@codemirror/view'
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language'
 import { tags } from '@lezer/highlight'
+import type { PendingChange } from '../stores/pending-changes-store'
+import { DiffEditor } from './DiffEditor'
 
 const headingStyle = HighlightStyle.define([
   { tag: tags.heading1, fontSize: '1.8em', fontWeight: '700' },
@@ -23,6 +25,7 @@ interface MarkdownEditorProps {
   value: string
   onChange: (value: string) => void
   autoFocus?: boolean
+  pendingChanges?: PendingChange[]
 }
 
 export interface MarkdownEditorHandle {
@@ -30,7 +33,7 @@ export interface MarkdownEditorHandle {
 }
 
 export const MarkdownEditor = memo(forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
-  function MarkdownEditor({ value, onChange, autoFocus }, ref) {
+  function MarkdownEditor({ value, onChange, autoFocus, pendingChanges }, ref) {
   const codemirrorRef = useRef<ReactCodeMirrorRef>(null)
 
   useImperativeHandle(ref, () => ({
@@ -105,6 +108,17 @@ export const MarkdownEditor = memo(forwardRef<MarkdownEditorHandle, MarkdownEdit
     }),
   ], [])
 
+  const hasPending = pendingChanges && pendingChanges.length > 0
+
+  if (hasPending) {
+    return (
+      <DiffEditor
+        documentId={pendingChanges[0].documentId}
+        pendingChanges={pendingChanges}
+      />
+    )
+  }
+
   return (
     <CodeMirror
       ref={codemirrorRef}
@@ -115,7 +129,7 @@ export const MarkdownEditor = memo(forwardRef<MarkdownEditorHandle, MarkdownEdit
       theme="light"
       extensions={extensions}
       basicSetup={{
-        lineNumbers: false,
+        lineNumbers: true,
         foldGutter: false,
         highlightActiveLine: false,
         bracketMatching: true,
