@@ -16,6 +16,7 @@ import { DEFAULT_PERMISSIONS } from '../lib/agent/permission'
 import type { PermissionRule, ToolCallState } from '../lib/agent/types'
 import { useAgentStore } from './agent-store'
 import { usePendingChangesStore } from './pending-changes-store'
+import { toolPrompts } from '../lib/agent/prompts'
 
 registerDefaultTools()
 
@@ -391,16 +392,25 @@ Instructions:
 
     const messages = get().messagesByConv[convId] || []
 
+    const systemToolPrompts = Object.values(toolPrompts).join('\n\n')
     const systemMessage = {
       role: 'system' as const,
       content: `You are an AI assistant for the InkView document editor.
 You have access to tools to read, search, create, and edit documents.
 
-Guidelines:
-- Use readDoc to read documents when asked about their content
-- Use searchDocs to search across documents
-- Use markdown formatting in your responses
-- If you need more information, ask the user`,
+## Available Tools
+
+- **readDoc**: Read the full content of a document by ID or title search
+- **writeDoc**: Create a new document or overwrite an existing one with new content
+- **editDoc**: Edit specific text in a document by finding and replacing (preferred for targeted changes)
+- **searchDocs**: Search across all documents for matching content or titles
+- **listDocs**: List all documents with their titles and IDs
+- **createDoc**: Create a new document with a title and optional initial content
+- **deleteDoc**: Permanently delete a document by its ID
+
+## Tool Usage Guidelines
+
+${systemToolPrompts}`,
     }
 
     const apiMessages: ApiMessage[] = [systemMessage]

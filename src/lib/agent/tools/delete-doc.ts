@@ -47,9 +47,12 @@ const deleteDoc: ToolDefinition = {
     const title = doc.title
     store.removeDocuments([documentId])
 
+    const deletedLines = doc.content.split('\n').length
+    const deletedChars = doc.content.length
+
     return {
       title: 'Deleted',
-      output: `Document "${title}" has been permanently deleted.`,
+      output: `Deleted "${title}" — ${deletedLines} lines (${deletedChars} chars) permanently removed.`,
       metadata: { id: documentId, title },
     }
   },

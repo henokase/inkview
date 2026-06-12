@@ -1,0 +1,33 @@
+# readDoc Tool Usage
+
+## Purpose
+The `readDoc` tool reads the full content of a document. The returned content includes any **pending changes** that the user has not yet approved or rejected, reflecting what the user will see after approval.
+
+## Parameters
+- `documentId` (optional): The ID of the document to read. If omitted, reads the currently active document.
+- `search` (optional): Search by title fragment to find a document (case-insensitive). Cannot be used together with `documentId`.
+
+## How to Use Output for Subsequent Edits
+The document content is returned with the document title as a markdown heading:
+```
+# Document Title
+
+## Section 1
+Content here...
+```
+
+When extracting text for `editDoc`:
+1. Copy the exact text you want to replace, **including whitespace and indentation**
+2. Line numbers shown in the output are informational (`1: ` prefix before each line)
+3. When copying oldString for editDoc, ensure you capture the text **after** any line number prefix
+
+## Best Practices
+- Use `readDoc` before `editDoc` to get the current document content
+- If you need to find the right document, use `searchDocs` or `listDocs` first to get the document ID
+- Read the full document when you need context, or read specific sections by searching the output
+- After making edits, read the document again to verify changes were applied
+
+## Important
+- The content includes pending changes (unapproved edits), so it reflects the document's soon-to-be state
+- Very large documents (over 2000 lines) will be truncated with an indicator
+- Reading a document costs tokens - be strategic about when to read full vs partial content

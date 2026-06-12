@@ -30,6 +30,7 @@ export interface AgentLoopOptions {
 export class AgentEngine {
   private client: LLMClient
   private registry: ToolRegistry
+  private readDocumentIds = new Set<string>()
 
   constructor(client?: LLMClient, registry?: ToolRegistry) {
     this.client = client ?? new LLMClient()
@@ -42,6 +43,7 @@ export class AgentEngine {
   ): Promise<void> {
     const MAX_TURNS = options.maxTurns ?? 10
     const messages: ApiMessage[] = [...initialMessages]
+    this.readDocumentIds = new Set<string>()
     let turn = 0
 
     while (turn < MAX_TURNS) {
@@ -159,10 +161,27 @@ export class AgentEngine {
           }
         }
 
+        const isModifyingTool = tc.function.name === 'editDoc' || tc.function.name === 'writeDoc'
+        const isReadTool = tc.function.name === 'readDoc'
+
+        if (isModifyingTool) {
+          const docId = this._parseArgs(tc.function.arguments).documentId as string | undefined
+          if (docId && !this.readDocumentIds.has(docId)) {
+            const doc = useDocumentStore.getState().documents.find((d) => d.id === docId)
+            if (doc) {
+              state.status = 'failed'
+              state.error = `Cannot edit "${doc.title}" without reading it first. Use readDoc to read the document before editing.`
+              state.endTime = Date.now()
+              options.onToolResult?.({ ...state })
+              toolResults.push({ id: tc.id, error: state.error })
+              continue
+            }
+          }
+        }
+
         try {
-          const isModifyingTool = tc.function.name === 'editDoc' || tc.function.name === 'writeDoc' || tc.function.name === 'createDoc'
           let docSnapshot: string | null = null
-          if (isModifyingTool) {
+          if (isModifyingTool || tc.function.name === 'createDoc') {
             const docId = this._parseArgs(tc.function.arguments).documentId as string | undefined
             if (docId) {
               const doc = useDocumentStore.getState().documents.find((d) => d.id === docId)
@@ -180,6 +199,10 @@ export class AgentEngine {
             onPendingChange: options.onPendingChange,
           })
 
+          if (isReadTool && result.metadata?.id) {
+            this.readDocumentIds.add(result.metadata.id as string)
+          }
+
           if (docSnapshot !== null && result.metadata?.pending) {
             const store = useDocumentStore.getState()
             const doc = store.documents.find((d) => d.id === this._parseArgs(tc.function.arguments).documentId)
@@ -188,11 +211,15 @@ export class AgentEngine {
             }
           }
 
-          state.status = 'completed'
-          state.result = result
+          const isErrorResult = result.title === 'Error' || result.title === 'Not found'
+          state.status = isErrorResult ? 'failed' : 'completed'
+          state.error = isErrorResult ? result.output : undefined
+          state.result = isErrorResult ? undefined : result
           state.endTime = Date.now()
           options.onToolResult?.({ ...state })
-          toolResults.push({ id: tc.id, result })
+          toolResults.push(isErrorResult
+            ? { id: tc.id, error: result.output }
+            : { id: tc.id, result })
         } catch (err) {
           state.status = 'failed'
           state.error = err instanceof Error ? err.message : String(err)

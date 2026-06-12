@@ -46,6 +46,10 @@ const createDoc: ToolDefinition = {
     const title = (args.title as string) || 'Untitled'
     const content = (args.content as string) || ''
 
+    const lines = content.split('\n').length
+    const chars = content.length
+    const changeSummary = `${lines} lines (${chars} chars)`
+
     if (ctx.onPendingChange) {
       const pendingId = crypto.randomUUID()
       ctx.onPendingChange({
@@ -57,7 +61,7 @@ const createDoc: ToolDefinition = {
       })
       return {
         title,
-        output: `Create pending approval for "${title}".`,
+        output: `"${title}" creation (${changeSummary}) — pending approval.`,
         metadata: { id: pendingId, title, pending: true },
       }
     }
@@ -66,7 +70,7 @@ const createDoc: ToolDefinition = {
 
     return {
       title,
-      output: `Document "${title}" created.`,
+      output: `Created "${title}" — ${changeSummary}.`,
       metadata: { id, title },
     }
   },

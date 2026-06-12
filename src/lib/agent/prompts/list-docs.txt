@@ -1,0 +1,25 @@
+# listDocs Tool Usage
+
+## Purpose
+The `listDocs` tool lists all documents in the library, providing an overview of available documents. No parameters are required.
+
+## Returned Information
+- Total document count
+- For each document: title, ID, folder (if any), last-updated date, and character count
+- Documents are sorted by most recently updated first
+
+## Best Practices
+- Use `listDocs` at the start of a session to discover what documents are available
+- Use the document IDs from results to call `readDoc`, `editDoc`, or `deleteDoc`
+- Use `searchDocs` for targeted searches when you know what you are looking for
+- `listDocs` is useful for finding the document ID when you know the title but not the ID
+
+## Workflow Example
+1. `listDocs()` - see all documents
+2. `readDoc({ documentId: "id-from-list" })` - read a specific document
+3. `editDoc({ documentId: "id-from-list", oldString: "...", newString: "..." })` - edit it
+
+## Important
+- This tool returns ALL documents in the library. For very large libraries, use `searchDocs` with a specific query instead.
+- The output includes folder groupings if documents are organized in folders.
+- Document IDs are used across all tools to identify which document to operate on.

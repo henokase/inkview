@@ -57,8 +57,18 @@ const writeDoc: ToolDefinition = {
     const content = args.content as string
     let docId = args.documentId as string | undefined
 
+    const existing = docId ? store.documents.find((d) => d.id === docId) : undefined
+    const oldChars = existing?.content.length ?? 0
+    const newChars = content.length
+    const charDiff = newChars - oldChars
+    const diffSign = charDiff > 0 ? '+' : ''
+    const oldLines = existing ? existing.content.split('\n').length : 0
+    const newLines = content.split('\n').length
+    const changeSummary = existing
+      ? `${oldLines}→${newLines} lines (${oldChars}→${newChars} chars, ${diffSign}${charDiff})`
+      : `${newLines} lines (${newChars} chars)`
+
     if (ctx.onPendingChange) {
-      const existing = docId ? store.documents.find((d) => d.id === docId) : undefined
       const pendingId = docId || crypto.randomUUID()
       ctx.onPendingChange({
         documentId: pendingId,
@@ -70,14 +80,13 @@ const writeDoc: ToolDefinition = {
       return {
         title,
         output: existing
-          ? `Write pending approval for "${title}".`
-          : `Create pending approval for "${title}".`,
+          ? `"${title}" update (${changeSummary}) — pending approval.`
+          : `"${title}" creation (${changeSummary}) — pending approval.`,
         metadata: { id: pendingId, title, pending: true },
       }
     }
 
     if (docId) {
-      const existing = store.documents.find((d) => d.id === docId)
       if (!existing) {
         return {
           title: 'Not found',
@@ -92,7 +101,9 @@ const writeDoc: ToolDefinition = {
 
     return {
       title,
-      output: `Document "${title}" saved.`,
+      output: existing
+        ? `Updated "${title}" — ${changeSummary}.`
+        : `Created "${title}" — ${changeSummary}.`,
       metadata: { id: docId, title },
     }
   },
