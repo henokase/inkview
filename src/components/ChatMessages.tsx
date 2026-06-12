@@ -168,11 +168,6 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
                             : 'completed'
                           : 'running'
                       }
-                      output={
-                        msg.toolCalls[i].name === 'readDoc'
-                          ? undefined
-                          : msg.toolResults?.find((r) => r.id === msg.toolCalls[i].id)?.result
-                      }
                     />
                   )}
                 </Fragment>

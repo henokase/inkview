@@ -1,5 +1,6 @@
 import type { ToolDefinition, ToolContext, ToolResult } from '../types'
 import { useDocumentStore } from '../../../stores/document-store'
+import { getCumulativeContent } from '../../../stores/pending-changes-store'
 
 // ── Types ──
 
@@ -482,8 +483,9 @@ const editDoc: ToolDefinition = {
     }
 
     try {
+      const editTarget = getCumulativeContent(doc.id) ?? doc.content
       const { newContent, actualOldString, matchStrategy } = replace(
-        doc.content,
+        editTarget,
         oldString,
         newString,
         replaceAll,

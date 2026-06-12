@@ -85,7 +85,6 @@ function App() {
   const [toastMsg, setToastMsg] = useState('')
   const [toastType, setToastType] = useState<'success' | 'error'>('success')
   const [toastVisible, setToastVisible] = useState(false)
-  const [showChatNotice, setShowChatNotice] = useState(false)
 
   const showToast = useCallback((msg: string, type: 'success' | 'error') => {
     setToastMsg(msg)
@@ -94,10 +93,6 @@ function App() {
   }, [])
   const hideToast = useCallback(() => setToastVisible(false), [])
   
-  const handleDismissChatNotice = useCallback(() => {
-    localStorage.setItem('chat_feature_notice_dismissed', 'true')
-    setShowChatNotice(false)
-  }, [])
   const isDragging = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const editorPaneRef = useRef<HTMLDivElement>(null)
@@ -141,21 +136,7 @@ function App() {
     return () => window.removeEventListener('resize', checkSize)
   }, [editorMode, setEditorMode])
 
-  // Check for AI chat feature notice
-  useEffect(() => {
-    const now = new Date()
-    const nextMonth = new Date(2026, 6, 1) // July 1, 2026
-    
-    // Only show notice if current date is before July 2026
-    if (now < nextMonth) {
-      const noticeKey = 'chat_feature_notice_dismissed'
-      const isDismissed = localStorage.getItem(noticeKey) === 'true'
-      
-      if (!isDismissed) {
-        setShowChatNotice(true)
-      }
-    }
-  }, [])
+  // AI chat feature notice (permanently hidden)
 
   const allPendingChanges = usePendingChangesStore((s) => s.changes)
   const activeDocChanges = useMemo(
@@ -661,12 +642,12 @@ function App() {
       {/* Toast */}
       <Toast message={toastMsg} type={toastType} visible={toastVisible} onClose={hideToast} />
 
-      {/* Chat Feature Notice */}
+      {/* Chat Feature Notice (permanently hidden) */}
       <Notice 
         title="New Feature: AI Chat"
         message="Chat with AI about your documents. Ask questions, get summaries, and more. The AI sidebar is now available on all your documents."
-        visible={showChatNotice}
-        onClose={handleDismissChatNotice}
+        visible={false}
+        onClose={() => {}}
       />
 
       {/* Modals */}
