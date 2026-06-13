@@ -5,6 +5,8 @@ import searchDocs from './search-docs'
 import listDocs from './list-docs'
 import createDoc from './create-doc'
 import deleteDoc from './delete-doc'
+import webSearch from './web-search'
+import webFetch from './web-fetch'
 import { toolRegistry } from '../tool-registry'
 
 const allTools = [
@@ -15,6 +17,8 @@ const allTools = [
   listDocs,
   createDoc,
   deleteDoc,
+  webSearch,
+  webFetch,
 ]
 
 export function registerDefaultTools(): void {

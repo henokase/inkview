@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { Conversation, Message, ToolCallPart, ToolResultPart } from '../types'
 import {
-  loadConversationsForDocument,
+  loadAllConversations,
   saveConversation,
   deleteConversation,
   deleteMessagesSince,
@@ -81,18 +81,19 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   clearActiveThinking: () => set({ activeThinking: '' }),
   setAgentMode: (mode) => set({ agentMode: mode }),
 
-  init: async (documentId) => {
-    const convs = await loadConversationsForDocument(documentId)
+  init: async (_documentId?: string) => {
+    const allConvs = await loadAllConversations()
+    const byDoc: Record<string, Conversation[]> = {}
     const msgsByConv: Record<string, Message[]> = {}
-    for (const conv of convs) {
+    for (const conv of allConvs) {
+      ;(byDoc[conv.documentId] ??= []).push(conv)
       msgsByConv[conv.id] = await loadMessagesForConversation(conv.id)
     }
-    set((s) => ({
-      conversationsByDoc: { ...s.conversationsByDoc, [documentId]: convs },
-      messagesByConv: { ...s.messagesByConv, ...msgsByConv },
-      activeConversationId: null,
+    set({
+      conversationsByDoc: byDoc,
+      messagesByConv: msgsByConv,
       _hydrated: true,
-    }))
+    })
   },
 
   createConversation: (documentId) => {
@@ -587,6 +588,7 @@ ${systemToolPrompts}`,
                 name: result.name,
                 result: result.result?.output || result.error || '',
                 isError: result.status === 'failed',
+                metadata: result.result?.metadata,
               }
               return {
                 ...m,

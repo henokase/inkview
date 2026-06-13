@@ -19,15 +19,31 @@ const jsonSchema = {
 function extractSnippet(content: string, query: string, contextChars = 80): string {
   const lower = content.toLowerCase()
   const qLower = query.toLowerCase()
-  const idx = lower.indexOf(qLower)
-  if (idx === -1) return content.slice(0, contextChars * 2)
 
-  const start = Math.max(0, idx - contextChars)
-  const end = Math.min(content.length, idx + query.length + contextChars)
-  let snippet = content.slice(start, end)
-  if (start > 0) snippet = '...' + snippet
-  if (end < content.length) snippet = snippet + '...'
-  return snippet
+  const idx = lower.indexOf(qLower)
+  if (idx !== -1) {
+    const start = Math.max(0, idx - contextChars)
+    const end = Math.min(content.length, idx + query.length + contextChars)
+    let snippet = content.slice(start, end)
+    if (start > 0) snippet = '...' + snippet
+    if (end < content.length) snippet = snippet + '...'
+    return snippet
+  }
+
+  const keywords = qLower.split(/\s+/).filter(k => k.length > 1)
+  for (const kw of keywords) {
+    const ki = lower.indexOf(kw)
+    if (ki !== -1) {
+      const start = Math.max(0, ki - contextChars)
+      const end = Math.min(content.length, ki + kw.length + contextChars)
+      let snippet = content.slice(start, end)
+      if (start > 0) snippet = '...' + snippet
+      if (end < content.length) snippet = snippet + '...'
+      return snippet
+    }
+  }
+
+  return content.slice(0, contextChars * 2)
 }
 
 interface SearchResult {
@@ -69,12 +85,16 @@ const searchDocs: ToolDefinition = {
 
     const { documents } = useDocumentStore.getState()
     const qLower = query.toLowerCase()
+    const keywords = qLower.split(/\s+/).filter(k => k.length > 1)
 
     const results: SearchResult[] = []
 
     for (const doc of documents) {
-      const titleMatch = doc.title.toLowerCase().includes(qLower)
-      const contentMatch = !titleMatch && doc.content.toLowerCase().includes(qLower)
+      const titleLower = doc.title.toLowerCase()
+      const contentLower = doc.content.toLowerCase()
+
+      const titleMatch = titleLower.includes(qLower) || keywords.some(k => titleLower.includes(k))
+      const contentMatch = !titleMatch && (contentLower.includes(qLower) || keywords.every(k => contentLower.includes(k)))
 
       if (titleMatch) {
         results.push({
@@ -98,7 +118,7 @@ const searchDocs: ToolDefinition = {
 
     if (results.length === 0) {
       return {
-        title: 'No results',
+        title: 'Error',
         output: `No documents found matching "${query}".`,
       }
     }

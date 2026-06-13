@@ -48,4 +48,6 @@ export const DEFAULT_PERMISSIONS: PermissionRule[] = [
   { permission: 'edit', pattern: '*', action: 'allow' },
   { permission: 'create', pattern: '*', action: 'allow' },
   { permission: 'delete', pattern: '*', action: 'deny' },
+  { permission: 'web-search', pattern: '*', action: 'allow' },
+  { permission: 'web-fetch', pattern: '*', action: 'allow' },
 ]

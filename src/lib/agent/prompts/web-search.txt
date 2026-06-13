@@ -1,0 +1,23 @@
+# webSearch Tool Usage
+
+## Purpose
+Search the web for real-time information, current events, and data beyond the model's knowledge cutoff. Uses Exa (primary) and Parallel Search (fallback) via MCP, with Tavily as a final fallback.
+
+## Parameters
+- `query` (required): The search query string. Be specific for better results.
+- `numResults` (optional): Number of results to return (default: 8, max: 20).
+- `type` (optional): Search type — 'auto' (balanced), 'fast' (quick results), 'deep' (comprehensive).
+- `livecrawl` (optional): Live crawl mode — 'fallback' (cached first, live fallback), 'preferred' (prioritize live crawl).
+
+## Best Practices
+- Use specific, targeted queries for better results
+- For current events, include the year in your query (e.g., "latest AI news 2026")
+- If results are insufficient, try rephrasing the query
+- Use webFetch to read the full content of promising results
+- For semantic discovery (related items, best X), provide clear descriptive queries
+- For research tasks, use detailed multi-sentence queries
+
+## Important
+- Results include title, URL, and description
+- Use webFetch on result URLs to read full page content
+- Multiple search providers are tried automatically for reliability

@@ -171,6 +171,16 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
                             : 'completed'
                           : 'running'
                       }
+                      result={
+                        msg.toolResults?.find((r) => r.id === toolCalls[i].id)
+                          ? msg.toolResults.find((r) => r.id === toolCalls[i].id)!.result
+                          : undefined
+                      }
+                      metadata={
+                        msg.toolResults?.find((r) => r.id === toolCalls[i].id)
+                          ? msg.toolResults.find((r) => r.id === toolCalls[i].id)!.metadata
+                          : undefined
+                      }
                     />
                   )}
                 </Fragment>

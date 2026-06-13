@@ -63,8 +63,9 @@ export function ChatPanel() {
   if (!isChatOpen) return null
 
   const activeDocId = activeDoc?.id || ''
-  const allConversations = conversationsByDoc[activeDocId] || []
-  const conversations = allConversations.filter(c => !draftConversations[c.id])
+  const allConversations = Object.values(conversationsByDoc).flat()
+  const sorted = [...allConversations].sort((a, b) => b.updatedAt - a.updatedAt)
+  const conversations = sorted.filter(c => !draftConversations[c.id])
   const messages = activeConversationId ? messagesByConv[activeConversationId] || [] : []
   const deleteConv = conversations.find((c) => c.id === deleteConfirmId)
 

@@ -179,6 +179,8 @@ export class AgentEngine {
           }
         }
 
+        await new Promise<void>(resolve => setTimeout(resolve, 0))
+
         try {
           let docSnapshot: string | null = null
           if (isModifyingTool || tc.function.name === 'createDoc') {

@@ -43,6 +43,7 @@ const createDoc: ToolDefinition = {
     }
 
     const store = useDocumentStore.getState()
+    const previousDocId = store.activeDocId
     const title = (args.title as string) || 'Untitled'
     const content = (args.content as string) || ''
 
@@ -50,23 +51,11 @@ const createDoc: ToolDefinition = {
     const chars = content.length
     const changeSummary = `${lines} lines (${chars} chars)`
 
-    if (ctx.onPendingChange) {
-      const pendingId = crypto.randomUUID()
-      ctx.onPendingChange({
-        documentId: pendingId,
-        toolName: 'createDoc',
-        title,
-        originalContent: '',
-        newContent: content,
-      })
-      return {
-        title,
-        output: `"${title}" creation (${changeSummary}) — pending approval.`,
-        metadata: { id: pendingId, title, pending: true },
-      }
-    }
-
     const id = store.createDocument(content, title)
+    // Restore previous active doc so the agent doesn't steal navigation
+    if (previousDocId && previousDocId !== id) {
+      store.setActiveDoc(previousDocId)
+    }
 
     return {
       title,

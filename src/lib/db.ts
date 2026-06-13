@@ -134,6 +134,12 @@ export async function loadConversationsForDocument(documentId: string): Promise<
     .sortBy('updatedAt')
 }
 
+export async function loadAllConversations(): Promise<Conversation[]> {
+  return db.conversations
+    .reverse()
+    .sortBy('updatedAt')
+}
+
 export async function saveConversation(conv: Conversation): Promise<void> {
   await db.conversations.put(conv)
 }

@@ -51,6 +51,7 @@ export interface ToolResultPart {
   name: string
   result: string
   isError?: boolean
+  metadata?: Record<string, unknown>
 }
 
 export interface Message {

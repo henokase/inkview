@@ -164,11 +164,12 @@ function App() {
     prevActiveCount.current = count
   }, [activeDocChanges, editorMode, setEditorMode])
 
+  const chatHydrated = useChatStore((s) => s._hydrated)
   useEffect(() => {
-    if (activeDocId) {
-      chatInit(activeDocId)
+    if (!chatHydrated) {
+      chatInit()
     }
-  }, [activeDocId, chatInit])
+  }, [chatHydrated, chatInit])
 
   const handlePreviewMouseUp = useCallback(() => {
     const selection = window.getSelection()

@@ -1,0 +1,20 @@
+# webFetch Tool Usage
+
+## Purpose
+Fetch content from a URL and return it in the requested format. HTML pages are converted to clean markdown by default.
+
+## Parameters
+- `url` (required): The URL to fetch. Must start with http:// or https://.
+- `format` (optional): Output format — 'markdown' (default), 'text' (plain text), or 'html' (raw HTML).
+- `timeout` (optional): Timeout in seconds (max: 120, default: 30).
+
+## Best Practices
+- Use after webSearch to read promising result URLs in detail
+- For documentation pages, markdown format works best
+- For extracting raw data, use text format
+- Large pages (over 5MB) will be rejected
+
+## Important
+- Only fetches publicly accessible URLs
+- Does not handle authentication or login-required pages
+- This tool is read-only and does not modify any files

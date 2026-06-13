@@ -34,6 +34,7 @@
     "remark-github-markdown-alerts": "^1.2.2",
     "remark-math": "^6.0.0",
     "tailwindcss": "^4.3.0",
+    "turndown": "^7.2.4",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
@@ -42,6 +43,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/react-syntax-highlighter": "^15.5.13",
+    "@types/turndown": "^5.0.6",
     "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
