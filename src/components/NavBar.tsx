@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
-import { BookOpen, Columns2, Eye, FileEdit, MessageSquarePlus, Plus, WifiOff } from 'lucide-react'
+import { BookOpen, Columns2, Eye, FileEdit, Plus, WifiOff } from 'lucide-react'
 import { ShareButton } from './ShareButton'
 import { ThemeToggle } from './ThemeToggle'
-import { TocIcon, DocListIcon } from './CustomIcons'
+import { TocIcon, DocListIcon, AiChatIcon } from './CustomIcons'
 
 import type { EditorMode } from '../types'
 
@@ -233,7 +233,7 @@ export function NavBar({
               chatOpen ? 'text-accent bg-accent-bg' : 'text-ink-faint hover:text-ink hover:bg-surface-alt'
             }`}
           >
-            <MessageSquarePlus size={18} />
+            <AiChatIcon size={18} />
           </button>
         )}
 

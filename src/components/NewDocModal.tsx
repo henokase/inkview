@@ -61,7 +61,7 @@ export function NewDocModal({ open, onClose, onCreateBlank, onFileUpload, onFile
 
   return createPortal(
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center transition-all duration-200 ${
+      className={`fixed inset-0 z-[65] flex items-center justify-center transition-all duration-200 ${
         open ? 'opacity-100' : 'opacity-0 pointer-events-none'
       }`}
     >

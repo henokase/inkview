@@ -1,0 +1,26 @@
+# deleteDoc Tool Usage
+
+## Purpose
+The `deleteDoc` tool permanently deletes a document from the library. This action **cannot be undone**.
+
+## Parameters
+- `documentId` (required): The ID of the document to permanently delete.
+
+## Before Deleting
+Always verify the document identity before deleting:
+
+1. Use `searchDocs({ query: "document title" })` or `listDocs()` to find the correct document ID
+2. Confirm the ID matches the document you intend to delete
+3. Use `readDoc({ documentId })` to verify the content is what you expect to delete
+
+## Best Practices
+- Double-check the document ID before calling `deleteDoc` - deletion is permanent
+- Inform the user about what is being deleted before proceeding
+- Document deletion may also remove associated conversations and history
+- If you are unsure about the document ID, use `searchDocs` or `listDocs` to confirm first
+
+## Important
+- Deletion is **permanent and irreversible**. There is no recycle bin or undo.
+- The user must explicitly approve deletion operations through the permission system.
+- Use this tool sparingly and with caution.
+- After deletion, the document is removed immediately upon approval.

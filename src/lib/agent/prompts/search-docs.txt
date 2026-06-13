@@ -1,0 +1,34 @@
+# searchDocs Tool Usage
+
+## Purpose
+The `searchDocs` tool searches across all documents in the library for matching content or titles. It is the primary tool for finding the right document to read or edit.
+
+## Parameters
+- `query` (required): A search query string. Search is case-insensitive and matches against both document titles and content.
+- `limit` (optional): Maximum number of results to return (default: 20, max: 100).
+
+## Search Results
+Results include:
+- Document ID (use this for subsequent `readDoc` or `editDoc` calls)
+- Document title
+- Match type (`title` or `content`)
+- A context snippet showing surrounding text for content matches
+- Last updated date
+
+Results are ordered by relevance but not explicitly scored in the current implementation.
+
+## Best Practices
+- Use `searchDocs` before `readDoc` when you are unsure of the document ID
+- Use specific keywords to narrow results
+- If you get too many results, refine your query with more specific terms
+- If you get no results, try broader terms or use `listDocs` to see all documents
+
+## Workflow Example
+1. `searchDocs({ query: "meeting notes" })` - find documents about meeting notes
+2. `readDoc({ documentId: "found-id" })` - read the matched document
+3. `editDoc({ documentId: "found-id", oldString: "...", newString: "..." })` - edit it
+
+## Important
+- Search matches against both title and content
+- Only the first `limit` matches are returned
+- If you know the document ID, use `readDoc` directly without searching

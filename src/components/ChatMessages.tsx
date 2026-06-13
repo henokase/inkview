@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, memo, useCallback, useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
@@ -7,6 +7,8 @@ import 'katex/dist/katex.min.css'
 import { MessageSquare, Copy, Pencil, Check, X } from 'lucide-react'
 import type { Message } from '../types'
 import { ThinkingView } from './ThinkingView'
+import { ToolCallCard } from './ToolCallCard'
+import { ToolResultCard } from './ToolResultCard'
 
 interface ChatMessagesProps {
   messages: Message[]
@@ -121,7 +123,7 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
           className={`relative ${
             isUser
               ? 'bg-linear-to-br from-accent to-accent-soft text-white rounded-xl rounded-br-md shadow-sm shadow-accent/15'
-              : `text-ink ${msg.content ? 'bg-surface-alt border border-border/40 rounded-xl rounded-tl-md' : ''}`
+              : `text-ink ${msg.content || msg.toolCalls?.length || msg.toolResults?.length ? 'bg-surface-alt border border-border/40 rounded-xl rounded-tl-md' : ''}`
           } ${isUser ? `${editing ? 'p-2 border-2 border-slate-500' : 'p-2'}` : 'p-2'}`}
         >
           {editing ? (
@@ -134,6 +136,52 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
             />
           ) : isUser ? (
             <p className="whitespace-pre-wrap text-[13px] leading-relaxed font-medium">{msg.content}</p>
+          ) : msg.contentParts && msg.contentParts.length > 0 ? (
+            <div className="space-y-2">
+              {msg.contentParts.map((part, i) => {
+                const contentParts = msg.contentParts!
+                const toolCalls = msg.toolCalls
+                return (
+                <Fragment key={`part-${i}`}>
+                  {part ? (
+                    <div className="prose prose-sm max-w-none">
+                      {isLastStreaming && i === contentParts.length - 1 ? (
+                        <>
+                          <p className="whitespace-pre-wrap text-[13px] leading-relaxed">{part}</p>
+                          <span className="inline-block w-1.5 h-4 bg-accent ml-0.5 rounded-sm animate-pulse align-text-bottom" />
+                        </>
+                      ) : (
+                        <ChatMarkdownMemo content={part} />
+                      )}
+                    </div>
+                  ) : isLastStreaming && i === contentParts.length - 1 ? (
+                    <div className="flex items-center gap-2 text-ink-faint">
+                      <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  ) : null}
+                  {toolCalls && i < toolCalls.length && (
+                    <ToolCallCard
+                      call={toolCalls[i]}
+                      status={
+                        msg.toolResults?.find((r) => r.id === toolCalls[i].id)
+                          ? msg.toolResults.find((r) => r.id === toolCalls[i].id)!.isError
+                            ? 'failed'
+                            : 'completed'
+                          : 'running'
+                      }
+                    />
+                  )}
+                </Fragment>
+                )
+              })}
+              {msg.toolResults
+                ?.filter((r) => !msg.toolCalls?.some((c) => c.id === r.id))
+                .map((result) => (
+                  <ToolResultCard key={result.id} result={result} />
+                ))}
+            </div>
           ) : msg.content ? (
             isLastStreaming ? (
               <>
@@ -145,13 +193,15 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
                 <ChatMarkdownMemo content={msg.content} />
               </div>
             )
-          ) : (
+          ) : msg.thinking ? (
+            <ThinkingView thinking={msg.thinking} loading={false} />
+          ) : isLastStreaming ? (
             <div className="flex items-center gap-2 text-ink-faint">
               <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '0ms' }} />
               <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '150ms' }} />
               <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '300ms' }} />
             </div>
-          )}
+          ) : null}
         </div>
 
         <div className={`flex items-center gap-1 mt-1.5 px-1 justify-end ${editing ? 'justify-end' : ''}`}>

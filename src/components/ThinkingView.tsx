@@ -3,9 +3,10 @@ import { ChevronDown, Sparkles } from 'lucide-react'
 
 interface ThinkingViewProps {
   thinking?: string
+  loading?: boolean
 }
 
-export function ThinkingView({ thinking }: ThinkingViewProps) {
+export function ThinkingView({ thinking, loading = true }: ThinkingViewProps) {
   const [open, setOpen] = useState(true)
   const hasContent = thinking && thinking.length > 0
 
@@ -19,11 +20,13 @@ export function ThinkingView({ thinking }: ThinkingViewProps) {
         <span className="text-[11px] font-semibold text-accent/70 tracking-wider uppercase font-sans">
           Thinking
         </span>
-        <div className="flex gap-0.5 ml-1">
-          <span className="w-1 h-1 rounded-full bg-accent/30 animate-bounce" style={{ animationDelay: '0ms' }} />
-          <span className="w-1 h-1 rounded-full bg-accent/30 animate-bounce" style={{ animationDelay: '150ms' }} />
-          <span className="w-1 h-1 rounded-full bg-accent/30 animate-bounce" style={{ animationDelay: '300ms' }} />
-        </div>
+        {loading && (
+          <div className="flex gap-0.5 ml-1">
+            <span className="w-1 h-1 rounded-full bg-accent/30 animate-bounce" style={{ animationDelay: '0ms' }} />
+            <span className="w-1 h-1 rounded-full bg-accent/30 animate-bounce" style={{ animationDelay: '150ms' }} />
+            <span className="w-1 h-1 rounded-full bg-accent/30 animate-bounce" style={{ animationDelay: '300ms' }} />
+          </div>
+        )}
         {hasContent && (
           <ChevronDown
             size={13}

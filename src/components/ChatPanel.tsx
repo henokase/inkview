@@ -2,10 +2,12 @@ import { useEffect, useState, useRef } from 'react'
 import { Plus, X, MessageSquare } from 'lucide-react'
 import { useChatStore } from '../stores/chat-store'
 import { useDocumentStore } from '../stores/document-store'
+import { useAgentStore } from '../stores/agent-store'
 import { ConversationList } from './ConversationList'
 import { ChatMessages } from './ChatMessages'
 import { ChatInput, type ChatInputHandle } from './ChatInput'
 import { ConfirmModal } from './ConfirmModal'
+import { PermissionDialog } from './PermissionDialog'
 
 const CHAT_WIDTH_SM = 340
 const CHAT_WIDTH_MD = 400
@@ -30,6 +32,9 @@ export function ChatPanel() {
   const draftConversations = useChatStore((s) => s.draftConversations)
   const sendMessage = useChatStore((s) => s.sendMessage)
   const editMessage = useChatStore((s) => s.editMessage)
+
+  const permissionQueue = useAgentStore((s) => s.permissionQueue)
+  const resolvePermission = useAgentStore((s) => s.resolvePermission)
 
   const activeDoc = useDocumentStore((s) => {
     const docs = s.documents
@@ -105,12 +110,12 @@ export function ChatPanel() {
   return (
     <>
       <div
-        className="fixed inset-0 z-30 bg-black/20 backdrop-blur-xs lg:hidden"
+        className="fixed inset-0 z-55 bg-black/20 backdrop-blur-xs lg:hidden"
         onClick={() => setChatOpen(false)}
       />
 
       <aside
-        className="fixed inset-y-0 right-0 z-40 lg:relative lg:shrink-0 flex flex-col border-l border-border/40 bg-surface shadow-2xl lg:shadow-[-8px_0_32px_-8px_rgba(0,0,0,0.12)] animate-in slide-in-from-right duration-200"
+        className="fixed inset-y-0 right-0 z-60 lg:relative lg:shrink-0 flex flex-col border-l border-border/40 bg-surface shadow-2xl lg:shadow-[-8px_0_32px_-8px_rgba(0,0,0,0.12)] animate-in slide-in-from-right duration-200"
         style={{ width: getChatWidth() }}
       >
         <div className="relative shrink-0 pb-0">
@@ -119,7 +124,6 @@ export function ChatPanel() {
               <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-accent/10 text-accent ring-1 ring-accent/15 shrink-0">
                 <MessageSquare size={13} />
               </div>
-              {/* <h2 className="text-sm font-bold text-ink font-sans tracking-tight shrink-0">Chat</h2> */}
               <div className="flex-1 min-w-0">
                 <ConversationList
                   conversations={conversations}
@@ -150,6 +154,16 @@ export function ChatPanel() {
         <ChatMessages messages={messages} isStreaming={isStreaming} activeThinking={activeThinking} onEdit={handleEdit} />
 
         <div className="shrink-0 border-t border-border/50">
+          {permissionQueue[0] && (
+            <div className="px-3 pt-2.5 pb-1">
+              <PermissionDialog
+                request={permissionQueue[0]}
+                onResolve={(action) => {
+                  resolvePermission(permissionQueue[0].id, action)
+                }}
+              />
+            </div>
+          )}
           <ChatInput ref={chatInputRef} key={activeConversationId ?? 'no-session'} onSend={handleSend} />
         </div>
       </aside>

@@ -18,6 +18,7 @@ import { Notice } from './components/Notice'
 import { ChatPanel } from './components/ChatPanel'
 import { SelectionToolbar } from './components/SelectionToolbar'
 import { parseShareUrl, fetchSharedContent, resolveImportEntries, resolveTitleUnique } from './lib/share'
+import { usePendingChangesStore } from './stores/pending-changes-store'
 
 function findPreviewHeading(container: HTMLElement): string | null {
   const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6')
@@ -29,7 +30,7 @@ function findPreviewHeading(container: HTMLElement): string | null {
   let bestAbove: { text: string; dist: number } | null = null
   let bestBelow: { text: string; dist: number } | null = null
 
-  for (const h of headings) {
+  for (const h of Array.from(headings)) {
     const el = h as HTMLElement
     const relativeTop = el.getBoundingClientRect().top - containerRect.top
     const text = el.textContent?.trim()
@@ -84,7 +85,6 @@ function App() {
   const [toastMsg, setToastMsg] = useState('')
   const [toastType, setToastType] = useState<'success' | 'error'>('success')
   const [toastVisible, setToastVisible] = useState(false)
-  const [showChatNotice, setShowChatNotice] = useState(false)
 
   const showToast = useCallback((msg: string, type: 'success' | 'error') => {
     setToastMsg(msg)
@@ -93,10 +93,6 @@ function App() {
   }, [])
   const hideToast = useCallback(() => setToastVisible(false), [])
   
-  const handleDismissChatNotice = useCallback(() => {
-    localStorage.setItem('chat_feature_notice_dismissed', 'true')
-    setShowChatNotice(false)
-  }, [])
   const isDragging = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const editorPaneRef = useRef<HTMLDivElement>(null)
@@ -140,21 +136,33 @@ function App() {
     return () => window.removeEventListener('resize', checkSize)
   }, [editorMode, setEditorMode])
 
-  // Check for AI chat feature notice
   useEffect(() => {
-    const now = new Date()
-    const nextMonth = new Date(2026, 6, 1) // July 1, 2026
-    
-    // Only show notice if current date is before July 2026
-    if (now < nextMonth) {
-      const noticeKey = 'chat_feature_notice_dismissed'
-      const isDismissed = localStorage.getItem(noticeKey) === 'true'
-      
-      if (!isDismissed) {
-        setShowChatNotice(true)
-      }
+    if (editorMode === 'split') {
+      setTocOpen(false)
     }
-  }, [])
+  }, [editorMode])
+
+  useEffect(() => {
+    if (isChatOpen) {
+      setTocOpen(false)
+    }
+  }, [isChatOpen])
+
+  // AI chat feature notice (permanently hidden)
+
+  const allPendingChanges = usePendingChangesStore((s) => s.changes)
+  const activeDocChanges = useMemo(
+    () => allPendingChanges.filter((c) => c.documentId === activeDocId),
+    [allPendingChanges, activeDocId]
+  )
+  const prevActiveCount = useRef(0)
+  useEffect(() => {
+    const count = activeDocChanges.length
+    if (count > 0 && prevActiveCount.current === 0 && editorMode === 'preview') {
+      setEditorMode('edit')
+    }
+    prevActiveCount.current = count
+  }, [activeDocChanges, editorMode, setEditorMode])
 
   useEffect(() => {
     if (activeDocId) {
@@ -249,7 +257,6 @@ function App() {
           showToast('Shared document imported successfully', 'success')
         } else {
           setShareLoading(false)
-          console.error('Share response:', JSON.stringify(data, null, 2))
           const keys = Object.keys(data || {}).join(', ')
           const t = data && 'content' in data ? typeof data.content : 'NO_KEY'
           showToast(`Bad response (keys: ${keys}, content: ${t})`, 'error')
@@ -519,13 +526,16 @@ function App() {
                     <div className={`flex flex-1 flex-col min-h-0 overflow-hidden py-8 ${
                       editorMode === 'split'
                         ? 'pl-6 lg:pl-10 xl:pl-16 pr-0'
-                        : 'px-6 lg:px-10 xl:px-16'
+                        : 'px-4 lg:px-6 xl:px-8'
                     }`}>
-                      <MarkdownEditor
-                        ref={editorHandleRef}
-                        value={activeDoc.content}
-                        onChange={handleContentChange}
-                      />
+                      <div className="flex-1 min-h-0">
+                        <MarkdownEditor
+                          ref={editorHandleRef}
+                          value={activeDoc.content}
+                          onChange={handleContentChange}
+                          pendingChanges={activeDocChanges}
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
@@ -539,7 +549,7 @@ function App() {
                     <button
                       onClick={handleSync}
                       onMouseDown={(e) => e.stopPropagation()}
-                      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-7 h-7 rounded-full bg-surface shadow-xs border border-border/60 text-ink-faint hover:text-accent hover:border-accent/40 hover:bg-accent-bg/50 transition-all opacity-0 group-hover:opacity-100"
+                      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-7 h-7 rounded-full bg-surface shadow-xs border border-border/60 text-ink-faint hover:text-accent hover:border-accent/40 hover:bg-accent-bg/50 transition-all"
                       title="Snap editor to preview heading"
                     >
                       <RefreshCw size={13} />
@@ -605,8 +615,8 @@ function App() {
       {/* Fullscreen editor mode */}
       {editorMode === 'edit' && showContent && activeDoc && (
         <div
-          className="fixed inset-0 z-50 flex flex-col bg-surface-alt"
-          style={{ animation: 'fadeIn 200ms' }}
+          className="fixed inset-0 z-50 flex flex-col bg-surface-alt transition-[padding] duration-200"
+          style={{ animation: 'fadeIn 200ms', paddingRight: isChatOpen ? chatPanelWidth : 0 }}
         >
           <NavBar
             title={title}
@@ -628,12 +638,13 @@ function App() {
             isOnline={isOnline}
             hasHeadings={hasHeadings}
           />
-          <div className="flex-1 overflow-auto px-0 sm:px-6 lg:px-12">
-            <div className="mx-auto h-full max-w-4xl bg-surface shadow-lg ring-1 ring-border/50 px-2 sm:px-4 py-3">
+          <div className="flex-1 overflow-auto px-0 sm:px-4 lg:px-2">
+            <div className="mx-auto h-full max-w-4xl bg-surface shadow-lg ring-1 ring-border/50 px-2 sm:px-4 py-3 flex flex-col min-h-0">
               <MarkdownEditor
                 value={activeDoc.content}
                 onChange={handleContentChange}
                 autoFocus
+                pendingChanges={activeDocChanges}
               />
             </div>
           </div>
@@ -643,16 +654,15 @@ function App() {
       {/* Toast */}
       <Toast message={toastMsg} type={toastType} visible={toastVisible} onClose={hideToast} />
 
-      {/* Chat Feature Notice */}
+      {/* Chat Feature Notice (permanently hidden) */}
       <Notice 
         title="New Feature: AI Chat"
         message="Chat with AI about your documents. Ask questions, get summaries, and more. The AI sidebar is now available on all your documents."
-        visible={showChatNotice}
-        onClose={handleDismissChatNotice}
+        visible={false}
+        onClose={() => {}}
       />
 
       {/* Modals */}
-      <HistoryModal open={historyOpen} onClose={() => { setHistoryOpen(false); setPendingFolderId(null) }} showToast={showToast} initialFolderId={pendingFolderId} />
       <NewDocModal
         open={newDocOpen}
         onClose={() => setNewDocOpen(false)}
@@ -661,6 +671,7 @@ function App() {
         onFilesUpload={handleFilesUpload}
         loading={creatingDoc}
       />
+      <HistoryModal open={historyOpen} onClose={() => { setHistoryOpen(false); setPendingFolderId(null) }} showToast={showToast} initialFolderId={pendingFolderId} />
     </div>
   )
 }

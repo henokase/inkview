@@ -4,6 +4,10 @@ import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import App from './App.tsx'
 import { hydrateStore } from './stores/document-store'
+import { useChatStore } from './stores/chat-store'
+
+// Expose stores globally for console testing
+;(window as unknown as Record<string, unknown>).useChatStore = useChatStore
 
 const updateSW = registerSW({
   onNeedRefresh() {

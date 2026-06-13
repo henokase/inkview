@@ -621,8 +621,8 @@ const handleCreateFolder = useCallback(() => {
   const allDocsCount = documents.length
 
   return createPortal(
-    <div className={`fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-200 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+    <div className={`fixed inset-0 z-65 flex items-center justify-center transition-opacity duration-200 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative flex h-[80vh] w-[calc(100%-1rem)] sm:w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl flex-col rounded-2xl border border-border bg-surface shadow-2xl">
         {/* Header */}

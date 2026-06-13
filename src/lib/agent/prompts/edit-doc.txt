@@ -1,0 +1,51 @@
+# editDoc Tool Usage
+
+## Purpose
+The `editDoc` tool makes targeted edits to a document by finding specific text and replacing it. It is the **preferred** tool for making changes to existing documents.
+
+## How to Extract oldString
+After using `readDoc`, the document content is returned with line numbers prefixed like:
+```
+1: # Document Title
+2:
+3: Some paragraph text here.
+```
+
+When extracting text for `oldString`, copy everything **after** the `lineNumber: ` prefix, preserving exact whitespace, indentation, and line endings. Do not include the line numbers in oldString.
+
+## Matching Behavior
+The system tries 9 matching strategies in order:
+1. **Exact match** - character-for-character match
+2. **Line-trimmed** - compares lines after trimming whitespace
+3. **Block anchor** - uses first/last lines as anchors with Levenshtein distance for middle lines
+4. **Whitespace-normalized** - normalizes all whitespace runs to single spaces
+5. **Indentation-flexible** - strips common indentation before comparing
+6. **Escape-normalized** - unescapes `\n`, `\t`, `\r`, etc. before matching
+7. **Trimmed-boundary** - trims leading/trailing whitespace
+8. **Context-aware** - first/last line anchors with exact middle line matching
+9. **Multi-occurrence** - finds all exact occurrences (for reporting multiples)
+
+oldString should match the document text as closely as possible, but the system will try fuzzy matching if exact match fails.
+
+## Common Failure Modes
+- **Whitespace differences**: Extra spaces, tabs, or different indentation
+- **Line ending issues**: Windows (`\r\n`) vs Unix (`\n`) line endings
+- **Insufficient context**: The oldString matches multiple locations. Provide 2-3 surrounding lines for uniqueness.
+- **Trailing whitespace**: Lines with trailing spaces that aren't visible
+
+## Best Practices
+- Extract oldString directly from readDoc output (after removing line number prefixes)
+- Provide 2-3 lines of surrounding context for unique matching
+- For large changes, prefer incremental edits over full-document rewrites
+- Use `replaceAll: true` only when you need to replace every occurrence of identical text
+- After editing, read the document to verify the change was applied correctly
+
+## replaceAll vs Specific Matching
+- `replaceAll: true` - replaces every occurrence of oldString. Use when you want to rename a symbol or term consistently.
+- Without `replaceAll` (default) - replaces only the first unique match. Requires the match to be unambiguous.
+
+## Important
+- Every edit creates a **pending diff** that the user must approve before it is applied.
+- The system uses the actual matched text from the document (not your oldString) for the diff display, so the diff will show the exact document text being replaced.
+- If you get "multiple matches found", add more surrounding context to oldString.
+- If you get "not found", re-read the document and copy the exact text including indentation.
