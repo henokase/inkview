@@ -1,7 +1,6 @@
 import type { ToolDefinition, ToolContext, ToolResult } from '../types'
 
 const MAX_RESPONSE_SIZE = 5 * 1024 * 1024
-const DEFAULT_TIMEOUT = 30_000
 
 const jsonSchema = {
   type: 'object',

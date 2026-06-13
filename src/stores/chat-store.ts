@@ -43,7 +43,7 @@ interface ChatStore {
   setChatPanelWidth: (width: number) => void
   setAgentMode: (mode: boolean) => void
 
-  init: (documentId: string) => Promise<void>
+  init: (documentId?: string) => Promise<void>
   createConversation: (documentId: string) => string
   deleteConversation: (convId: string) => void
   renameConversation: (id: string, title: string) => void
