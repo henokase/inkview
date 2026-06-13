@@ -16,9 +16,11 @@ export interface PendingChange {
 
 export type DiffLine = { type: 'equal' | 'insert' | 'delete'; value: string }
 
-function lcsDiff(original: string, modified: string): DiffLine[] {
-  const oLines = original.split('\n')
-  const mLines = modified.split('\n')
+export function computeDiff(original: string, modified: string): DiffLine[] {
+  const dropTrailingEmpty = (a: string[]) =>
+    a.length > 0 && a[a.length - 1] === '' ? a.slice(0, -1) : a
+  const oLines = dropTrailingEmpty(original.split('\n'))
+  const mLines = dropTrailingEmpty(modified.split('\n'))
   const oLen = oLines.length
   const mLen = mLines.length
   const dp: number[][] = Array.from({ length: oLen + 1 }, () => Array(mLen + 1).fill(0))
@@ -50,10 +52,6 @@ function lcsDiff(original: string, modified: string): DiffLine[] {
 
   for (let k = temp.length - 1; k >= 0; k--) result.push(temp[k])
   return result
-}
-
-export function computeDiff(original: string, modified: string): DiffLine[] {
-  return lcsDiff(original, modified)
 }
 
 export function applyChange(change: PendingChange): void {

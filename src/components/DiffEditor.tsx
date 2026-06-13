@@ -1,85 +1,31 @@
 import { memo, useMemo, useCallback } from 'react'
 import type { PendingChange } from '../stores/pending-changes-store'
-import { computeDiff, usePendingChangesStore } from '../stores/pending-changes-store'
+import { usePendingChangesStore } from '../stores/pending-changes-store'
 import CodeMirror from '@uiw/react-codemirror'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
-import { EditorView, Decoration, WidgetType } from '@codemirror/view'
-import type { DecorationSet } from '@codemirror/view'
-import { StateField } from '@codemirror/state'
+import { EditorView } from '@codemirror/view'
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language'
 import { tags } from '@lezer/highlight'
+import { unifiedMergeView } from '@codemirror/merge'
 
 interface DiffEditorProps {
   documentId: string
   pendingChanges: PendingChange[]
 }
 
-const insertLine = Decoration.line({ class: 'diff-ins' })
-
-class DeleteWidget extends WidgetType {
-  text: string
-  constructor(text: string) {
-    super()
-    this.text = text
-  }
-  eq(other: DeleteWidget) { return this.text === other.text }
-
-  toDOM() {
-    const wrap = document.createElement('div')
-    wrap.className = 'diff-del'
-    wrap.textContent = this.text.split('\n').map((l) => '− ' + l).join('\n')
-    return wrap
-  }
-
-  ignoreEvent() { return true }
-}
-
-function diffDecoField(original: string) {
-  function compute(cleanDoc: string): DecorationSet {
-    const diff = computeDiff(original, cleanDoc)
-    const decos: any[] = []
-    const cleanLines = cleanDoc.split('\n')
-    let cleanIdx = 0
-
-    for (const part of diff) {
-      const partLines = part.value.split('\n')
-
-      if (part.type === 'equal') {
-        cleanIdx += partLines.length
-      } else if (part.type === 'delete') {
-        const targetLine = cleanIdx < cleanLines.length ? cleanIdx : cleanIdx
-        let pos: number
-        if (targetLine < cleanLines.length) {
-          pos = cleanLines.slice(0, targetLine).join('\n').length
-          if (targetLine > 0) pos += 1
-        } else {
-          pos = cleanDoc.length
-        }
-        const widget = new DeleteWidget(part.value)
-        decos.push(Decoration.widget({ widget, side: -1, block: true }).range(pos))
-      } else if (part.type === 'insert') {
-        for (let i = 0; i < partLines.length; i++) {
-          if (cleanIdx < cleanLines.length) {
-            const pos = cleanLines.slice(0, cleanIdx).join('\n').length
-            decos.push(insertLine.range(cleanIdx === 0 ? 0 : pos + 1))
-          }
-          cleanIdx++
-        }
-      }
+function computeBaseContent(changes: PendingChange[]): string {
+  if (changes.length === 0) return ''
+  let c = changes[0].originalContent
+  for (const ch of changes) {
+    if (ch.oldString !== undefined && ch.newString !== undefined && ch.oldString) {
+      const idx = c.indexOf(ch.oldString)
+      if (idx !== -1) c = c.slice(0, idx) + ch.newString + c.slice(idx + ch.oldString.length)
+    } else {
+      c = ch.newContent
     }
-
-    return Decoration.set(decos, true)
   }
-
-  return StateField.define<DecorationSet>({
-    create(state) { return compute(state.doc.toString()) },
-    update(deco, tr) {
-      if (!tr.docChanged) return deco
-      return compute(tr.state.doc.toString())
-    },
-    provide: (f) => EditorView.decorations.from(f),
-  })
+  return c
 }
 
 const syntaxStyle = HighlightStyle.define([
@@ -109,40 +55,37 @@ const editorTheme = EditorView.theme({
   '&.cm-focused .cm-cursor': { borderLeftColor: 'var(--color-accent)' },
   '&.cm-focused': { outline: 'none' },
 
-  '.cm-line.diff-ins': {
-    backgroundColor: 'rgba(16,185,129,0.08)',
-  },
-  '.cm-line.diff-ins::before': {
-    content: '"+ "',
-    color: '#16a34a',
-    fontWeight: '600',
-    userSelect: 'none',
-    pointerEvents: 'none',
-  },
-  '.diff-del': {
-    minHeight: '1.5em',
+  // Deleted chunk overlay (red)
+  '.cm-deletedChunk': {
     backgroundColor: 'rgba(244,63,94,0.08)',
     color: '#dc2626',
     userSelect: 'none',
     pointerEvents: 'none',
-    whiteSpace: 'pre-wrap',
-    wordBreak: 'break-word',
+  },
+  '.cm-deletedLine': {
+    backgroundColor: 'rgba(244,63,94,0.08)',
+    color: '#dc2626',
+    userSelect: 'none',
+    pointerEvents: 'none',
+  },
+  '.cm-deletedText': {
+    backgroundColor: 'rgba(244,63,94,0.15)',
+    textDecoration: 'none',
+  },
+
+  // Inserted/changed lines (green)
+  '.cm-insertedLine': {
+    backgroundColor: 'rgba(16,185,129,0.08)',
+  },
+
+  // Gutter markers
+  '.cm-deletedLineGutter': {
+    backgroundColor: 'rgba(244,63,94,0.12)',
+  },
+  '.cm-insertedLineGutter': {
+    backgroundColor: 'rgba(16,185,129,0.12)',
   },
 })
-
-function computeBaseContent(changes: PendingChange[]): string {
-  if (changes.length === 0) return ''
-  let c = changes[0].originalContent
-  for (const ch of changes) {
-    if (ch.oldString !== undefined && ch.newString !== undefined && ch.oldString) {
-      const idx = c.indexOf(ch.oldString)
-      if (idx !== -1) c = c.slice(0, idx) + ch.newString + c.slice(idx + ch.oldString.length)
-    } else {
-      c = ch.newContent
-    }
-  }
-  return c
-}
 
 export const DiffEditor = memo(function DiffEditor({ documentId, pendingChanges }: DiffEditorProps) {
   const originalContent = pendingChanges[0]?.originalContent ?? ''
@@ -151,7 +94,16 @@ export const DiffEditor = memo(function DiffEditor({ documentId, pendingChanges 
   const editedSaved = usePendingChangesStore((s) => s.editedContent[documentId])
   const cleanContent = editedSaved ?? cumulativeContent
 
-  const decoExtension = useMemo(() => diffDecoField(originalContent), [originalContent])
+  const mergeExtension = useMemo(
+    () => unifiedMergeView({
+      original: originalContent,
+      mergeControls: false,
+      gutter: true,
+      highlightChanges: true,
+      allowInlineDiffs: true,
+    }),
+    [originalContent],
+  )
 
   const extensions = useMemo(
     () => [
@@ -159,16 +111,16 @@ export const DiffEditor = memo(function DiffEditor({ documentId, pendingChanges 
       syntaxHighlighting(syntaxStyle),
       EditorView.lineWrapping,
       editorTheme,
-      decoExtension,
-    ],
-    [decoExtension]
+      mergeExtension,
+    ].flat(),
+    [mergeExtension],
   )
 
   const handleChange = useCallback(
     (val: string) => {
       usePendingChangesStore.getState().setEditedContent(documentId, val)
     },
-    [documentId]
+    [documentId],
   )
 
   const approveAll = useCallback(() => {
