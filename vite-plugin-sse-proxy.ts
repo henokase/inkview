@@ -1,13 +1,15 @@
 import { request as httpsRequest } from 'node:https'
 import { URL } from 'node:url'
+import type { Plugin, ViteDevServer } from 'vite'
+import type { IncomingMessage, ServerResponse } from 'node:http'
 
-export function sseProxyPlugin(aiBaseUrl, apiKey) {
+export function sseProxyPlugin(aiBaseUrl: string, apiKey: string | undefined): Plugin {
   console.log(`[sse-proxy] AI API target: ${aiBaseUrl}`)
 
   return {
     name: 'sse-proxy',
-    configureServer(server) {
-      server.middlewares.use('/api-ai', async (req, res, next) => {
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use('/api-ai', async (req: IncomingMessage, res: ServerResponse, next) => {
         if (req.method !== 'POST' || !req.url?.includes('/chat/completions')) {
           return next()
         }
@@ -15,9 +17,9 @@ export function sseProxyPlugin(aiBaseUrl, apiKey) {
         const upstreamPath = req.url.replace(/^\/api-ai/, '')
         const upstreamUrl = new URL(aiBaseUrl.replace(/\/+$/, '') + upstreamPath)
 
-        const body = await new Promise((resolve, reject) => {
-          const chunks = []
-          req.on('data', (c) => chunks.push(c))
+        const body = await new Promise<string>((resolve, reject) => {
+          const chunks: Buffer[] = []
+          req.on('data', (c) => chunks.push(c as Buffer))
           req.on('end', () => resolve(Buffer.concat(chunks).toString()))
           req.on('error', reject)
         })
@@ -36,11 +38,11 @@ export function sseProxyPlugin(aiBaseUrl, apiKey) {
             },
           },
           (proxyRes) => {
-            res.writeHead(proxyRes.statusCode, {
+            res.writeHead(proxyRes.statusCode ?? 502, {
               'Content-Type': 'text/event-stream',
               'Cache-Control': 'no-cache, no-transform',
               'X-Accel-Buffering': 'no',
-              'Connection': 'keep-alive',
+              Connection: 'keep-alive',
             })
 
             proxyRes.on('data', (chunk) => {
@@ -53,7 +55,7 @@ export function sseProxyPlugin(aiBaseUrl, apiKey) {
               console.error(`[sse-proxy] error: ${err.message}`)
               res.destroy(err)
             })
-          }
+          },
         )
 
         proxyReq.on('error', (err) => {

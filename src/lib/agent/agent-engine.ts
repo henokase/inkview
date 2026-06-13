@@ -2,7 +2,7 @@ import { LLMClient } from '../llm/client'
 import type { ApiMessage, StreamChunk, Usage, ToolCallChunk } from '../llm/types'
 import { ToolRegistry, toolRegistry } from './tool-registry'
 import { evaluatePermission } from './permission'
-import type { PendingChangeInfo, ToolDefinition, ToolCallState, PermissionRule, ToolResult } from './types'
+import type { PendingChangeInfo, ToolCallState, PermissionRule, ToolResult } from './types'
 import { useDocumentStore } from '../../stores/document-store'
 
 export interface PermissionRequest {

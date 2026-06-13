@@ -549,7 +549,7 @@ function App() {
                     <button
                       onClick={handleSync}
                       onMouseDown={(e) => e.stopPropagation()}
-                      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-7 h-7 rounded-full bg-surface shadow-xs border border-border/60 text-ink-faint hover:text-accent hover:border-accent/40 hover:bg-accent-bg/50 transition-all opacity-0 group-hover:opacity-100"
+                      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-7 h-7 rounded-full bg-surface shadow-xs border border-border/60 text-ink-faint hover:text-accent hover:border-accent/40 hover:bg-accent-bg/50 transition-all"
                       title="Snap editor to preview heading"
                     >
                       <RefreshCw size={13} />

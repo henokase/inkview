@@ -22,7 +22,7 @@ interface DocumentStore {
   _docsVersion: number
   _foldersVersion: number
 
-  createDocument: (content?: string, title?: string) => string
+  createDocument: (content?: string, title?: string, id?: string) => string
   createDocuments: (entries: { content: string; title: string }[]) => string[]
   updateContent: (id: string, content: string) => void
   updateTitle: (id: string, title: string) => void

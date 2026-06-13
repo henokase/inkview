@@ -8,6 +8,7 @@ import { EditorView } from '@codemirror/view'
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language'
 import { tags } from '@lezer/highlight'
 import { unifiedMergeView } from '@codemirror/merge'
+import { pendingChangeScrollbarMarkers } from '../lib/codemirror/pending-change-scrollbar'
 
 interface DiffEditorProps {
   documentId: string
@@ -41,7 +42,7 @@ const syntaxStyle = HighlightStyle.define([
 ])
 
 const editorTheme = EditorView.theme({
-  '&': { backgroundColor: 'transparent !important', height: '100%' },
+  '&': { backgroundColor: 'transparent !important', height: '100%', position: 'relative' },
   '.cm-scroller': {
     fontFamily: 'var(--font-sans)', fontSize: '15px', lineHeight: '1.75',
     padding: '0', overflow: 'auto',
@@ -85,6 +86,36 @@ const editorTheme = EditorView.theme({
   '.cm-insertedLineGutter': {
     backgroundColor: 'rgba(16,185,129,0.12)',
   },
+
+  // Scrollbar change indicators
+  '.cm-pending-change-scrollbar': {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: '10px',
+    height: '100%',
+    pointerEvents: 'none',
+    zIndex: '4',
+  },
+  '.cm-pending-change-scrollbar-marker': {
+    position: 'absolute',
+    right: '2px',
+    width: '5px',
+    borderRadius: '2px',
+    minHeight: '3px',
+    pointerEvents: 'auto',
+    cursor: 'pointer',
+    opacity: '0.85',
+  },
+  '.cm-pending-change-scrollbar-marker-insert': {
+    backgroundColor: 'rgba(16,185,129,0.95)',
+  },
+  '.cm-pending-change-scrollbar-marker-delete': {
+    backgroundColor: 'rgba(244,63,94,0.95)',
+  },
+  '.cm-pending-change-scrollbar-marker-change': {
+    backgroundColor: 'rgba(245,158,11,0.95)',
+  },
 })
 
 export const DiffEditor = memo(function DiffEditor({ documentId, pendingChanges }: DiffEditorProps) {
@@ -92,7 +123,15 @@ export const DiffEditor = memo(function DiffEditor({ documentId, pendingChanges 
   const cumulativeContent = useMemo(() => computeBaseContent(pendingChanges), [pendingChanges])
 
   const editedSaved = usePendingChangesStore((s) => s.editedContent[documentId])
+  const userModified = editedSaved !== undefined && editedSaved !== cumulativeContent
   const cleanContent = editedSaved ?? cumulativeContent
+
+  const getOriginalContent = useCallback(() => originalContent, [originalContent])
+
+  const scrollbarExtension = useMemo(
+    () => pendingChangeScrollbarMarkers(getOriginalContent),
+    [getOriginalContent],
+  )
 
   const mergeExtension = useMemo(
     () => unifiedMergeView({
@@ -112,8 +151,9 @@ export const DiffEditor = memo(function DiffEditor({ documentId, pendingChanges 
       EditorView.lineWrapping,
       editorTheme,
       mergeExtension,
+      scrollbarExtension,
     ].flat(),
-    [mergeExtension],
+    [mergeExtension, scrollbarExtension],
   )
 
   const handleChange = useCallback(
@@ -135,7 +175,7 @@ export const DiffEditor = memo(function DiffEditor({ documentId, pendingChanges 
     <div className="h-full flex flex-col">
       <div className="shrink-0 flex justify-end items-center gap-2 px-4 py-2 border-b border-border/40 bg-surface z-10">
         <span className="text-xs text-ink-faint mr-auto">
-          {pendingChanges.length} pending change{pendingChanges.length !== 1 ? 's' : ''}
+          {pendingChanges.length} pending change{pendingChanges.length !== 1 ? 's' : ''}{userModified ? ' — edited' : ''}
         </span>
         <button
           onClick={rejectAll}

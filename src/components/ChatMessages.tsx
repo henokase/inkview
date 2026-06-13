@@ -138,11 +138,14 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
             <p className="whitespace-pre-wrap text-[13px] leading-relaxed font-medium">{msg.content}</p>
           ) : msg.contentParts && msg.contentParts.length > 0 ? (
             <div className="space-y-2">
-              {msg.contentParts.map((part, i) => (
+              {msg.contentParts.map((part, i) => {
+                const contentParts = msg.contentParts!
+                const toolCalls = msg.toolCalls
+                return (
                 <Fragment key={`part-${i}`}>
                   {part ? (
                     <div className="prose prose-sm max-w-none">
-                      {isLastStreaming && i === msg.contentParts.length - 1 ? (
+                      {isLastStreaming && i === contentParts.length - 1 ? (
                         <>
                           <p className="whitespace-pre-wrap text-[13px] leading-relaxed">{part}</p>
                           <span className="inline-block w-1.5 h-4 bg-accent ml-0.5 rounded-sm animate-pulse align-text-bottom" />
@@ -151,19 +154,19 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
                         <ChatMarkdownMemo content={part} />
                       )}
                     </div>
-                  ) : isLastStreaming && i === msg.contentParts.length - 1 ? (
+                  ) : isLastStreaming && i === contentParts.length - 1 ? (
                     <div className="flex items-center gap-2 text-ink-faint">
                       <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '0ms' }} />
                       <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '150ms' }} />
                       <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '300ms' }} />
                     </div>
                   ) : null}
-                  {msg.toolCalls && i < msg.toolCalls.length && (
+                  {toolCalls && i < toolCalls.length && (
                     <ToolCallCard
-                      call={msg.toolCalls[i]}
+                      call={toolCalls[i]}
                       status={
-                        msg.toolResults?.find((r) => r.id === msg.toolCalls[i].id)
-                          ? msg.toolResults.find((r) => r.id === msg.toolCalls[i].id)!.isError
+                        msg.toolResults?.find((r) => r.id === toolCalls[i].id)
+                          ? msg.toolResults.find((r) => r.id === toolCalls[i].id)!.isError
                             ? 'failed'
                             : 'completed'
                           : 'running'
@@ -171,7 +174,8 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
                     />
                   )}
                 </Fragment>
-              ))}
+                )
+              })}
               {msg.toolResults
                 ?.filter((r) => !msg.toolCalls?.some((c) => c.id === r.id))
                 .map((result) => (
