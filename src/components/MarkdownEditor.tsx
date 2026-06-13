@@ -10,9 +10,9 @@ import type { PendingChange } from '../stores/pending-changes-store'
 import { DiffEditor } from './DiffEditor'
 
 const headingStyle = HighlightStyle.define([
-  { tag: tags.heading1, fontSize: '1.8em', fontWeight: '700' },
-  { tag: tags.heading2, fontSize: '1.4em', fontWeight: '600' },
-  { tag: tags.heading3, fontSize: '1.2em', fontWeight: '600' },
+  { tag: tags.heading1, fontWeight: '700' },
+  { tag: tags.heading2, fontWeight: '600' },
+  { tag: tags.heading3, fontWeight: '600' },
   { tag: tags.emphasis, fontStyle: 'italic' },
   { tag: tags.strong, fontWeight: '700' },
   { tag: tags.link, textDecoration: 'underline' },
@@ -86,6 +86,12 @@ export const MarkdownEditor = memo(forwardRef<MarkdownEditorHandle, MarkdownEdit
       '.cm-gutters': {
         backgroundColor: 'transparent',
         borderRight: 'none',
+        fontVariantNumeric: 'tabular-nums',
+      },
+      '.cm-lineNumber': {
+        padding: '0',
+        fontSize: '12px',
+        color: 'var(--ink-faint)',
       },
       '.cm-activeLineGutter': {
         backgroundColor: 'transparent',
@@ -94,10 +100,10 @@ export const MarkdownEditor = memo(forwardRef<MarkdownEditorHandle, MarkdownEdit
         borderLeftWidth: '2px',
       },
       '.cm-selectionBackground': {
-        backgroundColor: 'var(--color-accent-bg) !important',
+        backgroundColor: 'var(--color-accent) !important',
       },
       '.cm-focused .cm-selectionBackground': {
-        backgroundColor: 'var(--color-accent-bg) !important',
+        backgroundColor: 'var(--color-accent) !important',
       },
       '&.cm-focused .cm-cursor': {
         borderLeftColor: 'var(--color-accent)',

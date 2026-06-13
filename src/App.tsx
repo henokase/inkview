@@ -30,7 +30,7 @@ function findPreviewHeading(container: HTMLElement): string | null {
   let bestAbove: { text: string; dist: number } | null = null
   let bestBelow: { text: string; dist: number } | null = null
 
-  for (const h of headings) {
+  for (const h of Array.from(headings)) {
     const el = h as HTMLElement
     const relativeTop = el.getBoundingClientRect().top - containerRect.top
     const text = el.textContent?.trim()
@@ -526,7 +526,7 @@ function App() {
                     <div className={`flex flex-1 flex-col min-h-0 overflow-hidden py-8 ${
                       editorMode === 'split'
                         ? 'pl-6 lg:pl-10 xl:pl-16 pr-0'
-                        : 'px-6 lg:px-10 xl:px-16'
+                        : 'px-4 lg:px-6 xl:px-8'
                     }`}>
                       <div className="flex-1 min-h-0">
                         <MarkdownEditor
@@ -638,7 +638,7 @@ function App() {
             isOnline={isOnline}
             hasHeadings={hasHeadings}
           />
-          <div className="flex-1 overflow-auto px-0 sm:px-6 lg:px-12">
+          <div className="flex-1 overflow-auto px-0 sm:px-4 lg:px-2">
             <div className="mx-auto h-full max-w-4xl bg-surface shadow-lg ring-1 ring-border/50 px-2 sm:px-4 py-3 flex flex-col min-h-0">
               <MarkdownEditor
                 value={activeDoc.content}
