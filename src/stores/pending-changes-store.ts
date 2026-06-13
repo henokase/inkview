@@ -95,6 +95,10 @@ interface PendingChangesStore {
 
 export function getCumulativeContent(documentId: string): string | null {
   const store = usePendingChangesStore.getState()
+
+  const edited = store.editedContent[documentId]
+  if (edited !== undefined) return edited
+
   const changes = store.getChangesForDocument(documentId)
   if (changes.length === 0) return null
 
@@ -133,7 +137,25 @@ export const usePendingChangesStore = create<PendingChangesStore>()(
       editedContent: {},
 
       addChange: (change) =>
-        set((s) => ({ changes: [...s.changes, change] })),
+        set((s) => {
+          const edited = s.editedContent[change.documentId]
+          if (edited !== undefined) {
+            let updated = edited
+            if (change.oldString !== undefined && change.newString !== undefined && change.oldString) {
+              const idx = updated.indexOf(change.oldString)
+              if (idx !== -1) {
+                updated = updated.slice(0, idx) + change.newString + updated.slice(idx + change.oldString.length)
+              }
+            } else {
+              updated = change.newContent
+            }
+            return {
+              changes: [...s.changes, change],
+              editedContent: { ...s.editedContent, [change.documentId]: updated },
+            }
+          }
+          return { changes: [...s.changes, change] }
+        }),
 
       approveChange: (id) => {
         const change = get().changes.find((c) => c.id === id)

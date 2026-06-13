@@ -124,7 +124,6 @@ export function ChatPanel() {
               <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-accent/10 text-accent ring-1 ring-accent/15 shrink-0">
                 <MessageSquare size={13} />
               </div>
-              {/* <h2 className="text-sm font-bold text-ink font-sans tracking-tight shrink-0">Chat</h2> */}
               <div className="flex-1 min-w-0">
                 <ConversationList
                   conversations={conversations}

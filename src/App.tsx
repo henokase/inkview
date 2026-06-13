@@ -136,6 +136,18 @@ function App() {
     return () => window.removeEventListener('resize', checkSize)
   }, [editorMode, setEditorMode])
 
+  useEffect(() => {
+    if (editorMode === 'split') {
+      setTocOpen(false)
+    }
+  }, [editorMode])
+
+  useEffect(() => {
+    if (isChatOpen) {
+      setTocOpen(false)
+    }
+  }, [isChatOpen])
+
   // AI chat feature notice (permanently hidden)
 
   const allPendingChanges = usePendingChangesStore((s) => s.changes)

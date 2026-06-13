@@ -502,7 +502,7 @@ const editDoc: ToolDefinition = {
           documentId: doc.id,
           toolName: 'editDoc',
           title: doc.title,
-          originalContent: doc.content,
+          originalContent: editTarget,
           newContent,
           oldString: actualOldString,
           newString,

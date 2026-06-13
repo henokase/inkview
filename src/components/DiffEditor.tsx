@@ -46,7 +46,7 @@ const editorTheme = EditorView.theme({
     fontFamily: 'var(--font-sans)', fontSize: '15px', lineHeight: '1.75',
     padding: '0', overflow: 'auto',
   },
-  '.cm-content': { padding: '0' },
+  '.cm-content': { padding: '0 0 40vh 0' },
   '.cm-gutters': { backgroundColor: 'transparent', borderRight: 'none' },
   '.cm-activeLineGutter': { backgroundColor: 'transparent' },
   '.cm-cursor': { borderLeftWidth: '2px' },

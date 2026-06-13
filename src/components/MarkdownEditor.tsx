@@ -81,7 +81,7 @@ export const MarkdownEditor = memo(forwardRef<MarkdownEditorHandle, MarkdownEdit
         overflow: 'auto',
       },
       '.cm-content': {
-        padding: '0',
+        padding: '0 0 20vh 0',
       },
       '.cm-gutters': {
         backgroundColor: 'transparent',
