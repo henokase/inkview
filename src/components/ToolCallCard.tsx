@@ -11,7 +11,7 @@ interface ToolCallCardProps {
 }
 
 export function ToolCallCard({ call, status, result, metadata }: ToolCallCardProps) {
-  const [open, setOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(true)
   const isRunning = status === 'running' || status === 'pending'
   const isError = status === 'failed'
   const isEditWrite = call.name === 'editDoc' || call.name === 'writeDoc'
@@ -22,6 +22,7 @@ export function ToolCallCard({ call, status, result, metadata }: ToolCallCardPro
   const isNewlyCreated = isCreateDoc || isNewDocWrite
   const createdDocId = isNewlyCreated ? (metadata?.id as string) : undefined
   const createdDocTitle = isNewlyCreated ? (metadata?.title as string) || (call.arguments.title as string) : undefined
+  const hasExpandableContent = showResult || !!createdDocId
 
   const docLabel = (call.arguments.url as string)
     || (call.arguments.query as string)
@@ -42,7 +43,10 @@ export function ToolCallCard({ call, status, result, metadata }: ToolCallCardPro
 
   return (
     <div className="rounded-xl border overflow-hidden border-border/50">
-      <div className="flex items-center gap-1.5 bg-surface-alt/60 px-2.5 py-1.5">
+      <button
+        onClick={() => hasExpandableContent && setCollapsed(!collapsed)}
+        className={`w-full flex items-center gap-1.5 bg-surface-alt/60 px-2.5 py-1.5 text-left ${hasExpandableContent ? 'cursor-pointer' : 'cursor-default'}`}
+      >
         {icon}
         <Settings size={11} className="text-ink-faint/40 shrink-0" />
         <code className="text-[11px] font-mono font-medium text-ink leading-tight">{call.name}</code>
@@ -52,19 +56,17 @@ export function ToolCallCard({ call, status, result, metadata }: ToolCallCardPro
           </span>
         )}
         {statusLabel && (
-          <span className="ml-auto text-[11px] text-accent/70">{statusLabel}</span>
+          <span className="text-[11px] text-accent/70">{statusLabel}</span>
         )}
-        {showResult && result.length > 200 && (
-          <button onClick={() => setOpen(!open)} className="ml-auto">
-            <ChevronDown size={12} className={`text-ink-faint/50 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
-          </button>
+        {hasExpandableContent && (
+          <ChevronDown size={12} className={`ml-auto text-ink-faint/50 transition-transform duration-200 ${!collapsed ? 'rotate-180' : ''}`} />
         )}
-      </div>
-      {showResult && (
+      </button>
+      {!collapsed && showResult && (
         <div className="px-3 pb-3 pt-1.5 space-y-2">
           <div className="rounded-lg bg-white/60 dark:bg-black/40 border border-border/30 px-3 py-2 max-h-48 overflow-y-auto">
             <pre className={`text-[11px] font-mono leading-relaxed whitespace-pre-wrap ${isError ? 'text-red-700 dark:text-red-400' : 'text-ink-soft'}`}>
-              {open ? result : result.length > 200 ? result.slice(0, 200) + '...' : result}
+              {result}
             </pre>
           </div>
           {createdDocId && createdDocTitle && (

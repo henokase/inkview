@@ -513,6 +513,21 @@ ${systemToolPrompts}`,
         onUsage: (usage) => {
           finalUsage = usage
         },
+        onTurnStart: () => {
+          if (!hasContentStarted && accumulatedThinking) {
+            set((s) => ({
+              activeThinking: '',
+              messagesByConv: {
+                ...s.messagesByConv,
+                [convId]: (s.messagesByConv[convId] || []).map((m) =>
+                  m.id === assistantId ? { ...m, thinking: accumulatedThinking } : m
+                ),
+              },
+            }))
+          }
+          hasContentStarted = false
+          accumulatedThinking = ''
+        },
         onToolCall: (call) => {
           contentParts.push('')
           flushSync(() => {

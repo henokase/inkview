@@ -20,6 +20,7 @@ export interface AgentLoopOptions {
   onToolCall?: (call: ToolCallState) => void
   onToolResult?: (result: ToolCallState) => void
   onAgentState?: (state: { turn: number; maxTurns: number }) => void
+  onTurnStart?: () => void
   onUsage?: (usage: Usage) => void
   onDone?: () => void
   onError?: (error: Error) => void
@@ -49,10 +50,12 @@ export class AgentEngine {
     while (turn < MAX_TURNS) {
       turn++
       options.onAgentState?.({ turn, maxTurns: MAX_TURNS })
+      options.onTurnStart?.()
 
       const tools = this.registry.getAllowedTools(options.agentPermissions)
       const apiTools = this.registry.toApiTools(tools)
       let collectedToolCalls: ToolCallChunk[] = []
+      let reasoningLoggedThisTurn = false
 
       try {
         for await (const chunk of this.client.streamChat(
@@ -60,6 +63,10 @@ export class AgentEngine {
           options.signal,
           apiTools.length > 0 ? apiTools : undefined,
         )) {
+          if (chunk.reasoning && !reasoningLoggedThisTurn) {
+            console.log(`[Agent] Reasoning start (turn ${turn})`)
+            reasoningLoggedThisTurn = true
+          }
           if (chunk.toolCalls && chunk.toolCalls.length > 0) {
             collectedToolCalls.push(...chunk.toolCalls)
             if (chunk.content || chunk.reasoning) {
@@ -101,6 +108,7 @@ export class AgentEngine {
         const toolDef = this.registry.get(tc.function.name)
 
         state.status = 'running'
+        console.log(`[Agent] Tool call: ${tc.function.name}`, this._parseArgs(tc.function.arguments))
         options.onToolCall?.({ ...state })
 
         if (!toolDef) {
@@ -221,6 +229,7 @@ export class AgentEngine {
           state.error = isErrorResult ? result.output : undefined
           state.result = isErrorResult ? undefined : result
           state.endTime = Date.now()
+          console.log(`[Agent] Tool complete: ${tc.function.name}`, { status: state.status, duration: state.endTime - state.startTime })
           options.onToolResult?.({ ...state })
           toolResults.push(isErrorResult
             ? { id: tc.id, error: result.output }
@@ -229,6 +238,7 @@ export class AgentEngine {
           state.status = 'failed'
           state.error = err instanceof Error ? err.message : String(err)
           state.endTime = Date.now()
+          console.log(`[Agent] Tool failed: ${tc.function.name}`, { error: state.error, duration: state.endTime - state.startTime })
           options.onToolResult?.({ ...state })
           toolResults.push({ id: tc.id, error: state.error })
         }

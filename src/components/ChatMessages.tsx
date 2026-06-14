@@ -78,10 +78,11 @@ interface MessageBubbleProps {
   msg: Message
   isLastStreaming: boolean
   isLastUserMessage: boolean
+  activeThinking?: string
   onEdit?: (msgId: string, newContent: string) => void
 }
 
-const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLastUserMessage, onEdit }: MessageBubbleProps) {
+const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLastUserMessage, activeThinking, onEdit }: MessageBubbleProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(msg.content)
   const [copied, setCopied] = useState(false)
@@ -191,6 +192,11 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
                 .map((result) => (
                   <ToolResultCard key={result.id} result={result} />
                 ))}
+              {isLastStreaming && activeThinking && (
+                <div className="pt-1">
+                  <ThinkingView thinking={activeThinking} />
+                </div>
+              )}
             </div>
           ) : msg.content ? (
             isLastStreaming ? (
@@ -328,6 +334,7 @@ export function ChatMessages({ messages, isStreaming, activeThinking, onEdit }: 
                 msg={msg}
                 isLastStreaming={isStreaming && msg.role === 'assistant' && index === messages.length - 1}
                 isLastUserMessage={msg.role === 'user' && index === lastUserMsgIndex}
+                activeThinking={activeThinking}
                 onEdit={onEdit}
               />
             )
