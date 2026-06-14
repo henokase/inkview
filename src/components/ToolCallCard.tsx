@@ -17,9 +17,11 @@ export function ToolCallCard({ call, status, result, metadata }: ToolCallCardPro
   const isEditWrite = call.name === 'editDoc' || call.name === 'writeDoc'
   const isReadDoc = call.name === 'readDoc'
   const showResult = !isRunning && result && !isReadDoc
+  const isNewDocWrite = call.name === 'writeDoc' && !call.arguments.documentId && !isRunning && !isError
   const isCreateDoc = call.name === 'createDoc' && !isRunning && !isError
-  const createdDocId = isCreateDoc ? (metadata?.id as string) : undefined
-  const createdDocTitle = isCreateDoc ? (metadata?.title as string) || (call.arguments.title as string) : undefined
+  const isNewlyCreated = isCreateDoc || isNewDocWrite
+  const createdDocId = isNewlyCreated ? (metadata?.id as string) : undefined
+  const createdDocTitle = isNewlyCreated ? (metadata?.title as string) || (call.arguments.title as string) : undefined
 
   const docLabel = (call.arguments.url as string)
     || (call.arguments.query as string)
@@ -65,7 +67,7 @@ export function ToolCallCard({ call, status, result, metadata }: ToolCallCardPro
               {open ? result : result.length > 200 ? result.slice(0, 200) + '...' : result}
             </pre>
           </div>
-          {isCreateDoc && createdDocId && createdDocTitle && (
+          {createdDocId && createdDocTitle && (
             <button
               onClick={() => useDocumentStore.getState().setActiveDoc(createdDocId!)}
               className="flex items-center gap-1.5 w-full rounded-lg border border-accent/25 bg-accent/5 hover:bg-accent/10 active:bg-accent/15 px-3 py-2 transition-colors text-left group"

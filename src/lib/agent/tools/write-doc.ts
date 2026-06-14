@@ -68,10 +68,9 @@ const writeDoc: ToolDefinition = {
       ? `${oldLines}→${newLines} lines (${oldChars}→${newChars} chars, ${diffSign}${charDiff})`
       : `${newLines} lines (${newChars} chars)`
 
-    if (ctx.onPendingChange) {
-      const pendingId = docId || crypto.randomUUID()
+    if (ctx.onPendingChange && docId) {
       ctx.onPendingChange({
-        documentId: pendingId,
+        documentId: docId,
         toolName: 'writeDoc',
         title,
         originalContent: existing?.content || '',
@@ -79,10 +78,8 @@ const writeDoc: ToolDefinition = {
       })
       return {
         title,
-        output: existing
-          ? `"${title}" update (${changeSummary}) — pending approval.`
-          : `"${title}" creation (${changeSummary}) — pending approval.`,
-        metadata: { id: pendingId, title, pending: true },
+        output: `"${title}" update (${changeSummary}) — pending approval.`,
+        metadata: { id: docId, title, pending: true },
       }
     }
 
