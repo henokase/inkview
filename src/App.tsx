@@ -191,6 +191,25 @@ function App() {
     setSelectedText(selection.toString().trim())
   }, [setSelectedText])
 
+  const handleEditorMouseUp = useCallback(() => {
+    const selection = window.getSelection()
+    if (!selection || selection.isCollapsed || !selection.toString().trim()) {
+      setSelectionPosition(null)
+      return
+    }
+
+    const editorNode = editorPaneRef.current
+    if (!editorNode || !editorNode.contains(selection.anchorNode)) {
+      setSelectionPosition(null)
+      return
+    }
+
+    const range = selection.getRangeAt(0)
+    const rect = range.getBoundingClientRect()
+    setSelectionPosition({ x: rect.left, y: rect.bottom })
+    setSelectedText(selection.toString().trim())
+  }, [setSelectedText])
+
   const handleAskAi = useCallback(() => {
     const selected = useChatStore.getState().selectedText
     if (!selected) return
@@ -522,6 +541,7 @@ function App() {
                 {(editorMode === 'edit' || editorMode === 'split') && (
                   <div
                     ref={editorPaneRef}
+                    onMouseUp={handleEditorMouseUp}
                     className="flex flex-col min-h-0"
                     style={editorMode === 'split' ? { width: `${splitRatio * 100}%` } : { flex: '1' }}
                   >
