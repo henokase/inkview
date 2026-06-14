@@ -11,7 +11,8 @@ interface ToolCallCardProps {
 }
 
 export function ToolCallCard({ call, status, result, metadata }: ToolCallCardProps) {
-  const [collapsed, setCollapsed] = useState(true)
+  const initCollapsed = !(call.name === 'createDoc' || (call.name === 'writeDoc' && !call.arguments.documentId))
+  const [collapsed, setCollapsed] = useState(initCollapsed)
   const isRunning = status === 'running' || status === 'pending'
   const isError = status === 'failed'
   const isEditWrite = call.name === 'editDoc' || call.name === 'writeDoc'

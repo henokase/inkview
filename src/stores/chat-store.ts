@@ -73,7 +73,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   _engine: new StreamEngine(),
   _agentEngine: new AgentEngine(),
   _agentAbortController: null,
-  agentMode: false,
+  agentMode: true,
 
   setSelectedText: (text) => set({ selectedText: text }),
   setContextText: (text) => set({ contextText: text }),
