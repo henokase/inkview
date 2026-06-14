@@ -1,5 +1,8 @@
 {
   "rewrites": [
+    { "source": "/api-ai(.*)", "destination": "/api/ai$1" },
+    { "source": "/api-search(.*)", "destination": "/api/search$1" },
+    { "source": "/api-fetch(.*)", "destination": "/api/fetch$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

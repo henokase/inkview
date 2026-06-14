@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { flushSync } from 'react-dom'
 import type { Conversation, Message, ToolCallPart, ToolResultPart } from '../types'
 import {
   loadAllConversations,
@@ -448,6 +449,7 @@ ${systemToolPrompts}`,
       createdAt: Date.now(),
       toolCalls: [],
       toolResults: [],
+      contentParts: [''],
     }
 
     set((s) => ({
@@ -513,25 +515,27 @@ ${systemToolPrompts}`,
         },
         onToolCall: (call) => {
           contentParts.push('')
-          set((s) => {
-            const existing = s.messagesByConv[convId] || []
-            const msgs = existing.map((m) => {
-              if (m.id !== assistantId) return m
-              const part: ToolCallPart = {
-                id: call.id,
-                type: 'tool_call',
-                name: call.name,
-                arguments: call.args,
-              }
+          flushSync(() => {
+            set((s) => {
+              const existing = s.messagesByConv[convId] || []
+              const msgs = existing.map((m) => {
+                if (m.id !== assistantId) return m
+                const part: ToolCallPart = {
+                  id: call.id,
+                  type: 'tool_call',
+                  name: call.name,
+                  arguments: call.args,
+                }
+                return {
+                  ...m,
+                  toolCalls: [...(m.toolCalls || []), part],
+                  contentParts: [...contentParts],
+                }
+              })
               return {
-                ...m,
-                toolCalls: [...(m.toolCalls || []), part],
-                contentParts: [...contentParts],
+                messagesByConv: { ...s.messagesByConv, [convId]: msgs },
               }
             })
-            return {
-              messagesByConv: { ...s.messagesByConv, [convId]: msgs },
-            }
           })
         },
         onPermissionRequest: async (request) => {

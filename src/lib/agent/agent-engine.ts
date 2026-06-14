@@ -179,7 +179,10 @@ export class AgentEngine {
           }
         }
 
-        await new Promise<void>(resolve => setTimeout(resolve, 0))
+        // Yield to event loop so React flushes the loading state and the browser paints
+        // before the tool executes. Using requestAnimationFrame + setTimeout ensures the
+        // intermediate "running" state is painted even when the tool completes quickly.
+        await new Promise<void>(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)))
 
         try {
           let docSnapshot: string | null = null
