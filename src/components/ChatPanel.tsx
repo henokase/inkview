@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { Plus, X, MessageSquare } from 'lucide-react'
 import { useChatStore } from '../stores/chat-store'
 import { useDocumentStore } from '../stores/document-store'
@@ -17,6 +17,8 @@ export function ChatPanel() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [screenWidth, setScreenWidth] = useState(window.innerWidth)
   const chatInputRef = useRef<ChatInputHandle>(null)
+  const [panelWidth, setPanelWidth] = useState<number | null>(null)
+  const dragRef = useRef<{ startX: number; startWidth: number } | null>(null)
 
   const conversationsByDoc = useChatStore((s) => s.conversationsByDoc)
   const activeConversationId = useChatStore((s) => s.activeConversationId)
@@ -29,6 +31,7 @@ export function ChatPanel() {
   const deleteConversation = useChatStore((s) => s.deleteConversation)
   const setActiveConversation = useChatStore((s) => s.setActiveConversation)
   const setChatPanelWidth = useChatStore((s) => s.setChatPanelWidth)
+  const storedPanelWidth = useChatStore((s) => s.chatPanelWidth)
   const draftConversations = useChatStore((s) => s.draftConversations)
   const sendMessage = useChatStore((s) => s.sendMessage)
   const editMessage = useChatStore((s) => s.editMessage)
@@ -50,15 +53,55 @@ export function ChatPanel() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  const getChatWidth = () => {
+  const getMinWidth = () => {
     if (screenWidth < 768) return CHAT_WIDTH_SM
     if (screenWidth < 1024) return CHAT_WIDTH_MD
     return CHAT_WIDTH_LG
   }
 
+  const getMaxWidth = () => Math.min(screenWidth * 0.6, 800)
+
   useEffect(() => {
-    setChatPanelWidth(getChatWidth())
-  }, [screenWidth, setChatPanelWidth])
+    if (!panelWidth) {
+      setPanelWidth(storedPanelWidth)
+    }
+  }, [storedPanelWidth, panelWidth])
+
+  useEffect(() => {
+    setChatPanelWidth(panelWidth || getMinWidth())
+  }, [panelWidth, screenWidth, setChatPanelWidth])
+
+  const updateWidth = useCallback((clientX: number) => {
+    const newWidth = window.innerWidth - clientX
+    const minW = getMinWidth()
+    const maxW = getMaxWidth()
+    const clamped = Math.max(minW, Math.min(newWidth, maxW))
+    setPanelWidth(clamped)
+  }, [screenWidth])
+
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const currentWidth = panelWidth || getMinWidth()
+    dragRef.current = { startX, startWidth: currentWidth }
+
+    const handleMouseMove = (e: MouseEvent) => {
+      updateWidth(e.clientX)
+    }
+
+    const handleMouseUp = () => {
+      dragRef.current = null
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }, [panelWidth, updateWidth])
 
   if (!isChatOpen) return null
 
@@ -117,8 +160,14 @@ export function ChatPanel() {
 
       <aside
         className="fixed inset-y-0 right-0 z-60 lg:relative lg:shrink-0 flex flex-col border-l border-border/40 bg-surface shadow-2xl lg:shadow-[-8px_0_32px_-8px_rgba(0,0,0,0.12)] animate-in slide-in-from-right duration-200"
-        style={{ width: getChatWidth() }}
+        style={{ width: panelWidth || getMinWidth() }}
       >
+        <div
+          onMouseDown={handleDragStart}
+          className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-accent/40 active:bg-accent/60 transition-colors group z-10"
+        >
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-6 rounded-full bg-border/50 opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
         <div className="relative shrink-0 pb-0">
           <div className="flex items-center justify-between px-4 pt-4 pb-1.5 gap-2">
             <div className="flex items-center gap-2 min-w-0 flex-1">
