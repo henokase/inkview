@@ -17,7 +17,20 @@ import { DEFAULT_PERMISSIONS } from '../lib/agent/permission'
 import type { PermissionRule } from '../lib/agent/types'
 import { useAgentStore } from './agent-store'
 import { usePendingChangesStore } from './pending-changes-store'
+import { useDocumentStore } from './document-store'
 import { toolPrompts } from '../lib/agent/prompts'
+import { toolRegistry } from '../lib/agent/tool-registry'
+
+const CHAT_PERMISSIONS: PermissionRule[] = [
+  { permission: 'read', pattern: '*', action: 'allow' },
+  { permission: 'search', pattern: '*', action: 'allow' },
+  { permission: 'list', pattern: '*', action: 'allow' },
+  { permission: 'web-search', pattern: '*', action: 'allow' },
+  { permission: 'web-fetch', pattern: '*', action: 'allow' },
+  { permission: 'edit', pattern: '*', action: 'deny' },
+  { permission: 'create', pattern: '*', action: 'deny' },
+  { permission: 'delete', pattern: '*', action: 'deny' },
+]
 
 registerDefaultTools()
 
@@ -54,7 +67,7 @@ interface ChatStore {
   clearActiveThinking: () => void
   editMessage: (convId: string, msgId: string, newContent: string, documentContent: string) => Promise<void>
   _streamResponse: (convId: string, documentContent: string) => Promise<void>
-  _streamAgentResponse: (convId: string) => Promise<void>
+  _streamAgentResponse: (convId: string, permissions?: PermissionRule[]) => Promise<void>
   stopGeneration: () => void
 }
 
@@ -230,7 +243,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     if (get().agentMode) {
       await get()._streamAgentResponse(convId)
     } else {
-      await get()._streamResponse(convId, documentContent)
+      await get()._streamAgentResponse(convId, CHAT_PERMISSIONS)
     }
   },
 
@@ -258,7 +271,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     if (get().agentMode) {
       await get()._streamAgentResponse(convId)
     } else {
-      await get()._streamResponse(convId, documentContent)
+      await get()._streamAgentResponse(convId, CHAT_PERMISSIONS)
     }
   },
 
@@ -389,26 +402,54 @@ Instructions:
     }
   },
 
-  _streamAgentResponse: async (convId) => {
+  _streamAgentResponse: async (convId, permissions) => {
     if (get().isStreaming) return
 
+    const isChatMode = !!permissions
     const messages = get().messagesByConv[convId] || []
 
+    const allowedTools = permissions
+      ? toolRegistry.getAllowedTools(permissions)
+      : toolRegistry.getAllowedTools()
     const systemToolPrompts = Object.values(toolPrompts).join('\n\n')
+    const toolList = allowedTools.map((t) => {
+      const desc = t.description.split('.')[0]
+      return `- **${t.id}**: ${desc}`
+    }).join('\n')
+
+    const activeDoc = useDocumentStore.getState().getActiveDoc()
+    const activeDocInfo = activeDoc
+      ? `Active document: "${activeDoc.title}" (ID: ${activeDoc.id})`
+      : 'No document is currently open.'
+
     const systemMessage = {
       role: 'system' as const,
-      content: `You are an AI assistant for the InkView document editor.
+      content: isChatMode
+        ? `You are a helpful AI assistant for the InkView document editor.
+You have access to read and search tools.
+
+## Available Tools
+
+${toolList}
+
+## Context
+${activeDocInfo}
+
+## Important
+- Use **readDoc** with the active document's title or ID to read its content — do NOT assume you know the content.
+- If the user explicitly mentions another document or their message is not related to the current document, use **searchDocs** to find it and **readDoc** to read it.
+- If the user's message is not about any document and if you are not familier with it or if you want more information (e.g., general knowledge, casual chat), use **webSearch** and **webFetch** to find information.
+- You cannot create, edit, or delete documents.
+
+## Tool Usage Guidelines
+
+${systemToolPrompts}`
+        : `You are an AI assistant for the InkView document editor.
 You have access to tools to read, search, create, and edit documents.
 
 ## Available Tools
 
-- **readDoc**: Read the full content of a document by ID or title search
-- **writeDoc**: Create a new document or overwrite an existing one with new content
-- **editDoc**: Edit specific text in a document by finding and replacing (preferred for targeted changes)
-- **searchDocs**: Search across all documents for matching content or titles
-- **listDocs**: List all documents with their titles and IDs
-- **createDoc**: Create a new document with a title and optional initial content
-- **deleteDoc**: Permanently delete a document by its ID
+${toolList}
 
 ## Tool Usage Guidelines
 
