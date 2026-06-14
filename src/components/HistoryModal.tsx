@@ -884,7 +884,7 @@ const handleCreateFolder = useCallback(() => {
             </div>
 
             {/* Toolbar */}
-            <div className="flex items-center justify-evenly px-2 py-2">
+            {allDocsCount > 0 && <div className="flex items-center justify-evenly px-2 py-2">
               <div className="flex items-center sm:gap-2 shrink-0 min-w-0">
                 <div className="flex items-center sm:gap-1 flex-wrap justify-end">
                   <button
@@ -977,7 +977,7 @@ const handleCreateFolder = useCallback(() => {
                   )}
                 </div>
               </div>
-            </div>
+            </div>}
 
             {/* Share feedback */}
             {sharingFolder && (
