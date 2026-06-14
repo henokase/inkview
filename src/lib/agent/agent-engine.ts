@@ -64,7 +64,6 @@ export class AgentEngine {
           apiTools.length > 0 ? apiTools : undefined,
         )) {
           if (chunk.reasoning && !reasoningLoggedThisTurn) {
-            console.log(`[Agent] Reasoning start (turn ${turn})`)
             reasoningLoggedThisTurn = true
           }
           if (chunk.toolCalls && chunk.toolCalls.length > 0) {
@@ -108,7 +107,6 @@ export class AgentEngine {
         const toolDef = this.registry.get(tc.function.name)
 
         state.status = 'running'
-        console.log(`[Agent] Tool call: ${tc.function.name}`, this._parseArgs(tc.function.arguments))
         options.onToolCall?.({ ...state })
 
         if (!toolDef) {
@@ -229,7 +227,6 @@ export class AgentEngine {
           state.error = isErrorResult ? result.output : undefined
           state.result = isErrorResult ? undefined : result
           state.endTime = Date.now()
-          console.log(`[Agent] Tool complete: ${tc.function.name}`, { status: state.status, duration: state.endTime - state.startTime })
           options.onToolResult?.({ ...state })
           toolResults.push(isErrorResult
             ? { id: tc.id, error: result.output }
@@ -238,7 +235,6 @@ export class AgentEngine {
           state.status = 'failed'
           state.error = err instanceof Error ? err.message : String(err)
           state.endTime = Date.now()
-          console.log(`[Agent] Tool failed: ${tc.function.name}`, { error: state.error, duration: state.endTime - state.startTime })
           options.onToolResult?.({ ...state })
           toolResults.push({ id: tc.id, error: state.error })
         }

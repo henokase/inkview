@@ -16,6 +16,7 @@ import { NewDocModal } from './components/NewDocModal'
 import { Toast } from './components/Toast'
 import { Notice } from './components/Notice'
 import { ChatPanel } from './components/ChatPanel'
+import { PendingChangesBanner } from './components/PendingChangesBanner'
 import { SelectionToolbar } from './components/SelectionToolbar'
 import { parseShareUrl, fetchSharedContent, resolveImportEntries, resolveTitleUnique } from './lib/share'
 import { usePendingChangesStore } from './stores/pending-changes-store'
@@ -612,6 +613,7 @@ function App() {
       </main>
 
       <ChatPanel />
+      <PendingChangesBanner />
 
       {/* Fullscreen editor mode */}
       {editorMode === 'edit' && showContent && activeDoc && (
