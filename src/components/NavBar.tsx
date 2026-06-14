@@ -213,7 +213,6 @@ export function NavBar({
           <Plus size={18} />
         </button>
 
-        {showContent && (
         <button
           onClick={onHistory}
           title="Document history (Ctrl+H)"
@@ -221,11 +220,10 @@ export function NavBar({
         >
           <DocListIcon />
         </button>
-        )}
 
         {showContent && <ShareButton content={content} title={title} />}
 
-        {showContent && onChatToggle && (
+        {onChatToggle && (
           <button
             onClick={onChatToggle}
             title="AI Chat"
