@@ -113,7 +113,7 @@ export function ChatPanel() {
   const deleteConv = conversations.find((c) => c.id === deleteConfirmId)
 
   const handleSend = (content: string) => {
-    sendMessage(content, activeDoc?.content || '', activeDocId)
+    sendMessage(content, activeDocId)
   }
 
   const handleCreate = () => {
@@ -127,7 +127,7 @@ export function ChatPanel() {
 
   const handleEdit = (msgId: string, newContent: string) => {
     if (activeConversationId) {
-      editMessage(activeConversationId, msgId, newContent, activeDoc?.content || '')
+      editMessage(activeConversationId, msgId, newContent)
     }
   }
 

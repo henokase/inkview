@@ -38,6 +38,10 @@ export class AgentEngine {
     this.registry = registry ?? toolRegistry
   }
 
+  markDocumentAsRead(docId: string) {
+    this.readDocumentIds.add(docId)
+  }
+
   async agentLoop(
     initialMessages: ApiMessage[],
     options: AgentLoopOptions,

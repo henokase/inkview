@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Loader2, X, Settings, ChevronDown, FileText } from 'lucide-react'
+import { Loader2, Settings, ChevronDown, FileText } from 'lucide-react'
 import type { ToolCallPart } from '../types'
 import { useDocumentStore } from '../stores/document-store'
 
@@ -11,11 +11,11 @@ interface ToolCallCardProps {
 }
 
 export function ToolCallCard({ call, status, result, metadata }: ToolCallCardProps) {
+  const isError = status === 'failed'
   const isEditWrite = call.name === 'editDoc' || call.name === 'writeDoc'
-  const initCollapsed = !(call.name === 'createDoc' || isEditWrite)
+  const initCollapsed = isError || !(call.name === 'createDoc' || isEditWrite)
   const [collapsed, setCollapsed] = useState(initCollapsed)
   const isRunning = status === 'running' || status === 'pending'
-  const isError = status === 'failed'
   const isReadDoc = call.name === 'readDoc'
   const showResult = !isRunning && result && !isReadDoc
   const docId = !isRunning && !isError ? (metadata?.id as string) : undefined
@@ -36,8 +36,6 @@ export function ToolCallCard({ call, status, result, metadata }: ToolCallCardPro
 
   const icon = isRunning ? (
     <Loader2 size={12} className="text-accent/60 animate-spin shrink-0" />
-  ) : isError ? (
-    <X size={12} className="text-red-500 shrink-0" />
   ) : null
 
   return (
@@ -48,9 +46,9 @@ export function ToolCallCard({ call, status, result, metadata }: ToolCallCardPro
       >
         {icon}
         <Settings size={11} className="text-ink-faint/40 shrink-0" />
-        <code className="text-[11px] font-mono font-medium text-ink leading-tight">{call.name}</code>
+        <code className={`text-[11px] font-mono font-medium leading-tight ${isError ? 'text-red-500' : 'text-ink'}`}>{call.name}</code>
         {docLabel && (
-          <span className="text-[11px] text-ink-soft/60 truncate max-w-[180px]">
+          <span className={`text-[11px] ${isError ? 'text-red-500' : 'text-ink'} truncate max-w-45`}>
             <span className="text-ink-faint/30 mx-0.5">→</span> {docLabel}
           </span>
         )}
@@ -64,7 +62,7 @@ export function ToolCallCard({ call, status, result, metadata }: ToolCallCardPro
       {!collapsed && (showResult || showOpenDoc) && (
         <div className="px-3 pb-3 pt-1.5 space-y-2">
           {showResult && (
-            <div className="rounded-lg bg-white/60 dark:bg-black/40 border border-border/30 px-3 py-2 max-h-48 overflow-y-auto">
+            <div className="rounded-lg bg-surface dark:bg-black/40 border border-border/30 px-3 py-2 max-h-48 overflow-y-auto">
               <pre className={`text-[11px] font-mono leading-relaxed whitespace-pre-wrap ${isError ? 'text-red-700 dark:text-red-400' : 'text-ink-soft'}`}>
                 {result}
               </pre>

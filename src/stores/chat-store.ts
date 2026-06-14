@@ -18,8 +18,7 @@ import type { PermissionRule } from '../lib/agent/types'
 import { useAgentStore } from './agent-store'
 import { usePendingChangesStore } from './pending-changes-store'
 import { useDocumentStore } from './document-store'
-import { toolPrompts } from '../lib/agent/prompts'
-import { toolRegistry } from '../lib/agent/tool-registry'
+import { buildSystemPrompt } from '../prompts'
 
 const CHAT_PERMISSIONS: PermissionRule[] = [
   { permission: 'read', pattern: '*', action: 'allow' },
@@ -63,10 +62,9 @@ interface ChatStore {
   renameConversation: (id: string, title: string) => void
   setActiveConversation: (id: string | null) => void
 
-  sendMessage: (content: string, documentContent: string, documentId?: string) => Promise<void>
+  sendMessage: (content: string, documentId?: string) => Promise<void>
   clearActiveThinking: () => void
-  editMessage: (convId: string, msgId: string, newContent: string, documentContent: string) => Promise<void>
-  _streamResponse: (convId: string, documentContent: string) => Promise<void>
+  editMessage: (convId: string, msgId: string, newContent: string) => Promise<void>
   _streamAgentResponse: (convId: string, permissions?: PermissionRule[]) => Promise<void>
   stopGeneration: () => void
 }
@@ -185,7 +183,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     }
   },
 
-  sendMessage: async (content, documentContent, documentId) => {
+  sendMessage: async (content, documentId) => {
     const state = get()
     const { activeConversationId } = state
     let convId = activeConversationId
@@ -247,7 +245,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     }
   },
 
-  editMessage: async (convId, msgId, newContent, documentContent) => {
+  editMessage: async (convId, msgId, newContent) => {
     const messages = get().messagesByConv[convId]
     if (!messages) return
 
@@ -275,186 +273,17 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     }
   },
 
-  _streamResponse: async (convId, documentContent) => {
-    if (get().isStreaming) return
-
-    const messages = get().messagesByConv[convId] || []
-
-    const systemMessage = {
-      role: 'system' as const,
-      content: `You are a helpful AI assistant analyzing a document. I will ask questions based on the below document, and you will provide the answer accordingly.
-
-DOCUMENT CONTENT:
-${documentContent}
-
-Instructions:
-- When answering you may use the document as context, but not solely depend on it.
-- Use markdown formatting in your responses.`,
-    }
-
-    const apiMessages = [
-      systemMessage,
-      ...messages.map((m) => ({ role: m.role as 'user' | 'assistant' | 'system', content: m.content })),
-    ]
-
-    const assistantId = crypto.randomUUID()
-    const assistantMsg: Message = {
-      id: assistantId,
-      conversationId: convId,
-      role: 'assistant',
-      content: '',
-      createdAt: Date.now(),
-    }
-
-    set((s) => ({
-      isStreaming: true,
-      messagesByConv: {
-        ...s.messagesByConv,
-        [convId]: [...(s.messagesByConv[convId] || []), assistantMsg],
-      },
-    }))
-
-    const engine = get()._engine
-    let fullContent = ''
-    let accumulatedThinking = ''
-    let hasContentStarted = false
-    let finalUsage: Usage | undefined
-
-    try {
-      await engine.start(convId, apiMessages, {
-        onChunk: (chunk) => {
-          if (chunk.reasoning) {
-            accumulatedThinking += chunk.reasoning
-            if (!hasContentStarted) {
-              set({ activeThinking: accumulatedThinking })
-            }
-          }
-          if (chunk.content) {
-            if (!hasContentStarted && accumulatedThinking) {
-              set((s) => ({
-                activeThinking: '',
-                messagesByConv: {
-                  ...s.messagesByConv,
-                  [convId]: (s.messagesByConv[convId] || []).map((m) =>
-                    m.id === assistantId ? { ...m, thinking: accumulatedThinking } : m
-                  ),
-                },
-              }))
-            }
-            hasContentStarted = true
-            fullContent += chunk.content
-            set((s) => ({
-              messagesByConv: {
-                ...s.messagesByConv,
-                [convId]: (s.messagesByConv[convId] || []).map((m) =>
-                  m.id === assistantId ? { ...m, content: fullContent } : m
-                ),
-              },
-            }))
-          }
-        },
-        onUsage: (usage) => {
-          finalUsage = usage
-        },
-        onDone: () => {
-          if (!fullContent && accumulatedThinking) {
-            set((s) => ({
-              messagesByConv: {
-                ...s.messagesByConv,
-                [convId]: (s.messagesByConv[convId] || []).map((m) =>
-                  m.id === assistantId ? { ...m, thinking: accumulatedThinking } : m
-                ),
-              },
-            }))
-          }
-          const final = get().messagesByConv[convId]?.find((m) => m.id === assistantId)
-          if (final) {
-            saveMessage({
-              ...final,
-              tokensPrompt: finalUsage?.promptTokens,
-              tokensCompletion: finalUsage?.completionTokens,
-            })
-          }
-        },
-        onError: (err) => {
-          const errorText = err instanceof Error ? err.message : 'An error occurred'
-          const errorMsg: Message = {
-            id: assistantId,
-            conversationId: convId,
-            role: 'assistant',
-            content: errorText,
-            createdAt: Date.now(),
-            thinking: accumulatedThinking || undefined,
-          }
-          set((s) => ({
-            messagesByConv: {
-              ...s.messagesByConv,
-              [convId]: (s.messagesByConv[convId] || []).map((m) =>
-                m.id === assistantId ? errorMsg : m
-              ),
-            },
-          }))
-          saveMessage(errorMsg)
-        },
-      })
-    } finally {
-      set({ isStreaming: false, activeThinking: '' })
-    }
-  },
-
   _streamAgentResponse: async (convId, permissions) => {
     if (get().isStreaming) return
 
     const isChatMode = !!permissions
     const messages = get().messagesByConv[convId] || []
 
-    const allowedTools = permissions
-      ? toolRegistry.getAllowedTools(permissions)
-      : toolRegistry.getAllowedTools()
-    const systemToolPrompts = Object.values(toolPrompts).join('\n\n')
-    const toolList = allowedTools.map((t) => {
-      const desc = t.description.split('.')[0]
-      return `- **${t.id}**: ${desc}`
-    }).join('\n')
-
     const activeDoc = useDocumentStore.getState().getActiveDoc()
-    const activeDocInfo = activeDoc
-      ? `Active document: "${activeDoc.title}" (ID: ${activeDoc.id})`
-      : 'No document is currently open.'
+    const mode = isChatMode ? 'chat' : 'agent'
+    const systemContent = buildSystemPrompt(mode, activeDoc ?? undefined)
 
-    const systemMessage = {
-      role: 'system' as const,
-      content: isChatMode
-        ? `You are a helpful AI assistant for the InkView document editor.
-You have access to read and search tools.
-
-## Available Tools
-
-${toolList}
-
-## Context
-${activeDocInfo}
-
-## Important
-- Use **readDoc** with the active document's title or ID to read its content — do NOT assume you know the content.
-- If the user explicitly mentions another document or their message is not related to the current document, use **searchDocs** to find it and **readDoc** to read it.
-- If the user's message is not about any document and if you are not familier with it or if you want more information (e.g., general knowledge, casual chat), use **webSearch** and **webFetch** to find information.
-- You cannot create, edit, or delete documents.
-
-## Tool Usage Guidelines
-
-${systemToolPrompts}`
-        : `You are an AI assistant for the InkView document editor.
-You have access to tools to read, search, create, and edit documents.
-
-## Available Tools
-
-${toolList}
-
-## Tool Usage Guidelines
-
-${systemToolPrompts}`,
-    }
+    const systemMessage = { role: 'system' as const, content: systemContent }
 
     const apiMessages: ApiMessage[] = [systemMessage]
     for (const m of messages) {
@@ -511,6 +340,10 @@ ${systemToolPrompts}`,
     const abortController = new AbortController()
     engine.setAbortController(abortController)
     set({ _agentAbortController: abortController })
+
+    if (activeDoc?.id) {
+      engine.markDocumentAsRead(activeDoc.id)
+    }
 
     const alwaysAllowRules = useAgentStore.getState().persistentPermissions
     const agentPermissions: PermissionRule[] = [...DEFAULT_PERMISSIONS, ...alwaysAllowRules]
