@@ -47,15 +47,19 @@ const writeDoc: ToolDefinition = {
   jsonSchema,
 
   async execute(args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
-    const action = ctx.evaluatePermission('edit', (args.documentId as string) || '*')
+    const store = useDocumentStore.getState()
+    let docId = args.documentId as string | undefined
+
+    const perm = docId ? 'edit' : 'create'
+    const action = ctx.evaluatePermission(perm, docId || '*')
     if (action === 'deny') {
-      return { title: 'Permission denied', output: 'Editing documents is not permitted.' }
+      const msg = perm === 'edit' ? 'Editing' : 'Creating'
+      return { title: 'Permission denied', output: `${msg} documents is not permitted.` }
     }
 
-    const store = useDocumentStore.getState()
     const title = args.title as string
     const content = args.content as string
-    let docId = args.documentId as string | undefined
+    const previousDocId = store.activeDocId
 
     const existing = docId ? store.documents.find((d) => d.id === docId) : undefined
     const oldChars = existing?.content.length ?? 0
@@ -87,13 +91,16 @@ const writeDoc: ToolDefinition = {
       if (!existing) {
         return {
           title: 'Not found',
-          output: `Document with ID "${docId}" not found. Use createDoc to create a new document.`,
+          output: `Document with ID "${docId}" not found. Omit documentId to create a new document.`,
         }
       }
       store.updateContent(docId, content)
       store.updateTitle(docId, title)
     } else {
       docId = store.createDocument(content, title)
+      if (previousDocId && previousDocId !== docId) {
+        store.setActiveDoc(previousDocId)
+      }
     }
 
     return {

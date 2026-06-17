@@ -61,11 +61,13 @@ export class AgentEngine {
       let collectedToolCalls: ToolCallChunk[] = []
       let reasoningLoggedThisTurn = false
       let lastStreamError: Error | undefined
+      let toolGenNotified = false
       const MAX_STREAM_RETRIES = 2
 
       for (let streamAttempt = 0; streamAttempt <= MAX_STREAM_RETRIES; streamAttempt++) {
         collectedToolCalls = []
         reasoningLoggedThisTurn = false
+        toolGenNotified = false
 
         if (streamAttempt > 0) {
           options.onChunk({
@@ -86,8 +88,14 @@ export class AgentEngine {
             }
             if (chunk.toolCalls && chunk.toolCalls.length > 0) {
               collectedToolCalls.push(...chunk.toolCalls)
-              if (chunk.content || chunk.reasoning) {
+              const hasDisplayContent = chunk.content || chunk.reasoning
+              if (hasDisplayContent) {
                 options.onChunk({ content: chunk.content, reasoning: chunk.reasoning, done: false })
+              }
+              if (!hasDisplayContent && !toolGenNotified) {
+                toolGenNotified = true
+                const toolName = chunk.toolCalls[0]?.function?.name || 'tool'
+                options.onChunk({ content: '', reasoning: `Generating content for ${toolName}...`, done: false })
               }
             } else if (!chunk.done) {
               options.onChunk(chunk)
@@ -214,7 +222,7 @@ export class AgentEngine {
 
         try {
           let docSnapshot: string | null = null
-          if (isModifyingTool || tc.function.name === 'createDoc') {
+          if (isModifyingTool) {
             const docId = this._parseArgs(tc.function.arguments).documentId as string | undefined
             if (docId) {
               const doc = useDocumentStore.getState().documents.find((d) => d.id === docId)

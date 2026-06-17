@@ -36,6 +36,7 @@ oldString should match the document text as closely as possible, but the system 
 ## Best Practices
 - Extract oldString directly from readDoc output (after removing line number prefixes)
 - Provide 2-3 lines of surrounding context for unique matching
+- **Use editDoc for simple changes** — do NOT use writeDoc for this
 - For large changes, prefer incremental edits over full-document rewrites
 - Use `replaceAll: true` only when you need to replace every occurrence of identical text
 - After editing, read the document to verify the change was applied correctly

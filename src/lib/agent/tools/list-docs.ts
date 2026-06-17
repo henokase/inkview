@@ -21,7 +21,7 @@ const listDocs: ToolDefinition = {
     if (documents.length === 0) {
       return {
         title: 'Document library',
-        output: 'No documents found. Create one with createDoc.',
+        output: 'No documents found. Create one with writeDoc.',
         metadata: { totalDocuments: 0 },
       }
     }

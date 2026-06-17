@@ -12,16 +12,16 @@ interface ToolCallCardProps {
 
 export function ToolCallCard({ call, status, result, metadata }: ToolCallCardProps) {
   const isError = status === 'failed'
-  const isEditWriteCreate = call.name === 'createDoc' || call.name === 'editDoc' || call.name === 'writeDoc'
+  const isEditWrite = call.name === 'editDoc' || call.name === 'writeDoc'
   const isRunning = status === 'running' || status === 'pending'
   const isReadDoc = call.name === 'readDoc'
   const showResult = !isRunning && result && !isReadDoc
   const docId = !isRunning && !isError ? (metadata?.id as string) : undefined
   const docTitle = (metadata?.title as string) || (call.arguments.title as string) || undefined
-  const showOpenDoc = isEditWriteCreate && !isRunning && !isError && !!docId
+  const showOpenDoc = isEditWrite && !isRunning && !isError && !!docId
   const hasExpandableContent = showResult || showOpenDoc
 
-  const [collapsed, setCollapsed] = useState(isError || isRunning || !isEditWriteCreate)
+  const [collapsed, setCollapsed] = useState(isError || isRunning || !isEditWrite)
   const autoExpanded = useRef(false)
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export function ToolCallCard({ call, status, result, metadata }: ToolCallCardPro
     || (call.arguments.documentId as string)
     || ''
 
-  const statusLabel = isRunning && isEditWriteCreate
+  const statusLabel = isRunning && isEditWrite
     ? call.name === 'editDoc' ? 'Editing…' : 'Writing…'
     : isRunning ? 'Running…'
     : ''

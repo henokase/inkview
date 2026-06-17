@@ -3,7 +3,6 @@ import writeDoc from './write-doc'
 import editDoc from './edit-doc'
 import searchDocs from './search-docs'
 import listDocs from './list-docs'
-import createDoc from './create-doc'
 import deleteDoc from './delete-doc'
 import webSearch from './web-search'
 import webFetch from './web-fetch'
@@ -15,7 +14,6 @@ const allTools = [
   editDoc,
   searchDocs,
   listDocs,
-  createDoc,
   deleteDoc,
   webSearch,
   webFetch,

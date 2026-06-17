@@ -1,7 +1,7 @@
 # writeDoc Tool Usage
 
 ## Purpose
-The `writeDoc` tool creates a new document or **overwrites an entire existing document** with new content. This tool replaces the full content of a document.
+The `writeDoc` tool creates a new document or **overwrites an entire existing document** with new content. This tool replaces the full content of a document. It is the single tool for both creating and fully rewriting documents.
 
 ## When to Use writeDoc vs editDoc
 - **Use writeDoc when**: Creating a brand new document, or when you need to rewrite an entire document from scratch.
@@ -10,16 +10,17 @@ The `writeDoc` tool creates a new document or **overwrites an entire existing do
 ## Parameters
 - `title` (required): The document title. This is the heading users see in the document library.
 - `content` (required): The full markdown content for the document. This replaces the entire existing content if updating.
-- `documentId` (optional): Provide this to overwrite an existing document. Omit to create a new document.
+- `documentId` (optional): Provide this to overwrite an existing document. **Omit to create a new document.**
 
 ## Best Practices
 - Always provide a meaningful title
 - Use proper Markdown formatting in content (headings, lists, code blocks, etc.)
-- For new documents, prefer `createDoc` which is specifically designed for creation
 - `writeDoc` with a `documentId` will **completely replace** the document content. There is no undo beyond the pending change approval.
+- For iterative document building, create with a title first, then use `editDoc` to add content section by section.
+- **Do NOT use writeDoc for small changes**. Use `editDoc` instead — it's faster and creates smaller pending diffs.
 
 ## Important
 - Every write operation creates a **pending change** that the user must approve.
 - The content parameter should be the **complete** document content, not just the section you want to change.
-- If the document already exists and you do not provide a `documentId`, a new document will be created.
+- Omit `documentId` to create a brand new document. Provide `documentId` to overwrite an existing one.
 - Always use `editDoc` for targeted changes to keep the pending diff focused and reviewable.

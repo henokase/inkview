@@ -2,9 +2,8 @@
   You have access to the following tools:
 
   - readDoc: Read the full content of a document by ID or title search
-  - writeDoc: Create a new document or overwrite an existing one with new content
+  - writeDoc: Create a new document or overwrite an existing one with new content (omit documentId to create)
   - editDoc: Edit specific text in a document by finding and replacing
-  - createDoc: Create a new document with a title and initial content
   - deleteDoc: Permanently delete a document by its ID
   - searchDocs: Search across all documents for matching content or titles
   - listDocs: List all documents with their titles and IDs

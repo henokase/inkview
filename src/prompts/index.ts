@@ -9,14 +9,13 @@ import {
   webFetchPrompt,
   editDocPrompt,
   writeDocPrompt,
-  createDocPrompt,
   deleteDocPrompt,
 } from '../lib/agent/prompts'
 
 export type Mode = 'agent' | 'chat'
 
 const CHAT_TOOLS = new Set(['readDoc', 'searchDocs', 'listDocs', 'webSearch', 'webFetch'])
-const AGENT_TOOLS = new Set(['readDoc', 'searchDocs', 'listDocs', 'webSearch', 'webFetch', 'editDoc', 'writeDoc', 'createDoc', 'deleteDoc'])
+const AGENT_TOOLS = new Set(['readDoc', 'searchDocs', 'listDocs', 'webSearch', 'webFetch', 'editDoc', 'writeDoc', 'deleteDoc'])
 
 const toolPromptMap: Record<string, string> = {
   readDoc: readDocPrompt,
@@ -26,7 +25,6 @@ const toolPromptMap: Record<string, string> = {
   webFetch: webFetchPrompt,
   editDoc: editDocPrompt,
   writeDoc: writeDocPrompt,
-  createDoc: createDocPrompt,
   deleteDoc: deleteDocPrompt,
 }
 
