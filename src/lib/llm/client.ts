@@ -92,7 +92,8 @@ export class LLMClient {
         await sleep(RETRY_DELAY_MS * attempt)
       }
 
-      const timeoutSignal = AbortSignal.timeout(120000)
+      const timeoutMs = Number(import.meta.env.VITE_LLM_TIMEOUT_MS) || 300000
+      const timeoutSignal = AbortSignal.timeout(timeoutMs)
       const combinedSignal = signal
         ? AbortSignal.any([signal, timeoutSignal])
         : timeoutSignal
@@ -160,7 +161,8 @@ export class LLMClient {
     signal?: AbortSignal,
   ): Promise<{ content: string; usage?: { promptTokens: number; completionTokens: number } }> {
     const parsedMessages = this.buildMessages(messages)
-    const timeoutSignal = AbortSignal.timeout(120000)
+    const timeoutMs = Number(import.meta.env.VITE_LLM_TIMEOUT_MS) || 300000
+    const timeoutSignal = AbortSignal.timeout(timeoutMs)
     const combinedSignal = signal
       ? AbortSignal.any([signal, timeoutSignal])
       : timeoutSignal

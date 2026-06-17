@@ -46,7 +46,7 @@ export class AgentEngine {
     initialMessages: ApiMessage[],
     options: AgentLoopOptions,
   ): Promise<void> {
-    const MAX_TURNS = options.maxTurns ?? 10
+    const MAX_TURNS = options.maxTurns ?? 50
     const messages: ApiMessage[] = [...initialMessages]
     this.readDocumentIds = new Set<string>()
     let turn = 0
@@ -60,36 +60,54 @@ export class AgentEngine {
       const apiTools = this.registry.toApiTools(tools)
       let collectedToolCalls: ToolCallChunk[] = []
       let reasoningLoggedThisTurn = false
+      let lastStreamError: Error | undefined
+      const MAX_STREAM_RETRIES = 2
 
-      try {
-        for await (const chunk of this.client.streamChat(
-          messages,
-          options.signal,
-          apiTools.length > 0 ? apiTools : undefined,
-        )) {
-          if (chunk.reasoning && !reasoningLoggedThisTurn) {
-            reasoningLoggedThisTurn = true
-          }
-          if (chunk.toolCalls && chunk.toolCalls.length > 0) {
-            collectedToolCalls.push(...chunk.toolCalls)
-            if (chunk.content || chunk.reasoning) {
-              options.onChunk({ content: chunk.content, reasoning: chunk.reasoning, done: false })
-            }
-          } else if (!chunk.done) {
-            options.onChunk(chunk)
-          }
+      for (let streamAttempt = 0; streamAttempt <= MAX_STREAM_RETRIES; streamAttempt++) {
+        collectedToolCalls = []
+        reasoningLoggedThisTurn = false
 
-          if (chunk.usage) {
-            options.onUsage?.(chunk.usage)
-          }
+        if (streamAttempt > 0) {
+          options.onChunk({
+            content: '',
+            reasoning: `[Retrying stream (attempt ${streamAttempt}/${MAX_STREAM_RETRIES})...]`,
+            done: false,
+          })
         }
-      } catch (err) {
-        if (options.signal.aborted) {
-          options.onDone?.()
+
+        try {
+          for await (const chunk of this.client.streamChat(
+            messages,
+            options.signal,
+            apiTools.length > 0 ? apiTools : undefined,
+          )) {
+            if (chunk.reasoning && !reasoningLoggedThisTurn) {
+              reasoningLoggedThisTurn = true
+            }
+            if (chunk.toolCalls && chunk.toolCalls.length > 0) {
+              collectedToolCalls.push(...chunk.toolCalls)
+              if (chunk.content || chunk.reasoning) {
+                options.onChunk({ content: chunk.content, reasoning: chunk.reasoning, done: false })
+              }
+            } else if (!chunk.done) {
+              options.onChunk(chunk)
+            }
+
+            if (chunk.usage) {
+              options.onUsage?.(chunk.usage)
+            }
+          }
+          break
+        } catch (err) {
+          if (options.signal.aborted) {
+            options.onDone?.()
+            return
+          }
+          lastStreamError = err instanceof Error ? err : new Error(String(err))
+          if (streamAttempt < MAX_STREAM_RETRIES) continue
+          options.onError?.(lastStreamError)
           return
         }
-        options.onError?.(err instanceof Error ? err : new Error(String(err)))
-        return
       }
 
       if (collectedToolCalls.length === 0) {

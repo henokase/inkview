@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Loader2, Settings, ChevronDown, FileText } from 'lucide-react'
 import type { ToolCallPart } from '../types'
 import { useDocumentStore } from '../stores/document-store'
@@ -12,16 +12,24 @@ interface ToolCallCardProps {
 
 export function ToolCallCard({ call, status, result, metadata }: ToolCallCardProps) {
   const isError = status === 'failed'
-  const isEditWrite = call.name === 'editDoc' || call.name === 'writeDoc'
-  const initCollapsed = isError || !(call.name === 'createDoc' || isEditWrite)
-  const [collapsed, setCollapsed] = useState(initCollapsed)
+  const isEditWriteCreate = call.name === 'createDoc' || call.name === 'editDoc' || call.name === 'writeDoc'
   const isRunning = status === 'running' || status === 'pending'
   const isReadDoc = call.name === 'readDoc'
   const showResult = !isRunning && result && !isReadDoc
   const docId = !isRunning && !isError ? (metadata?.id as string) : undefined
   const docTitle = (metadata?.title as string) || (call.arguments.title as string) || undefined
-  const showOpenDoc = (call.name === 'createDoc' || isEditWrite) && !isRunning && !isError && !!docId
+  const showOpenDoc = isEditWriteCreate && !isRunning && !isError && !!docId
   const hasExpandableContent = showResult || showOpenDoc
+
+  const [collapsed, setCollapsed] = useState(isError || isRunning || !isEditWriteCreate)
+  const autoExpanded = useRef(false)
+
+  useEffect(() => {
+    if (hasExpandableContent && !autoExpanded.current) {
+      autoExpanded.current = true
+      setCollapsed(false)
+    }
+  }, [hasExpandableContent])
 
   const docLabel = (call.arguments.url as string)
     || (call.arguments.query as string)
@@ -29,7 +37,7 @@ export function ToolCallCard({ call, status, result, metadata }: ToolCallCardPro
     || (call.arguments.documentId as string)
     || ''
 
-  const statusLabel = isRunning && isEditWrite
+  const statusLabel = isRunning && isEditWriteCreate
     ? call.name === 'editDoc' ? 'Editing…' : 'Writing…'
     : isRunning ? 'Running…'
     : ''
@@ -60,7 +68,7 @@ export function ToolCallCard({ call, status, result, metadata }: ToolCallCardPro
         )}
       </button>
       {!collapsed && (showResult || showOpenDoc) && (
-        <div className="px-3 pb-3 pt-1.5 space-y-2">
+        <div className="px-3 pb-3 pt-1.5 space-y-2 animate-in slide-in-from-top-1 fade-in duration-200">
           {showResult && (
             <div className="rounded-lg bg-surface dark:bg-black/40 border border-border/30 px-3 py-2 max-h-48 overflow-y-auto">
               <pre className={`text-[11px] font-mono leading-relaxed whitespace-pre-wrap ${isError ? 'text-red-700 dark:text-red-400' : 'text-ink-soft'}`}>

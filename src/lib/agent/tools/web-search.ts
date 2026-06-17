@@ -74,6 +74,7 @@ async function callTavily(query: string, numResults: number, signal?: AbortSigna
   const controller = new AbortController()
   const onAbort = () => controller.abort()
   signal?.addEventListener('abort', onAbort, { once: true })
+  const timeoutId = setTimeout(() => controller.abort(), 15000)
 
   try {
     const res = await fetch(TAVILY_URL, {
@@ -100,7 +101,7 @@ async function callTavily(query: string, numResults: number, signal?: AbortSigna
   } catch {
     return undefined
   } finally {
-    clearTimeout(controller.signal instanceof AbortSignal ? undefined : undefined)
+    clearTimeout(timeoutId)
     signal?.removeEventListener('abort', onAbort)
   }
 }
