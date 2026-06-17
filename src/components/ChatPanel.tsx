@@ -159,7 +159,7 @@ export function ChatPanel() {
       />
 
       <aside
-        className="fixed inset-y-0 right-0 z-60 lg:relative lg:shrink-0 flex flex-col border-l border-border/40 bg-surface shadow-2xl lg:shadow-[-8px_0_32px_-8px_rgba(0,0,0,0.12)] animate-in slide-in-from-right duration-200"
+        className="fixed inset-y-0 right-0 z-60 lg:relative lg:shrink-0 flex flex-col border-l border-border/60 bg-surface shadow-2xl lg:shadow-[-8px_0_32px_-8px_rgba(0,0,0,0.12)] animate-in slide-in-from-right duration-200"
         style={{ width: panelWidth || getMinWidth() }}
       >
         <div
@@ -186,14 +186,14 @@ export function ChatPanel() {
             <div className="flex items-center gap-1 shrink-0">
               <button
                 onClick={handleCreate}
-                className="rounded-lg p-1.5 text-ink-faint hover:text-accent hover:bg-accent/8 transition-all duration-200 active:scale-95"
+                className="rounded-lg p-1.5 text-ink-faint hover:text-accent hover:bg-accent/10 transition-all duration-200 active:scale-95"
                 title="New session"
               >
                 <Plus size={15} />
               </button>
               <button
                 onClick={() => setChatOpen(false)}
-                className="shrink-0 rounded-lg p-1.5 text-ink-faint hover:text-ink hover:bg-surface-alt/80 transition-all duration-200 active:scale-95"
+                className="shrink-0 rounded-lg p-1.5 text-ink-faint hover:text-ink hover:bg-surface-alt transition-all duration-200 active:scale-95"
               >
                 <X size={15} />
               </button>
@@ -203,7 +203,7 @@ export function ChatPanel() {
 
         <ChatMessages messages={messages} isStreaming={isStreaming} activeThinking={activeThinking} onEdit={handleEdit} />
 
-        <div className="shrink-0 border-t border-border/50">
+        <div className="shrink-0 border-t border-border/60">
           {permissionQueue[0] && (
             <div className="px-3 pt-2.5 pb-1">
               <PermissionDialog

@@ -68,14 +68,14 @@ const ChatInputComponent = forwardRef<ChatInputHandle, ChatInputProps>(
   const handleInput = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setValue(e.target.value)
     e.target.style.height = 'auto'
-    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
+    e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px'
   }, [])
 
   return (
     <div className="px-3 pt-2.5 pb-3">
-      <div className="flex flex-col border border-border/60 bg-surface-alt/30 focus-within:border-accent/30 focus-within:bg-surface-alt/50 transition-all duration-200 rounded-xl p-3 shadow-xs">
+      <div className="flex flex-col border border-border/80 bg-surface-alt/60 focus-within:border-accent/50 focus-within:bg-surface-alt/80 transition-all duration-200 rounded-xl p-3 shadow-sm">
         {contextText && (
-          <div className="mb-2 flex items-start gap-2 rounded-lg bg-accent/6 border border-accent/15 px-3 py-2 group">
+          <div className="mb-2 flex items-start gap-2 rounded-lg bg-accent/8 border border-accent/20 px-3 py-2 group">
             <div className="shrink-0 w-5 h-5 rounded bg-accent/10 flex items-center justify-center mt-0.5">
               <Quote size={10} className="text-accent/60" />
             </div>
@@ -106,14 +106,14 @@ const ChatInputComponent = forwardRef<ChatInputHandle, ChatInputProps>(
                 ? 'Describe changes or edits to make to the document...'
                 : 'Ask about the document...'
           }
-          rows={1}
+          rows={2}
           disabled={isStreaming}
-          className="w-full resize-none bg-transparent p-0 text-sm text-ink placeholder-ink-faint/40 outline-none border-none focus:ring-0 focus:outline-none font-sans disabled:opacity-50 leading-relaxed max-h-30"
+          className="w-full resize-none bg-transparent p-0 text-sm text-ink placeholder-ink-faint/60 outline-none border-none focus:ring-0 focus:outline-none font-sans disabled:opacity-50 leading-relaxed min-h-[2.6em] max-h-40"
         />
 
-        <div className="flex items-center justify-between mt-3 pt-2 border-t border-border">
+        <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/60">
           <div className="flex items-center text-xs text-ink-faint select-none">
-            <div className="relative flex items-center bg-surface-alt/80 dark:bg-surface-alt/40 rounded-md p-0.5 border border-border/40 select-none w-24">
+            <div className="relative flex items-center bg-surface-alt rounded-md p-0.5 border border-border/60 select-none w-24">
               <div
                 className="absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] rounded-md bg-accent shadow-[0_2px_8px_rgba(var(--accent-rgb),0.2)] dark:shadow-none transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
                 style={{ transform: agentMode ? 'translateX(100%)' : 'translateX(0)' }}
@@ -159,7 +159,7 @@ const ChatInputComponent = forwardRef<ChatInputHandle, ChatInputProps>(
                 className={`p-1.5 rounded-full transition-all duration-150 ${
                   value.trim() && !disabled
                     ? 'bg-accent text-white hover:scale-105 active:scale-95 shadow-sm shadow-accent/20 cursor-pointer'
-                    : 'text-ink-faint/30 bg-surface-alt/30 cursor-not-allowed'
+                    : 'text-ink-faint/40 bg-surface-alt/50 cursor-not-allowed'
                 }`}
                 title="Send message"
               >

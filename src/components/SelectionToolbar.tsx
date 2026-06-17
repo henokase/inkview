@@ -38,7 +38,7 @@ export function SelectionToolbar({ position, onAskAi }: SelectionToolbarProps) {
   return (
     <div
       ref={ref}
-      className="fixed z-50 flex items-center gap-1 rounded-xl border border-border bg-surface px-2 py-1.5 shadow-lg"
+      className="fixed z-60 flex items-center gap-1 rounded-xl border border-border bg-surface px-2 py-1.5 shadow-lg"
       style={{
         left: position.x,
         top: position.y + 8,

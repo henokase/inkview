@@ -34,7 +34,7 @@ export function ConversationList({
     <div ref={ref} className="relative hover:cursor-pointer">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex hover:cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-extrabold text-ink-soft text-ink bg-surface-alt border border-transparent border-border/40 transition-all duration-200 group"
+        className="w-full flex hover:cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-extrabold text-ink-soft text-ink bg-surface-alt/80 border border-border/50 transition-all duration-200 group"
       >
         <span className="flex-1 truncate text-left">{activeConv?.title || 'Select session'}</span>
         <ChevronDown size={20} className={`shrink-0 text-slate-500 transition-all duration-200 ${open ? 'rotate-180' : ''}`} />

@@ -34,12 +34,23 @@ function ChatMarkdown({ content }: { content: string }) {
         ),
         code: ({ className, children, ...props }) => {
           const match = /language-(\w+)/.exec(className || '')
-          const code = String(children).replace(/\n$/, '')
+          const codeStr = String(children)
+          const isFenced = /\n/.test(codeStr)
+          const trimmed = codeStr.replace(/\n$/, '')
           if (match) {
             return (
               <div className="my-2.5 rounded-lg border border-border/60 bg-surface-alt/80 overflow-x-auto backdrop-blur-sm">
                 <pre className="px-3.5 py-2.5 text-xs font-mono leading-relaxed text-ink w-max min-w-full">
-                  <code>{code}</code>
+                  <code>{trimmed}</code>
+                </pre>
+              </div>
+            )
+          }
+          if (isFenced) {
+            return (
+              <div className="my-2.5 rounded-lg border border-border/60 bg-surface-alt/80 overflow-x-auto backdrop-blur-sm">
+                <pre className="px-3.5 py-2.5 text-xs font-mono leading-relaxed text-ink w-max min-w-full">
+                  <code>{trimmed}</code>
                 </pre>
               </div>
             )
@@ -82,11 +93,30 @@ interface MessageBubbleProps {
   onEdit?: (msgId: string, newContent: string) => void
 }
 
+const COLLAPSE_LINE_THRESHOLD = 5
+
 const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLastUserMessage, activeThinking, onEdit }: MessageBubbleProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(msg.content)
   const [copied, setCopied] = useState(false)
+  const [userExpanded, setUserExpanded] = useState(false)
+  const bubbleRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const isUser = msg.role === 'user'
+  const lineCount = isUser ? msg.content.split('\n').length : 0
+  const isLong = lineCount > COLLAPSE_LINE_THRESHOLD
+  const isCollapsed = isLong && !userExpanded
+
+  useEffect(() => {
+    if (!isLong || !userExpanded) return
+    const handler = (e: MouseEvent) => {
+      if (bubbleRef.current && !bubbleRef.current.contains(e.target as Node)) {
+        setUserExpanded(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [isLong, userExpanded])
 
   useEffect(() => {
     if (editing && textareaRef.current) {
@@ -115,15 +145,13 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
 
   useKeydown(editing, handleSave, handleCancel)
 
-  const isUser = msg.role === 'user'
-
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-in fade-in duration-200`}>
       <div className={`${isUser ? (editing ? 'w-full' : 'max-w-[88%]') : 'w-full'}`}>
         <div
           className={`relative ${
             isUser
-              ? 'bg-linear-to-br from-accent to-accent-soft text-white rounded-xl rounded-br-md shadow-sm shadow-accent/15'
+              ? 'bg-accent/15 border border-accent/30 text-ink rounded-xl rounded-br-md'
               : `text-ink ${msg.content || msg.toolCalls?.length || msg.toolResults?.length ? 'bg-surface-alt border border-border/40 rounded-xl rounded-tl-md' : ''}`
           } ${isUser ? `${editing ? 'p-2 border-2 border-slate-500' : 'p-2'}` : 'p-2'}`}
         >
@@ -132,11 +160,25 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
               ref={textareaRef}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              className="w-full rounded-lg text-[13px] leading-relaxed font-medium text-white resize-none outline-none"
+              className="w-full rounded-lg text-[13px] leading-relaxed font-medium text-ink resize-none outline-none"
               rows={3}
             />
           ) : isUser ? (
-            <p className="whitespace-pre-wrap text-[13px] leading-relaxed font-medium">{msg.content}</p>
+            <div ref={bubbleRef}>
+              <p className="whitespace-pre-wrap text-[13px] leading-relaxed font-medium">
+                {isCollapsed
+                  ? msg.content.split('\n').slice(0, COLLAPSE_LINE_THRESHOLD).join('\n')
+                  : msg.content}
+              </p>
+              {isLong && (
+                <button
+                  onClick={() => setUserExpanded(!userExpanded)}
+                  className="mt-1 text-[11px] text-accent/70 hover:text-accent transition-colors"
+                >
+                  {userExpanded ? 'Show less' : `Show more (${lineCount - COLLAPSE_LINE_THRESHOLD} more lines)`}
+                </button>
+              )}
+            </div>
           ) : msg.contentParts && msg.contentParts.length > 0 ? (
             <div className="space-y-2">
               {msg.contentParts.map((part, i) => {

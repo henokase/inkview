@@ -621,12 +621,10 @@ function App() {
                 </>
               )}
 
-              {(editorMode === 'preview' || editorMode === 'split') && (
-                <SelectionToolbar
-                  position={selectionPosition}
-                  onAskAi={handleAskAi}
-                />
-              )}
+              <SelectionToolbar
+                position={selectionPosition}
+                onAskAi={handleAskAi}
+              />
             </>
           ) : null}
         </div>
@@ -661,7 +659,7 @@ function App() {
             isOnline={isOnline}
             hasHeadings={hasHeadings}
           />
-          <div className="flex-1 overflow-auto px-0 sm:px-4 lg:px-2">
+          <div ref={editorPaneRef} onMouseUp={handleEditorMouseUp} className="flex-1 overflow-auto px-0 sm:px-4 lg:px-2">
             <div className="mx-auto h-full max-w-4xl bg-surface shadow-lg ring-1 ring-border/50 px-2 sm:px-4 py-3 flex flex-col min-h-0">
               <MarkdownEditor
                 value={activeDoc.content}
