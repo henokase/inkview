@@ -16,6 +16,13 @@ export interface StreamChunk {
   usage?: { promptTokens: number; completionTokens: number }
 }
 
+export type StreamEvent =
+  | { type: 'text'; content: string }
+  | { type: 'reasoning'; text: string }
+  | { type: 'tool-input-delta'; index: number; id: string; name: string; arguments: string }
+  | { type: 'tool-call'; calls: ToolCallChunk[] }
+  | { type: 'done'; usage?: Usage }
+
 export interface Usage {
   promptTokens: number
   completionTokens: number

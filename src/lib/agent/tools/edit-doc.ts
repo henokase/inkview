@@ -459,6 +459,10 @@ const editDoc: ToolDefinition = {
   jsonSchema,
 
   async execute(args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
+    if (ctx.abortSignal.aborted) {
+      return { title: 'Cancelled', output: 'Operation cancelled.' }
+    }
+
     const action = ctx.evaluatePermission('edit', (args.documentId as string) || '*')
     if (action === 'deny') {
       return { title: 'Permission denied', output: 'Editing documents is not permitted.' }
@@ -514,6 +518,9 @@ const editDoc: ToolDefinition = {
         }
       }
 
+      if (ctx.abortSignal.aborted) {
+        return { title: 'Cancelled', output: 'Operation cancelled.' }
+      }
       store.updateContent(documentId, newContent)
 
       return {

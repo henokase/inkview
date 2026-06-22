@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { flushSync } from 'react-dom'
-import type { Conversation, Message, ToolCallPart, ToolResultPart } from '../types'
+import type { Conversation, Message, Part, TextPart, ReasoningPart, ToolPart } from '../types'
 import {
   loadAllConversations,
   saveConversation,
@@ -48,6 +48,7 @@ interface ChatStore {
   _engine: StreamEngine
   _agentEngine: AgentEngine
   _agentAbortController: AbortController | null
+  _generation: number
   agentMode: boolean
 
   setSelectedText: (text: string) => void
@@ -84,6 +85,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   _engine: new StreamEngine(),
   _agentEngine: new AgentEngine(),
   _agentAbortController: null,
+  _generation: 0,
   agentMode: true,
 
   setSelectedText: (text) => set({ selectedText: text }),
@@ -276,6 +278,9 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   _streamAgentResponse: async (convId, permissions) => {
     if (get().isStreaming) return
 
+    const gen = ++get()._generation
+    const isStillValid = () => get()._generation === gen
+
     const isChatMode = !!permissions
     const messages = get().messagesByConv[convId] || []
 
@@ -291,21 +296,29 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
         role: m.role as 'user' | 'assistant' | 'system',
         content: m.content,
       }
-      if (m.toolCalls?.length) {
-        entry.tool_calls = m.toolCalls.map((tc) => ({
-          id: tc.id,
-          type: 'function' as const,
-          function: { name: tc.name, arguments: JSON.stringify(tc.arguments) },
-        }))
+      if (m.parts) {
+        const toolParts = m.parts.filter((p): p is ToolPart => p.type === 'tool')
+        if (toolParts.length > 0) {
+          const pendingTool = toolParts.find(t => t.status === 'pending' || t.status === 'running')
+          entry.tool_calls = toolParts.map((tp) => ({
+            id: tp.id,
+            type: 'function' as const,
+            function: { name: tp.name, arguments: JSON.stringify(tp.args) },
+          }))
+          entry.content = pendingTool ? null : entry.content
+        }
       }
       apiMessages.push(entry)
-      if (m.toolResults?.length) {
-        for (const tr of m.toolResults) {
-          apiMessages.push({
-            role: 'tool',
-            tool_call_id: tr.id,
-            content: tr.result,
-          })
+      if (m.parts) {
+        for (const tp of m.parts.filter(p => p.type === 'tool')) {
+          const tool = tp as ToolPart
+          if (tool.status === 'completed' || tool.status === 'error') {
+            apiMessages.push({
+              role: 'tool',
+              tool_call_id: tool.id,
+              content: tool.result || tool.error || '',
+            })
+          }
         }
       }
     }
@@ -317,9 +330,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
       role: 'assistant',
       content: '',
       createdAt: Date.now(),
-      toolCalls: [],
-      toolResults: [],
-      contentParts: [''],
+      parts: [],
     }
 
     set((s) => ({
@@ -330,10 +341,9 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
       },
     }))
 
-    let fullContent = ''
-    let contentParts: string[] = ['']
-    let accumulatedThinking = ''
-    let hasContentStarted = false
+    let parts: Part[] = []
+    let accumulatedText = ''
+    let accumulatedReasoning = ''
     let finalUsage: Usage | undefined
 
     const engine = get()._agentEngine
@@ -348,84 +358,128 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     const alwaysAllowRules = useAgentStore.getState().persistentPermissions
     const agentPermissions: PermissionRule[] = [...DEFAULT_PERMISSIONS, ...alwaysAllowRules]
 
+    function flushText() {
+      if (!accumulatedText) return
+      parts.push({ type: 'text', text: accumulatedText } satisfies TextPart)
+      accumulatedText = ''
+    }
+
+    function flushReasoning() {
+      if (!accumulatedReasoning) return
+      parts.push({ type: 'reasoning', text: accumulatedReasoning } satisfies ReasoningPart)
+      accumulatedReasoning = ''
+    }
+
+    let flushTimer: ReturnType<typeof setTimeout> | null = null
+    let chunkCount = 0
+    const DEBOUNCE_MS = 50
+    const FLUSH_EVERY_N = 30
+
+    function scheduleFlush() {
+      if (flushTimer) return
+      flushTimer = setTimeout(() => {
+        flushTimer = null
+        applyUpdate()
+      }, DEBOUNCE_MS)
+    }
+
+    function cancelFlush() {
+      if (flushTimer) { clearTimeout(flushTimer); flushTimer = null }
+    }
+
+    function applyUpdate() {
+      set((s) => ({
+        activeThinking: accumulatedReasoning,
+        messagesByConv: {
+          ...s.messagesByConv,
+          [convId]: (s.messagesByConv[convId] || []).map((m) =>
+            m.id === assistantId ? { ...m, parts: [...parts], content: accumulatedText } : m
+          ),
+        },
+      }))
+    }
+
+    function debouncedUpdate() {
+      chunkCount++
+      scheduleFlush()
+      if (chunkCount % FLUSH_EVERY_N === 0) {
+        cancelFlush()
+        applyUpdate()
+      }
+    }
+
     try {
       await engine.agentLoop(apiMessages, {
         signal: abortController.signal,
         agentPermissions,
         onChunk: (chunk) => {
+          if (!isStillValid()) return
           if (chunk.reasoning) {
-            accumulatedThinking += chunk.reasoning
-            if (!hasContentStarted) {
-              set({ activeThinking: accumulatedThinking })
-            }
+            accumulatedReasoning += chunk.reasoning
+            set({ activeThinking: accumulatedReasoning })
           }
-            if (chunk.content) {
-            if (!hasContentStarted && accumulatedThinking) {
-              set((s) => ({
-                activeThinking: '',
-                messagesByConv: {
-                  ...s.messagesByConv,
-                  [convId]: (s.messagesByConv[convId] || []).map((m) =>
-                    m.id === assistantId ? { ...m, thinking: accumulatedThinking } : m
-                  ),
-                },
-              }))
+          if (chunk.content) {
+            if (accumulatedReasoning) {
+              flushReasoning()
+              cancelFlush()
+              applyUpdate()
             }
-            hasContentStarted = true
-            fullContent += chunk.content
-            contentParts[contentParts.length - 1] += chunk.content
-            set((s) => ({
-              messagesByConv: {
-                ...s.messagesByConv,
-                [convId]: (s.messagesByConv[convId] || []).map((m) =>
-                  m.id === assistantId ? { ...m, content: fullContent, contentParts: [...contentParts] } : m
-                ),
-              },
-            }))
+            accumulatedText += chunk.content
+            debouncedUpdate()
           }
         },
         onUsage: (usage) => {
           finalUsage = usage
         },
         onTurnStart: () => {
-          if (!hasContentStarted && accumulatedThinking) {
-            set((s) => ({
-              activeThinking: '',
-              messagesByConv: {
-                ...s.messagesByConv,
-                [convId]: (s.messagesByConv[convId] || []).map((m) =>
-                  m.id === assistantId ? { ...m, thinking: accumulatedThinking } : m
-                ),
-              },
-            }))
-          }
-          hasContentStarted = false
-          accumulatedThinking = ''
+          if (!isStillValid()) return
+          cancelFlush()
+          flushReasoning()
+          flushText()
+          applyUpdate()
+          set({ activeThinking: '' })
         },
         onToolCall: (call) => {
-          contentParts.push('')
+          if (!isStillValid()) return
+          cancelFlush()
+          flushReasoning()
+          flushText()
+          const existing = parts.findIndex((p) => p.type === 'tool' && p.id === call.id)
+          if (existing !== -1) {
+            const t = parts[existing] as ToolPart
+            t.status = call.status === 'failed' ? 'error' : call.status
+          } else {
+            parts.push({
+              id: call.id,
+              type: 'tool',
+              name: call.name,
+              args: call.args,
+              status: call.status === 'failed' ? 'error' : call.status,
+              startTime: Date.now(),
+            } satisfies ToolPart)
+          }
           flushSync(() => {
-            set((s) => {
-              const existing = s.messagesByConv[convId] || []
-              const msgs = existing.map((m) => {
-                if (m.id !== assistantId) return m
-                const part: ToolCallPart = {
-                  id: call.id,
-                  type: 'tool_call',
-                  name: call.name,
-                  arguments: call.args,
-                }
-                return {
-                  ...m,
-                  toolCalls: [...(m.toolCalls || []), part],
-                  contentParts: [...contentParts],
-                }
-              })
-              return {
-                messagesByConv: { ...s.messagesByConv, [convId]: msgs },
-              }
-            })
+            applyUpdate()
           })
+        },
+        onToolResult: (result) => {
+          if (!isStillValid()) return
+          cancelFlush()
+          flushReasoning()
+          flushText()
+          const idx = parts.findIndex((p) => p.type === 'tool' && p.id === result.id)
+          if (idx !== -1) {
+            const t = parts[idx] as ToolPart
+            t.status = result.status === 'failed' ? 'error' : 'completed'
+            t.endTime = Date.now()
+            if (result.status === 'failed') {
+              t.error = result.error
+            } else {
+              t.result = result.result?.output
+              t.metadata = result.result?.metadata
+            }
+          }
+          applyUpdate()
         },
         onPermissionRequest: async (request) => {
           const agentState = useAgentStore.getState()
@@ -435,12 +489,18 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
           if (existingRule) return existingRule.action === 'allow' ? 'allow' : 'deny'
 
           return new Promise<'allow' | 'deny'>((resolve) => {
+            const timeout = setTimeout(() => resolve('deny'), 30000)
+            abortController.signal.addEventListener('abort', () => {
+              clearTimeout(timeout)
+              resolve('deny')
+            })
             agentState.queuePermissionRequest({
               id: request.id,
               permission: request.permission,
               toolName: request.toolName,
               args: request.args,
               resolve: (action: 'allow' | 'always' | 'deny') => {
+                clearTimeout(timeout)
                 if (action === 'always') {
                   useAgentStore.getState().addPersistentPermission({
                     permission: request.permission,
@@ -470,49 +530,12 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
             newString: change.newString,
           })
         },
-        onToolResult: (result) => {
-          set((s) => {
-            const existing = s.messagesByConv[convId] || []
-            const msgs = existing.map((m) => {
-              if (m.id !== assistantId) return m
-              const part: ToolResultPart = {
-                id: result.id,
-                type: 'tool_result',
-                name: result.name,
-                result: result.result?.output || result.error || '',
-                isError: result.status === 'failed',
-                metadata: result.result?.metadata,
-              }
-              return {
-                ...m,
-                toolResults: [...(m.toolResults || []), part],
-                contentParts: [...contentParts],
-              }
-            })
-            return {
-              messagesByConv: { ...s.messagesByConv, [convId]: msgs },
-            }
-          })
-        },
         onDone: () => {
-          set((s) => ({
-            messagesByConv: {
-              ...s.messagesByConv,
-              [convId]: (s.messagesByConv[convId] || []).map((m) =>
-                m.id === assistantId ? { ...m, contentParts: [...contentParts] } : m
-              ),
-            },
-          }))
-          if (!fullContent && accumulatedThinking) {
-            set((s) => ({
-              messagesByConv: {
-                ...s.messagesByConv,
-                [convId]: (s.messagesByConv[convId] || []).map((m) =>
-                  m.id === assistantId ? { ...m, thinking: accumulatedThinking } : m
-                ),
-              },
-            }))
-          }
+          if (!isStillValid()) return
+          cancelFlush()
+          flushReasoning()
+          flushText()
+          applyUpdate()
           const final = get().messagesByConv[convId]?.find((m) => m.id === assistantId)
           if (final) {
             saveMessage({
@@ -523,38 +546,40 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
           }
         },
         onError: (err) => {
+          if (!isStillValid()) return
+          cancelFlush()
+          flushReasoning()
+          flushText()
           const errorText = err instanceof Error ? err.message : 'An error occurred'
+          parts.push({ type: 'text', text: `**Error**: ${errorText}` } satisfies TextPart)
+          applyUpdate()
           const errorMsg: Message = {
             id: assistantId,
             conversationId: convId,
             role: 'assistant',
-            content: errorText,
+            content: accumulatedText,
             createdAt: Date.now(),
-            thinking: accumulatedThinking || undefined,
+            parts,
           }
-          set((s) => ({
-            messagesByConv: {
-              ...s.messagesByConv,
-              [convId]: (s.messagesByConv[convId] || []).map((m) =>
-                m.id === assistantId ? errorMsg : m
-              ),
-            },
-          }))
           saveMessage(errorMsg)
         },
       })
     } finally {
-      set({ isStreaming: false, activeThinking: '', _agentAbortController: null })
+      if (flushTimer) clearTimeout(flushTimer)
+      if (isStillValid()) {
+        set({ isStreaming: false, activeThinking: '', _agentAbortController: null })
+      }
     }
   },
 
   stopGeneration: () => {
     const state = get()
     if (state.activeConversationId) {
+      state._generation++ // invalidates isStillValid() in all callbacks
       state._engine.stop(state.activeConversationId)
       state._agentEngine.stop()
       state._agentAbortController?.abort()
-      set({ _agentAbortController: null, isStreaming: false })
+      set({ _agentAbortController: null })
     }
   },
 }))

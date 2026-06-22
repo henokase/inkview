@@ -75,7 +75,11 @@ const searchDocs: ToolDefinition = {
   permission: 'search',
   jsonSchema,
 
-  async execute(args: Record<string, unknown>, _ctx: ToolContext): Promise<ToolResult> {
+  async execute(args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
+    if (ctx.abortSignal.aborted) {
+      return { title: 'Cancelled', output: 'Operation cancelled.' }
+    }
+
     const query = (args.query as string) || ''
     const limit = Math.min((args.limit as number) || 20, 100)
 

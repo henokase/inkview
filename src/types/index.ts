@@ -45,27 +45,40 @@ export interface ToolCallPart {
   arguments: Record<string, unknown>
 }
 
-export interface ToolResultPart {
-  id: string
-  type: 'tool_result'
-  name: string
-  result: string
-  isError?: boolean
-  metadata?: Record<string, unknown>
+export interface TextPart {
+  type: 'text'
+  text: string
 }
+
+export interface ReasoningPart {
+  type: 'reasoning'
+  text: string
+}
+
+export interface ToolPart {
+  id: string
+  type: 'tool'
+  name: string
+  args: Record<string, unknown>
+  status: 'pending' | 'running' | 'completed' | 'error'
+  result?: string
+  error?: string
+  metadata?: Record<string, unknown>
+  startTime: number
+  endTime?: number
+}
+
+export type Part = TextPart | ReasoningPart | ToolPart
 
 export interface Message {
   id: string
   conversationId: string
   role: 'user' | 'assistant' | 'system'
   content: string
-  thinking?: string
   createdAt: number
   tokensPrompt?: number
   tokensCompletion?: number
-  toolCalls?: ToolCallPart[]
-  toolResults?: ToolResultPart[]
-  contentParts?: string[]
+  parts?: Part[]
 }
 
 export interface Conversation {

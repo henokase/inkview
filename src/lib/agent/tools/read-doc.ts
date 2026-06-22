@@ -38,6 +38,10 @@ const readDoc: ToolDefinition = {
   jsonSchema,
 
   async execute(args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
+    if (ctx.abortSignal.aborted) {
+      return { title: 'Cancelled', output: 'Operation cancelled.' }
+    }
+
     const action = ctx.evaluatePermission('read', (args.documentId as string) || '*')
     if (action === 'deny') {
       return { title: 'Permission denied', output: 'Reading documents is not permitted.' }

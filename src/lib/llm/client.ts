@@ -1,4 +1,4 @@
-import type { StreamChunk, ApiMessage, ApiTool, LLMConfig, ToolCallChunk } from './types'
+import type { StreamChunk, StreamEvent, ApiMessage, ApiTool, LLMConfig, ToolCallChunk } from './types'
 import {
   LLMError,
   NetworkError,
@@ -78,17 +78,13 @@ export class LLMClient {
     messages: ApiMessage[],
     signal?: AbortSignal,
     tools?: ApiTool[],
-  ): AsyncGenerator<StreamChunk> {
+  ): AsyncGenerator<StreamEvent> {
     const parsedMessages = this.buildMessages(messages)
 
     let lastError: Error | undefined
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       if (attempt > 0) {
-        yield {
-          content: '',
-          reasoning: `[Retrying (attempt ${attempt}/${MAX_RETRIES})...]`,
-          done: false,
-        }
+        yield { type: 'reasoning', text: `[Retrying (attempt ${attempt}/${MAX_RETRIES})...]` }
         await sleep(RETRY_DELAY_MS * attempt)
       }
 
@@ -134,13 +130,13 @@ export class LLMClient {
           throw new NetworkError('Failed to read response stream')
         }
 
-        for await (const chunk of this.parseSSEStream(reader, combinedSignal)) {
-          yield chunk
+        for await (const event of this.parseSSEStream(reader, combinedSignal)) {
+          yield event
         }
         return
       } catch (err) {
         if (combinedSignal.aborted) {
-          yield { content: '', reasoning: '', done: true }
+          yield { type: 'done' }
           return
         }
         if (err instanceof LLMError && err.retryable && attempt < MAX_RETRIES) {
@@ -198,7 +194,7 @@ export class LLMClient {
   async *parseSSEStream(
     reader: ReadableStreamDefaultReader<Uint8Array>,
     signal?: AbortSignal,
-  ): AsyncGenerator<StreamChunk> {
+  ): AsyncGenerator<StreamEvent> {
     const decoder = new TextDecoder()
     let buffer = ''
     const toolCallAccumulator = new Map<number, {
@@ -206,6 +202,10 @@ export class LLMClient {
       name: string
       arguments: string
     }>()
+
+    function emitToolDelta(index: number, id: string, name: string, argsDelta: string): void {
+      // no-op — we yield inline instead
+    }
 
     function flushToolCalls(): ToolCallChunk[] | undefined {
       if (toolCallAccumulator.size === 0) return undefined
@@ -238,12 +238,9 @@ export class LLMClient {
 
           const data = trimmed.slice(6)
           if (data === '[DONE]') {
-            const toolCalls = flushToolCalls()
-            if (toolCalls) {
-              yield { content: '', reasoning: '', toolCalls, done: true }
-            } else {
-              yield { content: '', reasoning: '', done: true }
-            }
+            const calls = flushToolCalls()
+            if (calls) yield { type: 'tool-call', calls }
+            yield { type: 'done' }
             return
           }
 
@@ -258,6 +255,14 @@ export class LLMClient {
             const reasoning = delta?.reasoning ?? delta?.reasoning_content ?? delta?.thinking ?? delta?.thinking_content ?? ''
             const content = (delta?.content || message?.content) ?? ''
 
+            if (reasoning) {
+              yield { type: 'reasoning', text: reasoning }
+            }
+
+            if (content) {
+              yield { type: 'text', content }
+            }
+
             const rawToolCalls = delta?.tool_calls
             if (rawToolCalls && Array.isArray(rawToolCalls)) {
               for (const tc of rawToolCalls) {
@@ -269,37 +274,33 @@ export class LLMClient {
                 }
                 if (tc.id) acc.id = tc.id
                 if (tc.function?.name) acc.name = tc.function.name
-                if (tc.function?.arguments) acc.arguments += tc.function.arguments
+                if (tc.function?.arguments) {
+                  acc.arguments += tc.function.arguments
+                  yield { type: 'tool-input-delta', index: idx, id: acc.id, name: acc.name, arguments: tc.function.arguments }
+                }
               }
             }
 
             const finishReason = parsed.choices?.[0]?.finish_reason
 
             if (finishReason === 'tool_calls') {
-              const toolCalls = flushToolCalls()
+              const calls = flushToolCalls()
               const usage = parsed.usage
                 ? LLMClient.mapUsage(parsed.usage)
                 : undefined
-              if (content || reasoning) {
-                yield { reasoning, content, toolCalls, done: true, usage }
-              } else {
-                yield { content: '', reasoning: '', toolCalls, done: true, usage }
-              }
+              yield { type: 'tool-call', calls }
+              yield { type: 'done', usage }
               return
-            }
-
-            if (content || reasoning) {
-              yield { reasoning, content, done: false }
             }
 
             if (finishReason) {
               if (!content && message?.content) {
-                yield { reasoning: '', content: message.content, done: false }
+                yield { type: 'text', content: message.content }
               }
               const usage = parsed.usage
                 ? LLMClient.mapUsage(parsed.usage)
                 : undefined
-              yield { content: '', reasoning: '', done: true, usage }
+              yield { type: 'done', usage }
               return
             }
           } catch {
@@ -309,7 +310,7 @@ export class LLMClient {
       }
     } catch (err) {
       if (signal?.aborted || (err instanceof DOMException && err.name === 'AbortError')) {
-        yield { content: '', reasoning: '', done: true }
+        yield { type: 'done' }
         return
       }
       throw err
@@ -317,6 +318,6 @@ export class LLMClient {
       reader.cancel().catch(() => {})
     }
 
-    yield { content: '', reasoning: '', done: true }
+    yield { type: 'done' }
   }
 }

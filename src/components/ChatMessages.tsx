@@ -1,14 +1,69 @@
-import { Fragment, memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
 import { MessageSquare, Copy, Pencil, Check, X } from 'lucide-react'
-import type { Message } from '../types'
+import type { Message, Part, ToolPart, TextPart, ReasoningPart } from '../types'
 import { ThinkingView } from './ThinkingView'
 import { ToolCallCard } from './ToolCallCard'
-import { ToolResultCard } from './ToolResultCard'
+
+function snapToWordBoundary(text: string, fromIndex: number): number {
+  if (fromIndex >= text.length) return text.length
+  const rest = text.slice(fromIndex)
+  const nextSpace = rest.indexOf(' ')
+  const nextNewline = rest.indexOf('\n')
+  let snap = -1
+  if (nextSpace >= 0 && nextSpace <= 5) snap = fromIndex + nextSpace + 1
+  if (nextNewline >= 0 && nextNewline <= 5) {
+    snap = snap >= 0 ? Math.min(snap, fromIndex + nextNewline + 1) : fromIndex + nextNewline + 1
+  }
+  return snap >= 0 ? snap : fromIndex
+}
+
+function usePacedText(text: string, streaming: boolean): string {
+  const [displayed, setDisplayed] = useState(text)
+  const textRef = useRef(text)
+  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const posRef = useRef(text.length)
+  textRef.current = text
+
+  if (!streaming && displayed !== text) {
+    posRef.current = text.length
+    setDisplayed(text)
+  }
+
+  useEffect(() => {
+    if (!streaming) {
+      posRef.current = text.length
+      setDisplayed(text)
+      return
+    }
+    if (posRef.current >= text.length) return
+    const end = snapToWordBoundary(text, posRef.current + 1)
+    if (end <= posRef.current) {
+      posRef.current = text.length
+      setDisplayed(text)
+      return
+    }
+    timerRef.current = setTimeout(() => {
+      const latest = textRef.current
+      const revealEnd = Math.min(end, latest.length)
+      posRef.current = revealEnd
+      setDisplayed(latest.slice(0, revealEnd))
+      timerRef.current = undefined
+    }, 24)
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+        timerRef.current = undefined
+      }
+    }
+  }, [text, streaming])
+
+  return displayed
+}
 
 interface ChatMessagesProps {
   messages: Message[]
@@ -85,6 +140,51 @@ function ChatMarkdown({ content }: { content: string }) {
 
 const ChatMarkdownMemo = memo(ChatMarkdown)
 
+function StreamingText({ text }: { text: string }) {
+  const paced = usePacedText(text, true)
+  return (
+    <div className="prose prose-sm max-w-none">
+      <p className="whitespace-pre-wrap text-[13px] leading-relaxed">{paced}</p>
+      {paced.length < text.length && (
+        <span className="inline-block w-1.5 h-4 bg-accent ml-0.5 rounded-sm animate-pulse align-text-bottom" />
+      )}
+    </div>
+  )
+}
+
+function PartRenderer({ part, isStreaming, isLast }: { part: Part; isStreaming: boolean; isLast: boolean }) {
+  switch (part.type) {
+    case 'text': {
+      const text = (part as TextPart).text
+      if (isStreaming && isLast) {
+        return <StreamingText text={text} />
+      }
+      return (
+        <div className="prose prose-sm max-w-none">
+          <ChatMarkdownMemo content={text} />
+        </div>
+      )
+    }
+    case 'reasoning':
+      return <ThinkingView thinking={(part as ReasoningPart).text} loading={false} />
+    case 'tool': {
+      const t = part as ToolPart
+      return (
+        <ToolCallCard
+          call={{ id: t.id, type: 'tool_call', name: t.name, arguments: t.args }}
+          status={t.status === 'error' ? 'failed' : t.status}
+          result={t.result}
+          metadata={t.metadata}
+        />
+      )
+    }
+    default:
+      return null
+  }
+}
+
+const PartRendererMemo = memo(PartRenderer)
+
 interface MessageBubbleProps {
   msg: Message
   isLastStreaming: boolean
@@ -106,6 +206,7 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
   const lineCount = isUser ? msg.content.split('\n').length : 0
   const isLong = lineCount > COLLAPSE_LINE_THRESHOLD
   const isCollapsed = isLong && !userExpanded
+  const hasParts = msg.parts && msg.parts.length > 0
 
   useEffect(() => {
     if (!isLong || !userExpanded) return
@@ -152,7 +253,7 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
           className={`relative ${
             isUser
               ? 'bg-accent/15 border border-accent/30 text-ink rounded-xl rounded-br-md'
-              : `text-ink ${msg.content || msg.toolCalls?.length || msg.toolResults?.length ? 'bg-surface-alt border border-border/40 rounded-xl rounded-tl-md' : ''}`
+              : `text-ink ${hasParts || msg.content ? 'bg-surface-alt border border-border/40 rounded-xl rounded-tl-md' : ''}`
           } ${isUser ? `${editing ? 'p-2 border-2 border-slate-500' : 'p-2'}` : 'p-2'}`}
         >
           {editing ? (
@@ -179,64 +280,19 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
                 </button>
               )}
             </div>
-          ) : msg.contentParts && msg.contentParts.length > 0 ? (
+          ) : hasParts ? (
             <div className="space-y-2">
-              {msg.contentParts.map((part, i) => {
-                const contentParts = msg.contentParts!
-                const toolCalls = msg.toolCalls
-                return (
-                <Fragment key={`part-${i}`}>
-                  {part ? (
-                    <div className="prose prose-sm max-w-none">
-                      {isLastStreaming && i === contentParts.length - 1 ? (
-                        <>
-                          <p className="whitespace-pre-wrap text-[13px] leading-relaxed">{part}</p>
-                          <span className="inline-block w-1.5 h-4 bg-accent ml-0.5 rounded-sm animate-pulse align-text-bottom" />
-                        </>
-                      ) : (
-                        <ChatMarkdownMemo content={part} />
-                      )}
-                    </div>
-                  ) : isLastStreaming && i === contentParts.length - 1 ? (
-                    <div className="flex items-center gap-2 text-ink-faint">
-                      <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </div>
-                  ) : null}
-                  {toolCalls && i < toolCalls.length && (
-                    <ToolCallCard
-                      call={toolCalls[i]}
-                      status={
-                        msg.toolResults?.find((r) => r.id === toolCalls[i].id)
-                          ? msg.toolResults.find((r) => r.id === toolCalls[i].id)!.isError
-                            ? 'failed'
-                            : 'completed'
-                          : 'running'
-                      }
-                      result={
-                        msg.toolResults?.find((r) => r.id === toolCalls[i].id)
-                          ? msg.toolResults.find((r) => r.id === toolCalls[i].id)!.result
-                          : undefined
-                      }
-                      metadata={
-                        msg.toolResults?.find((r) => r.id === toolCalls[i].id)
-                          ? msg.toolResults.find((r) => r.id === toolCalls[i].id)!.metadata
-                          : undefined
-                      }
-                    />
-                  )}
-                </Fragment>
-                )
-              })}
-              {msg.toolResults
-                ?.filter((r) => !msg.toolCalls?.some((c) => c.id === r.id))
-                .map((result) => (
-                  <ToolResultCard key={result.id} result={result} />
-                ))}
+              {msg.parts!.map((part, i) => (
+                <PartRendererMemo
+                  key={part.type === 'tool' ? (part as ToolPart).id : `part-${i}`}
+                  part={part}
+                  isStreaming={isLastStreaming}
+                  isLast={isLastStreaming && i === msg.parts!.length - 1}
+                />
+              ))}
               {isLastStreaming && activeThinking && (
                 <div className="pt-1">
-                  <ThinkingView thinking={activeThinking} />
+                  <ThinkingView thinking={activeThinking} loading={true} />
                 </div>
               )}
             </div>
@@ -251,8 +307,6 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
                 <ChatMarkdownMemo content={msg.content} />
               </div>
             )
-          ) : msg.thinking ? (
-            <ThinkingView thinking={msg.thinking} loading={false} />
           ) : isLastStreaming ? (
             <div className="flex items-center gap-2 text-ink-faint">
               <span className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-bounce" style={{ animationDelay: '0ms' }} />
@@ -342,9 +396,6 @@ export function ChatMessages({ messages, isStreaming, activeThinking, onEdit }: 
     setUserScrolledUp(!isAtBottom)
   }
 
-  const lastMsg = messages[messages.length - 1]
-  const isThinkingPhase = isStreaming && lastMsg?.role === 'assistant' && !lastMsg.content
-
   if (messages.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-8 py-12">
@@ -366,21 +417,16 @@ export function ChatMessages({ messages, isStreaming, activeThinking, onEdit }: 
         className="h-full overflow-y-auto px-2.5 pt-4 scroll-smooth"
       >
         <div className="space-y-4">
-          {messages.map((msg, index) => {
-            if (isThinkingPhase && index === messages.length - 1) {
-              return <ThinkingView key={msg.id} thinking={activeThinking} />
-            }
-            return (
-              <MessageBubble
-                key={msg.id}
-                msg={msg}
-                isLastStreaming={isStreaming && msg.role === 'assistant' && index === messages.length - 1}
-                isLastUserMessage={msg.role === 'user' && index === lastUserMsgIndex}
-                activeThinking={activeThinking}
-                onEdit={onEdit}
-              />
-            )
-          })}
+          {messages.map((msg, index) => (
+            <MessageBubble
+              key={msg.id}
+              msg={msg}
+              isLastStreaming={isStreaming && msg.role === 'assistant' && index === messages.length - 1}
+              isLastUserMessage={msg.role === 'user' && index === lastUserMsgIndex}
+              activeThinking={activeThinking}
+              onEdit={onEdit}
+            />
+          ))}
         </div>
         <div className="h-20" />
       </div>

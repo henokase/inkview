@@ -47,6 +47,10 @@ const writeDoc: ToolDefinition = {
   jsonSchema,
 
   async execute(args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
+    if (ctx.abortSignal.aborted) {
+      return { title: 'Cancelled', output: 'Operation cancelled.' }
+    }
+
     const store = useDocumentStore.getState()
     let docId = args.documentId as string | undefined
 

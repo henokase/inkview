@@ -15,7 +15,11 @@ const listDocs: ToolDefinition = {
   permission: 'list',
   jsonSchema,
 
-  async execute(_args: Record<string, unknown>, _ctx: ToolContext): Promise<ToolResult> {
+  async execute(_args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
+    if (ctx.abortSignal.aborted) {
+      return { title: 'Cancelled', output: 'Operation cancelled.' }
+    }
+
     const { documents, folders } = useDocumentStore.getState()
 
     if (documents.length === 0) {

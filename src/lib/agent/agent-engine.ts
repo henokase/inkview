@@ -1,5 +1,5 @@
 import { LLMClient } from '../llm/client'
-import type { ApiMessage, StreamChunk, Usage, ToolCallChunk } from '../llm/types'
+import type { ApiMessage, StreamEvent, Usage, ToolCallChunk } from '../llm/types'
 import { ToolRegistry, toolRegistry } from './tool-registry'
 import { evaluatePermission } from './permission'
 import type { PendingChangeInfo, ToolCallState, PermissionRule, ToolResult } from './types'
@@ -16,7 +16,7 @@ export interface AgentLoopOptions {
   signal: AbortSignal
   maxTurns?: number
   agentPermissions?: PermissionRule[]
-  onChunk: (chunk: StreamChunk) => void
+  onChunk: (chunk: { content: string; reasoning: string; done: boolean }) => void
   onToolCall?: (call: ToolCallState) => void
   onToolResult?: (result: ToolCallState) => void
   onAgentState?: (state: { turn: number; maxTurns: number }) => void
@@ -26,12 +26,14 @@ export interface AgentLoopOptions {
   onError?: (error: Error) => void
   onPermissionRequest?: (request: PermissionRequest) => Promise<'allow' | 'deny'>
   onPendingChange?: (change: PendingChangeInfo) => void
+  onToolProgress?: (data: { id: string; title?: string; metadata?: Record<string, unknown> }) => void
 }
 
 export class AgentEngine {
   private client: LLMClient
   private registry: ToolRegistry
   private readDocumentIds = new Set<string>()
+  private _doomTracker: Array<{ name: string; argsJson: string }> = []
 
   constructor(client?: LLMClient, registry?: ToolRegistry) {
     this.client = client ?? new LLMClient()
@@ -42,6 +44,19 @@ export class AgentEngine {
     this.readDocumentIds.add(docId)
   }
 
+  private _checkDoomLoop(name: string, args: Record<string, unknown>): string | null {
+    const argsJson = JSON.stringify(args)
+    this._doomTracker.push({ name, argsJson })
+    const len = this._doomTracker.length
+    if (len >= 3) {
+      const last3 = this._doomTracker.slice(-3)
+      if (last3.every(t => t.name === name && t.argsJson === argsJson)) {
+        return `Tool "${name}" called 3 times consecutively with identical arguments. This appears to be a loop — skipping.`
+      }
+    }
+    return null
+  }
+
   async agentLoop(
     initialMessages: ApiMessage[],
     options: AgentLoopOptions,
@@ -49,6 +64,7 @@ export class AgentEngine {
     const MAX_TURNS = options.maxTurns ?? 50
     const messages: ApiMessage[] = [...initialMessages]
     this.readDocumentIds = new Set<string>()
+    this._doomTracker = []
     let turn = 0
 
     while (turn < MAX_TURNS) {
@@ -59,15 +75,11 @@ export class AgentEngine {
       const tools = this.registry.getAllowedTools(options.agentPermissions)
       const apiTools = this.registry.toApiTools(tools)
       let collectedToolCalls: ToolCallChunk[] = []
-      let reasoningLoggedThisTurn = false
       let lastStreamError: Error | undefined
-      let toolGenNotified = false
       const MAX_STREAM_RETRIES = 2
 
       for (let streamAttempt = 0; streamAttempt <= MAX_STREAM_RETRIES; streamAttempt++) {
         collectedToolCalls = []
-        reasoningLoggedThisTurn = false
-        toolGenNotified = false
 
         if (streamAttempt > 0) {
           options.onChunk({
@@ -78,31 +90,38 @@ export class AgentEngine {
         }
 
         try {
-          for await (const chunk of this.client.streamChat(
+          for await (const event of this.client.streamChat(
             messages,
             options.signal,
             apiTools.length > 0 ? apiTools : undefined,
           )) {
-            if (chunk.reasoning && !reasoningLoggedThisTurn) {
-              reasoningLoggedThisTurn = true
-            }
-            if (chunk.toolCalls && chunk.toolCalls.length > 0) {
-              collectedToolCalls.push(...chunk.toolCalls)
-              const hasDisplayContent = chunk.content || chunk.reasoning
-              if (hasDisplayContent) {
-                options.onChunk({ content: chunk.content, reasoning: chunk.reasoning, done: false })
-              }
-              if (!hasDisplayContent && !toolGenNotified) {
-                toolGenNotified = true
-                const toolName = chunk.toolCalls[0]?.function?.name || 'tool'
-                options.onChunk({ content: '', reasoning: `Generating content for ${toolName}...`, done: false })
-              }
-            } else if (!chunk.done) {
-              options.onChunk(chunk)
-            }
-
-            if (chunk.usage) {
-              options.onUsage?.(chunk.usage)
+            switch (event.type) {
+              case 'text':
+                options.onChunk({ content: event.content, reasoning: '', done: false })
+                break
+              case 'reasoning':
+                options.onChunk({ content: '', reasoning: event.text, done: false })
+                break
+              case 'tool-input-delta':
+                // Incremental tool args available for UI but collected at tool-call
+                break
+              case 'tool-call':
+                for (const tc of event.calls) {
+                  collectedToolCalls.push(tc)
+                  options.onToolCall?.({
+                    id: tc.id,
+                    name: tc.function.name,
+                    args: this._parseArgs(tc.function.arguments),
+                    status: 'pending',
+                    startTime: Date.now(),
+                  })
+                }
+                break
+              case 'done':
+                if (event.usage) {
+                  options.onUsage?.(event.usage)
+                }
+                break
             }
           }
           break
@@ -118,7 +137,7 @@ export class AgentEngine {
         }
       }
 
-      if (collectedToolCalls.length === 0) {
+      if (options.signal.aborted || collectedToolCalls.length === 0) {
         options.onDone?.()
         return
       }
@@ -126,25 +145,19 @@ export class AgentEngine {
       const toolResults: Array<{ id: string; error?: string; result?: ToolResult }> = []
 
       for (const tc of collectedToolCalls) {
-        const state: ToolCallState = {
-          id: tc.id,
-          name: tc.function.name,
-          args: this._parseArgs(tc.function.arguments),
-          status: 'pending',
-          startTime: Date.now(),
-        }
-
         const toolDef = this.registry.get(tc.function.name)
 
-        state.status = 'running'
-        options.onToolCall?.({ ...state })
-
         if (!toolDef) {
-          state.status = 'failed'
-          state.error = `Unknown tool: ${tc.function.name}`
-          state.endTime = Date.now()
-          options.onToolResult?.({ ...state })
-          toolResults.push({ id: tc.id, error: state.error })
+          options.onToolResult?.({
+            id: tc.id,
+            name: tc.function.name,
+            args: this._parseArgs(tc.function.arguments),
+            status: 'failed',
+            error: `Unknown tool: ${tc.function.name}`,
+            startTime: Date.now(),
+            endTime: Date.now(),
+          })
+          toolResults.push({ id: tc.id, error: `Unknown tool: ${tc.function.name}` })
           continue
         }
 
@@ -155,21 +168,31 @@ export class AgentEngine {
         )
 
         if (action === 'deny') {
-          state.status = 'failed'
-          state.error = `Permission denied: ${toolDef.permission}`
-          state.endTime = Date.now()
-          options.onToolResult?.({ ...state })
-          toolResults.push({ id: tc.id, error: state.error })
+          options.onToolResult?.({
+            id: tc.id,
+            name: tc.function.name,
+            args: this._parseArgs(tc.function.arguments),
+            status: 'failed',
+            error: `Permission denied: ${toolDef.permission}`,
+            startTime: Date.now(),
+            endTime: Date.now(),
+          })
+          toolResults.push({ id: tc.id, error: `Permission denied: ${toolDef.permission}` })
           continue
         }
 
         if (action === 'ask') {
           if (!options.onPermissionRequest) {
-            state.status = 'failed'
-            state.error = `Permission required: ${toolDef.permission}`
-            state.endTime = Date.now()
-            options.onToolResult?.({ ...state })
-            toolResults.push({ id: tc.id, error: state.error })
+            options.onToolResult?.({
+              id: tc.id,
+              name: tc.function.name,
+              args: this._parseArgs(tc.function.arguments),
+              status: 'failed',
+              error: `Permission required: ${toolDef.permission}`,
+              startTime: Date.now(),
+              endTime: Date.now(),
+            })
+            toolResults.push({ id: tc.id, error: `Permission required: ${toolDef.permission}` })
             continue
           }
           try {
@@ -180,19 +203,29 @@ export class AgentEngine {
               args: this._parseArgs(tc.function.arguments),
             })
             if (decision === 'deny') {
-              state.status = 'failed'
-              state.error = `Permission denied by user: ${toolDef.permission}`
-              state.endTime = Date.now()
-              options.onToolResult?.({ ...state })
-              toolResults.push({ id: tc.id, error: state.error })
+              options.onToolResult?.({
+                id: tc.id,
+                name: tc.function.name,
+                args: this._parseArgs(tc.function.arguments),
+                status: 'failed',
+                error: `Permission denied by user: ${toolDef.permission}`,
+                startTime: Date.now(),
+                endTime: Date.now(),
+              })
+              toolResults.push({ id: tc.id, error: `Permission denied by user: ${toolDef.permission}` })
               continue
             }
           } catch {
-            state.status = 'failed'
-            state.error = `Permission request cancelled: ${toolDef.permission}`
-            state.endTime = Date.now()
-            options.onToolResult?.({ ...state })
-            toolResults.push({ id: tc.id, error: state.error })
+            options.onToolResult?.({
+              id: tc.id,
+              name: tc.function.name,
+              args: this._parseArgs(tc.function.arguments),
+              status: 'failed',
+              error: `Permission request cancelled: ${toolDef.permission}`,
+              startTime: Date.now(),
+              endTime: Date.now(),
+            })
+            toolResults.push({ id: tc.id, error: `Permission request cancelled: ${toolDef.permission}` })
             continue
           }
         }
@@ -205,19 +238,47 @@ export class AgentEngine {
           if (docId && !this.readDocumentIds.has(docId)) {
             const doc = useDocumentStore.getState().documents.find((d) => d.id === docId)
             if (doc) {
-              state.status = 'failed'
-              state.error = `Cannot edit "${doc.title}" without reading it first. Use readDoc to read the document before editing.`
-              state.endTime = Date.now()
-              options.onToolResult?.({ ...state })
-              toolResults.push({ id: tc.id, error: state.error })
+              options.onToolResult?.({
+                id: tc.id,
+                name: tc.function.name,
+                args: this._parseArgs(tc.function.arguments),
+                status: 'failed',
+                error: `Cannot edit "${doc.title}" without reading it first. Use readDoc to read the document before editing.`,
+                startTime: Date.now(),
+                endTime: Date.now(),
+              })
+              toolResults.push({ id: tc.id, error: `Cannot edit "${doc.title}" without reading it first.` })
               continue
             }
           }
         }
 
+        // Doom loop detection: 3 identical consecutive tool calls
+        const doomError = this._checkDoomLoop(tc.function.name, this._parseArgs(tc.function.arguments))
+        if (doomError) {
+          options.onToolResult?.({
+            id: tc.id,
+            name: tc.function.name,
+            args: this._parseArgs(tc.function.arguments),
+            status: 'failed',
+            error: doomError,
+            startTime: Date.now(),
+            endTime: Date.now(),
+          })
+          toolResults.push({ id: tc.id, error: doomError })
+          continue
+        }
+
+        // Transition from pending to running
+        options.onToolCall?.({
+          id: tc.id,
+          name: tc.function.name,
+          args: this._parseArgs(tc.function.arguments),
+          status: 'running',
+          startTime: Date.now(),
+        })
+
         // Yield to event loop so React flushes the loading state and the browser paints
-        // before the tool executes. Using requestAnimationFrame + setTimeout ensures the
-        // intermediate "running" state is painted even when the tool completes quickly.
         await new Promise<void>(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)))
 
         try {
@@ -238,6 +299,9 @@ export class AgentEngine {
             evaluatePermission: (perm, pattern) =>
               evaluatePermission(perm, pattern, options.agentPermissions ?? []),
             onPendingChange: options.onPendingChange,
+            onProgress: options.onToolProgress
+              ? (data) => options.onToolProgress!({ id: tc.id, ...data })
+              : undefined,
           })
 
           if (isReadTool && result.metadata?.id) {
@@ -253,20 +317,30 @@ export class AgentEngine {
           }
 
           const isErrorResult = result.title === 'Error' || result.title === 'Not found'
-          state.status = isErrorResult ? 'failed' : 'completed'
-          state.error = isErrorResult ? result.output : undefined
-          state.result = isErrorResult ? undefined : result
-          state.endTime = Date.now()
-          options.onToolResult?.({ ...state })
+          options.onToolResult?.({
+            id: tc.id,
+            name: tc.function.name,
+            args: this._parseArgs(tc.function.arguments),
+            status: isErrorResult ? 'failed' : 'completed',
+            error: isErrorResult ? result.output : undefined,
+            result: isErrorResult ? undefined : result,
+            startTime: Date.now(),
+            endTime: Date.now(),
+          })
           toolResults.push(isErrorResult
             ? { id: tc.id, error: result.output }
             : { id: tc.id, result })
         } catch (err) {
-          state.status = 'failed'
-          state.error = err instanceof Error ? err.message : String(err)
-          state.endTime = Date.now()
-          options.onToolResult?.({ ...state })
-          toolResults.push({ id: tc.id, error: state.error })
+          options.onToolResult?.({
+            id: tc.id,
+            name: tc.function.name,
+            args: this._parseArgs(tc.function.arguments),
+            status: 'failed',
+            error: err instanceof Error ? err.message : String(err),
+            startTime: Date.now(),
+            endTime: Date.now(),
+          })
+          toolResults.push({ id: tc.id, error: err instanceof Error ? err.message : String(err) })
         }
       }
 

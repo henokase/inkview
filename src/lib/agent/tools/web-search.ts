@@ -174,11 +174,11 @@ const webSearch: ToolDefinition = {
 
     let result = await tryProvider(primary)
 
-    if (!result) {
+    if (!result && !ctx.abortSignal.aborted) {
       result = await tryProvider(alternate)
     }
 
-    if (!result) {
+    if (!result && !ctx.abortSignal.aborted) {
       result = await callTavily(query, numResults, ctx.abortSignal)
     }
 

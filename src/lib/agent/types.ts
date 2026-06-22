@@ -31,6 +31,7 @@ export interface ToolContext {
   abortSignal: AbortSignal
   evaluatePermission: (permission: string, pattern: string) => PermissionAction
   onPendingChange?: (change: PendingChangeInfo) => void
+  onProgress?: (data: { title?: string; metadata?: Record<string, unknown> }) => void
 }
 
 export interface ToolResult {
