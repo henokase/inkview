@@ -25,11 +25,11 @@ export function ToolCallCard({ call, status, result, metadata }: ToolCallCardPro
   const autoExpanded = useRef(false)
 
   useEffect(() => {
-    if (hasExpandableContent && !autoExpanded.current) {
+    if (hasExpandableContent && !autoExpanded.current && !isError) {
       autoExpanded.current = true
       setCollapsed(false)
     }
-  }, [hasExpandableContent])
+  }, [hasExpandableContent, isError])
 
   const docLabel = (call.arguments.url as string)
     || (call.arguments.query as string)

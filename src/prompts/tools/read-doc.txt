@@ -8,7 +8,7 @@ The `readDoc` tool reads the full content of a document. The returned content in
 - `search` (optional): Search by title fragment to find a document (case-insensitive). Cannot be used together with `documentId`.
 
 ## How to Use Output for Subsequent Edits
-The document content is returned with the document title as a markdown heading:
+The document content is returned as raw markdown without any line number prefixes. For example:
 ```
 # Document Title
 
@@ -17,9 +17,8 @@ Content here...
 ```
 
 When extracting text for `editDoc`:
-1. Copy the exact text you want to replace, **including whitespace and indentation**
-2. Line numbers shown in the output are informational (`1: ` prefix before each line)
-3. When copying oldString for editDoc, ensure you capture the text **after** any line number prefix
+1. Copy the exact text you want to replace **verbatim** — including whitespace, indentation, and line endings
+2. There are no line numbers in the output — use the raw text as-is
 
 ## Best Practices
 - Use `readDoc` before `editDoc` to get the current document content

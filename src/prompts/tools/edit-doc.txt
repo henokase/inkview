@@ -4,14 +4,14 @@
 The `editDoc` tool makes targeted edits to a document by finding specific text and replacing it. It is the **preferred** tool for making changes to existing documents.
 
 ## How to Extract oldString
-After using `readDoc`, the document content is returned with line numbers prefixed like:
+After using `readDoc`, the document content is returned as raw markdown without line numbers. For example:
 ```
-1: # Document Title
-2:
-3: Some paragraph text here.
+# Document Title
+
+Some paragraph text here.
 ```
 
-When extracting text for `oldString`, copy everything **after** the `lineNumber: ` prefix, preserving exact whitespace, indentation, and line endings. Do not include the line numbers in oldString.
+When extracting text for `oldString`, copy the exact text you want to replace **verbatim** — including whitespace, indentation, and line endings. Do not add or remove anything.
 
 ## Matching Behavior
 The system tries 9 matching strategies in order:
@@ -34,7 +34,7 @@ oldString should match the document text as closely as possible, but the system 
 - **Trailing whitespace**: Lines with trailing spaces that aren't visible
 
 ## Best Practices
-- Extract oldString directly from readDoc output (after removing line number prefixes)
+- Extract oldString **directly and verbatim** from readDoc output — do not paraphrase or reformat
 - Provide 2-3 lines of surrounding context for unique matching
 - **Use editDoc for simple changes** — do NOT use writeDoc for this
 - For large changes, prefer incremental edits over full-document rewrites
@@ -49,4 +49,4 @@ oldString should match the document text as closely as possible, but the system 
 - Every edit creates a **pending diff** that the user must approve before it is applied.
 - The system uses the actual matched text from the document (not your oldString) for the diff display, so the diff will show the exact document text being replaced.
 - If you get "multiple matches found", add more surrounding context to oldString.
-- If you get "not found", re-read the document and copy the exact text including indentation.
+- If you get "not found", re-read the document and copy the exact text **verbatim** including whitespace and indentation. The most common cause is a mismatch between the old string and the actual document content — always read the document fresh before attempting an edit.
