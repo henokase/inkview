@@ -4,10 +4,11 @@ import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
-import { MessageSquare, Copy, Pencil, Check, X } from 'lucide-react'
+import { MessageSquare, Copy, Pencil, Check, X, FileText } from 'lucide-react'
 import type { Message, Part, ToolPart, TextPart, ReasoningPart } from '../types'
 import { ThinkingView } from './ThinkingView'
 import { ToolCallCard } from './ToolCallCard'
+import { useDocumentStore } from '../stores/document-store'
 
 function snapToWordBoundary(text: string, fromIndex: number): number {
   if (fromIndex >= text.length) return text.length
@@ -295,6 +296,7 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
                   <ThinkingView thinking={activeThinking} loading={true} />
                 </div>
               )}
+              {!isLastStreaming && <DocLinks parts={msg.parts ?? []} />}
             </div>
           ) : msg.content ? (
             isLastStreaming ? (
@@ -357,6 +359,39 @@ function useKeydown(active: boolean, onSave: () => void, onCancel: () => void) {
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [active, onSave, onCancel])
+}
+
+function DocLinks({ parts }: { parts: Part[] }) {
+  const docs = new Map<string, string>()
+  for (const p of parts) {
+    if (p.type === 'tool') {
+      const t = p as ToolPart
+      if (t.status === 'completed' && (t.name === 'editDoc' || t.name === 'writeDoc') && t.metadata?.id) {
+        const id = t.metadata.id as string
+        if (!docs.has(id)) {
+          docs.set(id, (t.metadata?.title as string) || '')
+        }
+      }
+    }
+  }
+  if (docs.size === 0) return null
+  return (
+    <div className="pt-2 border-t border-border/30">
+      <span className="text-[11px] text-ink-faint/60 font-semibold uppercase tracking-wider">Documents modified:</span>
+      <div className="mt-1 space-y-0.5">
+        {Array.from(docs.entries()).map(([id, title]) => (
+          <button
+            key={id}
+            onClick={() => useDocumentStore.getState().setActiveDoc(id)}
+            className="flex items-center gap-1.5 text-[12px] text-accent hover:underline cursor-pointer"
+          >
+            <FileText size={12} className="shrink-0" />
+            {title}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export function ChatMessages({ messages, isStreaming, activeThinking, onEdit }: ChatMessagesProps) {

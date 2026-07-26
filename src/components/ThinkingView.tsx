@@ -10,6 +10,8 @@ export function ThinkingView({ thinking, loading = true }: ThinkingViewProps) {
   const [open, setOpen] = useState(true)
   const hasContent = thinking && thinking.length > 0
 
+  if (!loading) return null
+
   return (
     <div className="rounded-xl border border-accent/10 bg-accent/4 overflow-hidden">
       <button

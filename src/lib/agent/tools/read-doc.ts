@@ -73,13 +73,8 @@ const readDoc: ToolDefinition = {
 
     const pendingContent = getCumulativeContent(doc.id)
     const displayContent = pendingContent ?? doc.content
-
     const lines = displayContent.split('\n')
-    const maxLines = 2000
-    let output = `# ${doc.title}\n\n${displayContent}`
-    if (lines.length > maxLines) {
-      output = `# ${doc.title}\n\n${lines.slice(0, maxLines).join('\n')}\n\n*... (${lines.length - maxLines} more lines)*`
-    }
+    const output = `# ${doc.title}\n\n${displayContent}`
 
     return {
       title: doc.title,

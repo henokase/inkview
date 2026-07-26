@@ -109,11 +109,7 @@ export function getCumulativeContent(documentId: string): string | null {
       const idx = content.indexOf(change.oldString)
       if (idx !== -1) {
         content = content.slice(0, idx) + change.newString + content.slice(idx + change.oldString.length)
-      } else if (change.newContent) {
-        content = change.newContent
       }
-    } else {
-      content = change.newContent
     }
   }
 
