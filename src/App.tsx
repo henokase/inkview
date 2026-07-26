@@ -19,6 +19,8 @@ import { ChatPanel } from './components/ChatPanel'
 import { PendingChangesBanner } from './components/PendingChangesBanner'
 import { SelectionToolbar } from './components/SelectionToolbar'
 import { EmptyDocState } from './components/EmptyDocState'
+import { getDocMeta, saveDocMeta } from './lib/doc-meta'
+import type { EditorMode } from './types'
 import { parseShareUrl, fetchSharedContent, resolveImportEntries, resolveTitleUnique } from './lib/share'
 import { usePendingChangesStore } from './stores/pending-changes-store'
 
@@ -469,11 +471,58 @@ function App() {
     [activeDocId, updateTitle]
   )
 
+  const handleEditorModeChange = useCallback(
+    (mode: EditorMode) => {
+      setEditorMode(mode)
+      if (activeDocId) {
+        saveDocMeta(activeDocId, { lastMode: mode })
+      }
+    },
+    [activeDocId, setEditorMode]
+  )
+
+  const handleLineChange = useCallback(
+    (line: number, scrollTop: number) => {
+      if (activeDocId) {
+        saveDocMeta(activeDocId, { lastLine: line, lastScrollPosition: scrollTop })
+      }
+    },
+    [activeDocId]
+  )
+
+  const handlePreviewScroll = useCallback(() => {
+    if (previewScrollRef.current && activeDocId) {
+      const scrollTop = previewScrollRef.current.scrollTop
+      saveDocMeta(activeDocId, { lastScrollPosition: scrollTop })
+    }
+  }, [activeDocId])
+
+  const activeDocMeta = useMemo(
+    () => (activeDocId ? getDocMeta(activeDocId) : undefined),
+    [activeDocId]
+  )
+
+  useEffect(() => {
+    if (!activeDocId) return
+    const meta = getDocMeta(activeDocId)
+    if (meta?.lastMode && meta.lastMode !== editorMode) {
+      setEditorMode(meta.lastMode)
+    }
+    if (meta?.lastScrollPosition !== undefined && previewScrollRef.current) {
+      requestAnimationFrame(() => {
+        if (previewScrollRef.current) {
+          previewScrollRef.current.scrollTop = meta.lastScrollPosition!
+        }
+      })
+    }
+  }, [activeDocId])
+
   const handleNewDoc = useCallback(() => {
     setCreatingDoc(true)
     setTimeout(() => {
       const id = createDocument('', 'Untitled')
       setActiveDoc(id)
+      saveDocMeta(id, { lastMode: 'edit', lastLine: 1, lastScrollPosition: 0 })
       setEditorMode('edit')
       setNewDocOpen(false)
       setCreatingDoc(false)
@@ -482,7 +531,8 @@ function App() {
 
   useKeyboard({ key: 'e', ctrl: true }, () => {
     if (activeDocId) {
-      setEditorMode(editorMode === 'edit' ? 'preview' : 'edit')
+      const nextMode = editorMode === 'edit' ? 'preview' : 'edit'
+      handleEditorModeChange(nextMode)
     }
   })
 
@@ -516,7 +566,7 @@ function App() {
             title={title}
             showContent={showContent}
             editorMode={editorMode}
-            onEditorModeChange={setEditorMode}
+            onEditorModeChange={handleEditorModeChange}
             onTitleChange={handleTitleChange}
             tocOpen={tocOpen}
             onTocToggle={() => setTocOpen(!tocOpen)}
@@ -573,6 +623,8 @@ function App() {
                           ref={editorHandleRef}
                           value={activeDoc.content}
                           onChange={handleContentChange}
+                          initialLine={activeDocMeta?.lastLine ?? 1}
+                          onLineChange={handleLineChange}
                           pendingChanges={activeDocChanges}
                         />
                       </div>
@@ -603,7 +655,7 @@ function App() {
                     className="flex flex-col overflow-hidden"
                     style={editorMode === 'split' ? { width: `${(1 - splitRatio) * 100}%` } : { flex: '1' }}
                   >
-                    <div ref={previewScrollRef} className="flex-1 overflow-y-auto pl-6 pr-6 lg:px-10 xl:px-16 py-8" data-preview-scroll onMouseUp={handlePreviewMouseUp}>
+                    <div ref={previewScrollRef} onScroll={handlePreviewScroll} className="flex-1 overflow-y-auto pl-6 pr-6 lg:px-10 xl:px-16 py-8" data-preview-scroll onMouseUp={handlePreviewMouseUp}>
                       <article className="mx-auto max-w-4xl xl:max-w-5xl wrap-break-word">
                         <MarkdownRenderer content={displayContent} />
                       </article>
@@ -661,7 +713,7 @@ function App() {
             title={title}
             showContent
             editorMode={editorMode}
-            onEditorModeChange={setEditorMode}
+            onEditorModeChange={handleEditorModeChange}
             onTitleChange={handleTitleChange}
             tocOpen={tocOpen}
             onTocToggle={() => setTocOpen(!tocOpen)}
@@ -683,6 +735,8 @@ function App() {
                 value={activeDoc.content}
                 onChange={handleContentChange}
                 autoFocus
+                initialLine={activeDocMeta?.lastLine ?? 1}
+                onLineChange={handleLineChange}
                 pendingChanges={activeDocChanges}
               />
             </div>

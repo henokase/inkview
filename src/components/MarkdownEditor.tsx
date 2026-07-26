@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useRef, forwardRef, useImperativeHandle } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, forwardRef, useImperativeHandle } from 'react'
 import CodeMirror from '@uiw/react-codemirror'
 import type { ReactCodeMirrorRef } from '@uiw/react-codemirror'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
@@ -26,15 +26,21 @@ interface MarkdownEditorProps {
   onChange: (value: string) => void
   autoFocus?: boolean
   pendingChanges?: PendingChange[]
+  initialLine?: number
+  onLineChange?: (line: number, scrollTop: number) => void
 }
 
 export interface MarkdownEditorHandle {
   scrollToHeading(headingText: string): void
+  scrollToLine(line: number): void
 }
 
 export const MarkdownEditor = memo(forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
-  function MarkdownEditor({ value, onChange, autoFocus, pendingChanges }, ref) {
+  function MarkdownEditor({ value, onChange, autoFocus, pendingChanges, initialLine, onLineChange }, ref) {
   const codemirrorRef = useRef<ReactCodeMirrorRef>(null)
+  const onLineChangeRef = useRef(onLineChange)
+  onLineChangeRef.current = onLineChange
+  const hasRestoredLine = useRef(false)
 
   useImperativeHandle(ref, () => ({
     scrollToHeading(headingText: string) {
@@ -52,8 +58,37 @@ export const MarkdownEditor = memo(forwardRef<MarkdownEditorHandle, MarkdownEdit
           return
         }
       }
+    },
+    scrollToLine(line: number) {
+      const view = codemirrorRef.current?.view
+      if (!view) return
+      const lineNum = Math.max(1, Math.min(line, view.state.doc.lines))
+      const pos = view.state.doc.line(lineNum).from
+      view.dispatch({
+        effects: EditorView.scrollIntoView(pos, { y: 'start' })
+      })
     }
   }))
+
+  useEffect(() => {
+    hasRestoredLine.current = false
+  }, [value])
+
+  useEffect(() => {
+    if (initialLine && initialLine > 1 && !hasRestoredLine.current) {
+      const timer = setTimeout(() => {
+        const view = codemirrorRef.current?.view
+        if (!view) return
+        hasRestoredLine.current = true
+        const lineNum = Math.max(1, Math.min(initialLine, view.state.doc.lines))
+        const pos = view.state.doc.line(lineNum).from
+        view.dispatch({
+          effects: EditorView.scrollIntoView(pos, { y: 'start' })
+        })
+      }, 60)
+      return () => clearTimeout(timer)
+    }
+  }, [initialLine])
 
   const handleChange = useCallback(
     (val: string) => onChange(val),
@@ -68,6 +103,17 @@ export const MarkdownEditor = memo(forwardRef<MarkdownEditorHandle, MarkdownEdit
     }),
     syntaxHighlighting(headingStyle),
     EditorView.lineWrapping,
+    EditorView.updateListener.of((update) => {
+      if (update.geometryChanged || update.selectionSet) {
+        const view = update.view
+        const scrollTop = view.scrollDOM.scrollTop
+        if (view.state.doc.lines > 0) {
+          const lineBlock = view.lineBlockAtHeight(scrollTop)
+          const lineNum = view.state.doc.lineAt(lineBlock.from).number
+          onLineChangeRef.current?.(lineNum, scrollTop)
+        }
+      }
+    }),
     EditorView.theme({
       '&': {
         backgroundColor: 'transparent !important',

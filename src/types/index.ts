@@ -6,6 +6,8 @@ export interface Document {
   updatedAt: number
   lastAccessedAt: number
   lastScrollPosition: number
+  lastLine?: number
+  lastMode?: EditorMode
 }
 
 export interface Folder {

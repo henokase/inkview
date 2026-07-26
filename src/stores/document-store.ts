@@ -12,6 +12,8 @@ import {
   persistActiveDocId,
   loadActiveDocId,
 } from '../lib/db'
+import { useUiStore } from './ui-store'
+import { getDocMeta, saveDocMeta, removeDocMeta } from '../lib/doc-meta'
 
 interface DocumentStore {
   documents: Document[]
@@ -129,6 +131,12 @@ export const useDocumentStore = create<DocumentStore>()((set, get) => ({
       ),
     }))
     persistActiveDocId(id)
+    if (id) {
+      const meta = getDocMeta(id)
+      if (meta?.lastMode) {
+        useUiStore.getState().setEditorMode(meta.lastMode)
+      }
+    }
     const doc = get().documents.find((d) => d.id === id)
     if (doc) saveDocument(doc)
   },
@@ -139,9 +147,11 @@ export const useDocumentStore = create<DocumentStore>()((set, get) => ({
         d.id === id ? { ...d, lastScrollPosition: position } : d
       ),
     }))
+    saveDocMeta(id, { lastScrollPosition: position })
   },
 
   removeDocuments: (ids) => {
+    removeDocMeta(ids)
     set((s) => ({
       documents: s.documents.filter((d) => !ids.includes(d.id)),
       activeDocId:
