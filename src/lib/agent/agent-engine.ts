@@ -1,5 +1,5 @@
 import { LLMClient } from '../llm/client'
-import type { ApiMessage, StreamEvent, Usage, ToolCallChunk } from '../llm/types'
+import type { ApiMessage, Usage, ToolCallChunk } from '../llm/types'
 import { ToolRegistry, toolRegistry } from './tool-registry'
 import { evaluatePermission } from './permission'
 import type { PendingChangeInfo, ToolCallState, PermissionRule, ToolResult } from './types'

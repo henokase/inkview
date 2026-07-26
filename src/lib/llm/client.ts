@@ -1,4 +1,4 @@
-import type { StreamChunk, StreamEvent, ApiMessage, ApiTool, LLMConfig, ToolCallChunk } from './types'
+import type { StreamEvent, ApiMessage, ApiTool, LLMConfig, ToolCallChunk } from './types'
 import {
   LLMError,
   NetworkError,
@@ -203,10 +203,6 @@ export class LLMClient {
       arguments: string
     }>()
 
-    function emitToolDelta(index: number, id: string, name: string, argsDelta: string): void {
-      // no-op — we yield inline instead
-    }
-
     function flushToolCalls(): ToolCallChunk[] | undefined {
       if (toolCallAccumulator.size === 0) return undefined
       const calls: ToolCallChunk[] = []
@@ -288,7 +284,7 @@ export class LLMClient {
               const usage = parsed.usage
                 ? LLMClient.mapUsage(parsed.usage)
                 : undefined
-              yield { type: 'tool-call', calls }
+              yield { type: 'tool-call', calls: calls ?? [] }
               yield { type: 'done', usage }
               return
             }

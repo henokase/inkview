@@ -11,10 +11,33 @@ export function FileDropZone({ onPick, disabled = false, multiple = false }: Fil
   const [dragging, setDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  const dragCounter = useRef(0)
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounter.current++
+    if (!disabled && e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setDragging(true)
+    }
+  }, [disabled])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounter.current--
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0
+      setDragging(false)
+    }
+  }, [])
+
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault()
+      e.stopPropagation()
       setDragging(false)
+      dragCounter.current = 0
       if (disabled) return
       const files = Array.from(e.dataTransfer.files)
       if (files.length > 0) onPick(files)
@@ -34,11 +57,12 @@ export function FileDropZone({ onPick, disabled = false, multiple = false }: Fil
 
   return (
     <div
+      onDragEnter={handleDragEnter}
       onDragOver={(e) => {
         e.preventDefault()
-        if (!disabled) setDragging(true)
+        e.stopPropagation()
       }}
-      onDragLeave={() => setDragging(false)}
+      onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       onClick={() => { if (!disabled) inputRef.current?.click() }}
       className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-8 transition-all duration-200 ${

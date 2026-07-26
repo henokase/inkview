@@ -26,7 +26,7 @@ function snapToWordBoundary(text: string, fromIndex: number): number {
 function usePacedText(text: string, streaming: boolean): string {
   const [displayed, setDisplayed] = useState(text)
   const textRef = useRef(text)
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const posRef = useRef(text.length)
   textRef.current = text
 

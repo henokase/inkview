@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useDeferredValue } from 'react'
-import { FileText, Loader2, Plus, RefreshCw, X } from 'lucide-react'
+import { Loader2, RefreshCw, X } from 'lucide-react'
 import { useDocumentStore } from './stores/document-store'
 import { useUiStore } from './stores/ui-store'
 import { useChatStore } from './stores/chat-store'
@@ -18,6 +18,7 @@ import { Notice } from './components/Notice'
 import { ChatPanel } from './components/ChatPanel'
 import { PendingChangesBanner } from './components/PendingChangesBanner'
 import { SelectionToolbar } from './components/SelectionToolbar'
+import { EmptyDocState } from './components/EmptyDocState'
 import { parseShareUrl, fetchSharedContent, resolveImportEntries, resolveTitleUnique } from './lib/share'
 import { usePendingChangesStore } from './stores/pending-changes-store'
 
@@ -416,6 +417,33 @@ function App() {
     [createDocuments, createFolder, setActiveDoc]
   )
 
+  const handleFilesPick = useCallback(
+    async (files: File[]) => {
+      if (files.length === 0) return
+      setCreatingDoc(true)
+
+      try {
+        const loadedFiles: { content: string; name: string }[] = []
+        for (const file of files) {
+          const text = await file.text()
+          loadedFiles.push({
+            content: text,
+            name: file.name.replace(/\.(md|markdown|txt)$/i, ''),
+          })
+        }
+        if (loadedFiles.length === 1) {
+          handleFileUpload(loadedFiles[0].content, loadedFiles[0].name)
+        } else {
+          handleFilesUpload(loadedFiles)
+        }
+      } catch {
+        showToast('Failed to read file(s)', 'error')
+        setCreatingDoc(false)
+      }
+    },
+    [handleFileUpload, handleFilesUpload, showToast]
+  )
+
   const handleContentChange = useCallback(
     (content: string) => {
       if (activeDocId) {
@@ -519,21 +547,11 @@ function App() {
                 <p className="text-sm text-ink-soft font-sans">Loading shared document...</p>
               </div>
             ) : (
-              <div className="flex flex-1 flex-col items-center px-4 pt-16 sm:pt-24">
-                <div className="mb-4 rounded-2xl bg-surface-alt p-4 sm:p-5">
-                  <FileText size={36} className="text-ink-faint sm:size-11" />
-                </div>
-                <p className="mb-4 text-sm text-ink-soft max-w-xs text-center leading-relaxed font-sans">
-                  No documents. Create a new one or open a file.
-                </p>
-                <button
-                  onClick={() => setNewDocOpen(true)}
-                  className="flex items-center gap-2 rounded-xl bg-accent px-4 py-2 sm:px-5 sm:py-2.5 text-sm font-medium text-white shadow-xs hover:opacity-90 transition-opacity font-sans"
-                >
-                  <Plus size={16} className="sm:size-4.5" />
-                  New Document
-                </button>
-              </div>
+              <EmptyDocState
+                onNewDoc={handleNewDoc}
+                onFilesPick={handleFilesPick}
+                loading={creatingDoc}
+              />
             )
           ) : showContent ? (
             <>

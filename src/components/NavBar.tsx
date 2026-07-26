@@ -170,13 +170,36 @@ export function NavBar({
           </div>
         </div>
       ) : (
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
           <div className="rounded-lg bg-accent-bg p-2 shrink-0">
             <BookOpen size={18} className="text-accent sm:size-5" />
           </div>
-          <span className="text-sm sm:text-base font-medium text-ink font-sans truncate min-w-0">
-            Editing: {title}
-          </span>
+          <span className="font-sans text-sm sm:text-base font-bold text-ink tracking-tight shrink-0 hidden lg:inline">InkView</span>
+          {title && (
+            <>
+              <span className="text-ink-faint/50 mx-0.5 sm:mx-1 shrink-0 hidden sm:inline">/</span>
+              <div className="flex-1 min-w-0">
+                {editing ? (
+                  <input
+                    ref={inputRef}
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onBlur={saveTitle}
+                    onKeyDown={handleKeyDown}
+                    className="w-full font-sans text-sm sm:text-base font-medium bg-surface-alt rounded-md px-2 py-1 text-ink outline-hidden border border-accent/40"
+                  />
+                ) : (
+                  <button
+                    onClick={startEditing}
+                    className="truncate w-full font-sans text-sm sm:text-base font-medium text-ink-soft text-left hover:text-ink transition-colors"
+                    title="Click to rename"
+                  >
+                    {title}
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
 

@@ -9,7 +9,7 @@ interface ToolCallCardProps {
   metadata?: Record<string, unknown>
 }
 
-export function ToolCallCard({ call, status, result, metadata }: ToolCallCardProps) {
+export function ToolCallCard({ call, status, result, metadata: _metadata }: ToolCallCardProps) {
   const isError = status === 'failed'
   const isRunning = status === 'running' || status === 'pending'
   const isReadDoc = call.name === 'readDoc'

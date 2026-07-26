@@ -45,6 +45,13 @@ export interface ToolCallPart {
   arguments: Record<string, unknown>
 }
 
+export interface ToolResultPart {
+  id: string
+  name: string
+  result: string
+  isError?: boolean
+}
+
 export interface TextPart {
   type: 'text'
   text: string

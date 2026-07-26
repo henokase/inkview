@@ -1,4 +1,4 @@
-import type { ApiMessage, ApiTool, StreamCallbacks, StreamChunk, Usage } from './types'
+import type { ApiMessage, ApiTool, StreamCallbacks, Usage } from './types'
 import { AbortError } from './errors'
 import { LLMClient } from './client'
 
@@ -20,25 +20,21 @@ export class StreamEngine {
     const abortController = new AbortController()
     this.abortControllers.set(id, abortController)
 
-    let currentChunks: StreamChunk[] = []
+    let currentContent = ''
+    let currentReasoning = ''
     let chunkCount = 0
     const PERSIST_INTERVAL = 30
 
     const flush = () => {
       this.flushTimeouts.delete(id)
-      if (currentChunks.length === 0) return
-      const combined = currentChunks.reduce(
-        (acc, c) => {
-          acc.content += c.content
-          acc.reasoning += c.reasoning
-          return acc
-        },
-        { content: '', reasoning: '' },
-      )
-      currentChunks = []
+      if (!currentContent && !currentReasoning) return
+      const content = currentContent
+      const reasoning = currentReasoning
+      currentContent = ''
+      currentReasoning = ''
       callbacks.onChunk({
-        content: combined.content,
-        reasoning: combined.reasoning,
+        content,
+        reasoning,
         done: false,
       })
     }
@@ -52,34 +48,35 @@ export class StreamEngine {
     }
 
     try {
-      for await (const chunk of this.client.streamChat(
+      for await (const event of this.client.streamChat(
         messages,
         abortController.signal,
         tools,
       )) {
-        if (chunk.toolCalls) {
-          callbacks.onToolCalls?.(chunk.toolCalls)
-        }
-
-        if (chunk.done) {
-          if (chunk.content) {
-            currentChunks.push(chunk)
-          }
-          flush()
-          if (chunk.usage) {
-            callbacks.onUsage?.(chunk.usage as Usage)
-          }
-          callbacks.onDone?.()
-          return
-        }
-
-        currentChunks.push(chunk)
-        chunkCount++
-
-        scheduleFlush()
-
-        if (chunkCount % PERSIST_INTERVAL === 0) {
-          flush()
+        switch (event.type) {
+          case 'text':
+            currentContent += event.content
+            chunkCount++
+            scheduleFlush()
+            if (chunkCount % PERSIST_INTERVAL === 0) flush()
+            break
+          case 'reasoning':
+            currentReasoning += event.text
+            chunkCount++
+            scheduleFlush()
+            if (chunkCount % PERSIST_INTERVAL === 0) flush()
+            break
+          case 'tool-call':
+            flush()
+            callbacks.onToolCalls?.(event.calls)
+            break
+          case 'done':
+            flush()
+            if (event.usage) {
+              callbacks.onUsage?.(event.usage as Usage)
+            }
+            callbacks.onDone?.()
+            return
         }
       }
 

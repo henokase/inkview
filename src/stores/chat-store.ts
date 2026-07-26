@@ -61,6 +61,7 @@ interface ChatStore {
   createConversation: (documentId: string) => string
   deleteConversation: (convId: string) => void
   renameConversation: (id: string, title: string) => void
+  touchConversation: (convId: string) => void
   setActiveConversation: (id: string | null) => void
 
   sendMessage: (content: string, documentId?: string) => Promise<void>
@@ -173,15 +174,38 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     }
   },
 
+  touchConversation: (convId: string) => {
+    const now = Date.now()
+    set((s) => {
+      const newConvsByDoc = { ...s.conversationsByDoc }
+      for (const docId of Object.keys(newConvsByDoc)) {
+        newConvsByDoc[docId] = (newConvsByDoc[docId] || []).map((c) =>
+          c.id === convId ? { ...c, updatedAt: now } : c
+        )
+      }
+      return { conversationsByDoc: newConvsByDoc }
+    })
+    const isDraft = get().draftConversations[convId]
+    if (!isDraft) {
+      const conv = Object.values(get().conversationsByDoc)
+        .flat()
+        .find((c) => c.id === convId)
+      if (conv) saveConversation({ ...conv, updatedAt: now })
+    }
+  },
+
   setActiveConversation: (id) => {
     set({ activeConversationId: id })
-    if (id && !get().messagesByConv[id]) {
-      set({ messagesByConv: { ...get().messagesByConv, [id]: [] } })
-      loadMessagesForConversation(id).then((msgs) => {
-        set((s) => ({
-          messagesByConv: { ...s.messagesByConv, [id]: msgs },
-        }))
-      })
+    if (id) {
+      get().touchConversation(id)
+      if (!get().messagesByConv[id]) {
+        set({ messagesByConv: { ...get().messagesByConv, [id]: [] } })
+        loadMessagesForConversation(id).then((msgs) => {
+          set((s) => ({
+            messagesByConv: { ...s.messagesByConv, [id]: msgs },
+          }))
+        })
+      }
     }
   },
 
@@ -210,6 +234,8 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
         })
       }
     }
+
+    get().touchConversation(convId!)
 
     const contextText = state.contextText
     let userContent = content
@@ -254,6 +280,8 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     const msgIndex = messages.findIndex((m) => m.id === msgId)
     if (msgIndex === -1) return
     if (messages[msgIndex].content === newContent) return
+
+    get().touchConversation(convId)
 
     const editedMsg = { ...messages[msgIndex], content: newContent }
     const truncated = messages.slice(0, msgIndex).concat([editedMsg])
@@ -536,6 +564,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
           flushReasoning()
           flushText()
           applyUpdate()
+          get().touchConversation(convId)
           const final = get().messagesByConv[convId]?.find((m) => m.id === assistantId)
           if (final) {
             saveMessage({
