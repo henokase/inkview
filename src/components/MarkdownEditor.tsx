@@ -3,8 +3,9 @@ import CodeMirror from '@uiw/react-codemirror'
 import type { ReactCodeMirrorRef } from '@uiw/react-codemirror'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
-import { EditorView } from '@codemirror/view'
-import { syntaxHighlighting, HighlightStyle } from '@codemirror/language'
+import { EditorView, keymap } from '@codemirror/view'
+import { syntaxHighlighting, HighlightStyle, indentUnit } from '@codemirror/language'
+import { indentWithTab } from '@codemirror/commands'
 import { tags } from '@lezer/highlight'
 import type { PendingChange } from '../stores/pending-changes-store'
 import { DiffEditor } from './DiffEditor'
@@ -101,6 +102,8 @@ export const MarkdownEditor = memo(forwardRef<MarkdownEditorHandle, MarkdownEdit
       codeLanguages: languages,
       addKeymap: true,
     }),
+    keymap.of([indentWithTab]),
+    indentUnit.of('    '),
     syntaxHighlighting(headingStyle),
     EditorView.lineWrapping,
     EditorView.updateListener.of((update) => {

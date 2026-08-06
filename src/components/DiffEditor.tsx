@@ -4,8 +4,9 @@ import { usePendingChangesStore } from '../stores/pending-changes-store'
 import CodeMirror from '@uiw/react-codemirror'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
-import { EditorView } from '@codemirror/view'
-import { syntaxHighlighting, HighlightStyle } from '@codemirror/language'
+import { EditorView, keymap } from '@codemirror/view'
+import { syntaxHighlighting, HighlightStyle, indentUnit } from '@codemirror/language'
+import { indentWithTab } from '@codemirror/commands'
 import { tags } from '@lezer/highlight'
 import { unifiedMergeView } from '@codemirror/merge'
 import { pendingChangeScrollbarMarkers } from '../lib/codemirror/pending-change-scrollbar'
@@ -148,6 +149,8 @@ export const DiffEditor = memo(function DiffEditor({ documentId, pendingChanges 
   const extensions = useMemo(
     () => [
       markdown({ base: markdownLanguage, codeLanguages: languages, addKeymap: true }),
+      keymap.of([indentWithTab]),
+      indentUnit.of('    '),
       syntaxHighlighting(syntaxStyle),
       EditorView.lineWrapping,
       editorTheme,
