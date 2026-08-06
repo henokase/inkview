@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { BookOpen, Columns2, Eye, FileEdit, Plus, WifiOff } from 'lucide-react'
+import { BookOpen, Columns2, Download, Eye, FileEdit, Plus, WifiOff } from 'lucide-react'
 import { ShareButton } from './ShareButton'
 import { ThemeToggle } from './ThemeToggle'
 import { TocIcon, DocListIcon, AiChatIcon } from './CustomIcons'
@@ -81,6 +81,25 @@ export function NavBar({
       setEditing(false)
     }
   }, [title])
+
+  const handleDownload = useCallback(() => {
+    if (!content) return
+    const safeTitle = (title || 'document')
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+    const filename = `${safeTitle || 'document'}.md`
+
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }, [content, title])
 
   const filteredModes = isMobile
     ? editorModes.filter((m) => m.mode !== 'split')
@@ -245,6 +264,16 @@ export function NavBar({
         </button>
 
         {showContent && <ShareButton content={content} title={title} />}
+
+        {showContent && (
+          <button
+            onClick={handleDownload}
+            title="Download markdown (.md)"
+            className="rounded-lg p-2 sm:p-2.5 text-ink-faint hover:text-ink hover:bg-surface-alt transition-colors"
+          >
+            <Download size={18} />
+          </button>
+        )}
 
         {onChatToggle && (
           <button
