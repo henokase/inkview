@@ -126,20 +126,45 @@ const A = ({ href: hrefProp, children, ...props }: ComponentPropsWithoutRef<'a'>
               e.preventDefault()
               const rawHash = href.slice(1)
               if (!rawHash) return
-              const targetId = decodeURIComponent(rawHash)
+              let targetId = rawHash
+              try {
+                targetId = decodeURIComponent(rawHash)
+              } catch { /* ignore */ }
+
               let el =
                 document.getElementById(targetId) ||
-                document.querySelector(`[id="${CSS.escape(targetId)}"]`)
+                (targetId ? document.querySelector(`[id="${CSS.escape(targetId)}"]`) : null)
 
-              if (!el) {
+              if (!el && targetId) {
                 const singleDash = targetId.replace(/-+/g, '-')
                 el =
                   document.getElementById(singleDash) ||
                   document.querySelector(`[id="${CSS.escape(singleDash)}"]`)
               }
 
+              if (!el && targetId) {
+                const container = document.querySelector<HTMLElement>('[data-preview-scroll]') || document
+                const headingEls = container.querySelectorAll('h1, h2, h3, h4, h5, h6')
+                for (const h of Array.from(headingEls)) {
+                  const hText = h.textContent?.trim() || ''
+                  const slug = slugify(hText)
+                  if (slug === targetId || slug === targetId.replace(/-+/g, '-')) {
+                    el = h as HTMLElement
+                    break
+                  }
+                }
+              }
+
               if (el) {
-                el.scrollIntoView({ behavior: 'smooth' })
+                const scrollContainer = el.closest('[data-preview-scroll]') || el.closest('.overflow-y-auto')
+                if (scrollContainer) {
+                  const containerRect = scrollContainer.getBoundingClientRect()
+                  const elRect = el.getBoundingClientRect()
+                  const scrollTop = scrollContainer.scrollTop + (elRect.top - containerRect.top) - 16
+                  scrollContainer.scrollTo({ top: Math.max(0, scrollTop), behavior: 'smooth' })
+                } else {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }
               }
             }
           : undefined
