@@ -11,6 +11,14 @@ function stripMarkdown(text: string): string {
     .trim()
 }
 
+export function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\p{L}\p{M}\p{N}\s-]/gu, '')
+    .replace(/\s/g, '-')
+}
+
 export function extractTocHeadings(markdown: string): TocHeading[] {
   const lines = markdown.split('\n')
   const headings: TocHeading[] = []
@@ -28,11 +36,7 @@ export function extractTocHeadings(markdown: string): TocHeading[] {
 
     const level = match[1].length
     const text = stripMarkdown(match[2])
-    const id = text
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
+    const id = slugify(text)
 
     headings.push({ id, text, level })
   }

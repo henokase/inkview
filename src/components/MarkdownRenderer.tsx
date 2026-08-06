@@ -21,6 +21,7 @@ import css from 'react-syntax-highlighter/dist/esm/languages/prism/css'
 import { Copy, Check } from 'lucide-react'
 import type { Components } from 'react-markdown'
 import { MermaidDiagram } from './MermaidDiagram'
+import { slugify } from '../lib/toc'
 
 function cleanTheme(theme: Record<string, React.CSSProperties>): Record<string, React.CSSProperties> {
   const cleaned: Record<string, React.CSSProperties> = {}
@@ -64,17 +65,20 @@ function convertYouTubeUrl(url: string): string {
   return url
 }
 
-function slugify(text: string) {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
+function getNodeText(node: ReactNode): string {
+  if (node === null || node === undefined) return ''
+  if (typeof node === 'string' || typeof node === 'number') return String(node)
+  if (Array.isArray(node)) return node.map(getNodeText).join('')
+  if (typeof node === 'object' && 'props' in node && node.props) {
+    return getNodeText((node.props as { children?: ReactNode }).children)
+  }
+  return ''
 }
 
 function makeHeading(Tag: 'h1' | 'h2' | 'h3' | 'h4', className: string, counts: Map<string, number>) {
   return ({ children }: { children?: ReactNode }) => {
-    const base = slugify(String(children))
+    const textContent = getNodeText(children)
+    const base = slugify(textContent)
     const count = counts.get(base) ?? 0
     counts.set(base, count + 1)
     const id = count > 0 ? `${base}-${count + 1}` : base
@@ -116,7 +120,30 @@ const A = ({ href: hrefProp, children, ...props }: ComponentPropsWithoutRef<'a'>
       href={href || undefined}
       target={href.startsWith('http') && !isHash ? '_blank' : undefined}
       rel={href.startsWith('http') && !isHash ? 'noopener noreferrer' : undefined}
-      onClick={isHash ? (e) => { e.preventDefault(); document.getElementById(href.slice(1))?.scrollIntoView({ behavior: 'smooth' }) } : undefined}
+      onClick={
+        isHash
+          ? (e) => {
+              e.preventDefault()
+              const rawHash = href.slice(1)
+              if (!rawHash) return
+              const targetId = decodeURIComponent(rawHash)
+              let el =
+                document.getElementById(targetId) ||
+                document.querySelector(`[id="${CSS.escape(targetId)}"]`)
+
+              if (!el) {
+                const singleDash = targetId.replace(/-+/g, '-')
+                el =
+                  document.getElementById(singleDash) ||
+                  document.querySelector(`[id="${CSS.escape(singleDash)}"]`)
+              }
+
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth' })
+              }
+            }
+          : undefined
+      }
       className="break-all text-accent underline decoration-accent/25 underline-offset-2 transition-colors hover:decoration-accent/60"
       {...props}
     >
