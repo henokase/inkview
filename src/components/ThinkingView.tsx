@@ -13,7 +13,7 @@ export function ThinkingView({ thinking, loading = true }: ThinkingViewProps) {
   if (!loading) return null
 
   return (
-    <div className="rounded-xl border border-accent/10 bg-accent/4 overflow-hidden">
+    <div className="min-w-0 max-w-full rounded-xl border border-accent/10 bg-accent/4 overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 w-full px-3.5 py-2.5 text-left transition-colors duration-200 hover:bg-accent/4"
@@ -37,9 +37,9 @@ export function ThinkingView({ thinking, loading = true }: ThinkingViewProps) {
         )}
       </button>
       {open && hasContent && (
-        <div className="px-3.5 pb-3">
-          <div className="rounded-lg bg-accent/4 border border-accent/8 px-3 py-2.5 max-h-48 overflow-y-auto">
-            <p className="text-[12px] text-ink-soft leading-relaxed whitespace-pre-wrap font-sans">
+        <div className="px-3.5 pb-3 min-w-0 max-w-full">
+          <div className="rounded-lg bg-accent/4 border border-accent/8 px-3 py-2.5 max-h-48 overflow-y-auto overflow-x-hidden max-w-full">
+            <p className="text-[12px] text-ink-soft leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-sans">
               {thinking}
             </p>
           </div>

@@ -41,7 +41,7 @@ export function ConversationList({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1.5 w-56 rounded-xl border border-border/70 bg-surface/95 backdrop-blur-lg shadow-lg shadow-black/5 z-50 py-1 animate-in fade-in slide-in-from-top-1 duration-150 overflow-hidden">
+        <div className="absolute left-0 top-full mt-1.5 w-56 max-w-[calc(100vw-2rem)] rounded-xl border border-border/70 bg-surface/95 backdrop-blur-lg shadow-lg shadow-black/5 z-50 py-1 animate-in fade-in slide-in-from-top-1 duration-150 overflow-hidden">
           {conversations.length === 0 ? (
             <p className="px-3.5 py-3 text-xs text-ink-faint/50 font-sans italic text-center leading-relaxed">
               No sessions yet

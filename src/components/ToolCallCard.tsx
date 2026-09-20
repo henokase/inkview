@@ -35,16 +35,16 @@ export function ToolCallCard({ call, status, result, metadata: _metadata }: Tool
   ) : null
 
   return (
-    <div className="rounded-xl border overflow-hidden border-border/50">
+    <div className="min-w-0 max-w-full rounded-xl border overflow-hidden border-border/50">
       <button
         onClick={() => canExpand && setCollapsed(!collapsed)}
-        className={`w-full flex items-center gap-1.5 bg-surface-alt/60 px-2.5 py-1.5 text-left ${canExpand ? 'cursor-pointer' : 'cursor-default'}`}
+        className={`w-full min-w-0 flex items-center gap-1.5 bg-surface-alt/60 px-2.5 py-1.5 text-left ${canExpand ? 'cursor-pointer' : 'cursor-default'}`}
       >
         {icon}
         <Settings size={11} className="text-ink-faint/40 shrink-0" />
-        <code className={`text-[11px] font-mono font-medium leading-tight ${isError ? 'text-red-500' : 'text-ink'}`}>{call.name}</code>
+        <code className={`min-w-0 shrink-0 text-[11px] font-mono font-medium leading-tight ${isError ? 'text-red-500' : 'text-ink'}`}>{call.name}</code>
         {docLabel && (
-          <span className={`text-[11px] ${isError ? 'text-red-500' : 'text-ink'} truncate max-w-45`}>
+          <span className={`min-w-0 flex-1 text-[11px] ${isError ? 'text-red-500' : 'text-ink'} truncate max-w-45`}>
             <span className="text-ink-faint/30 mx-0.5">→</span> {docLabel}
           </span>
         )}
@@ -56,9 +56,9 @@ export function ToolCallCard({ call, status, result, metadata: _metadata }: Tool
         )}
       </button>
       {!collapsed && hasResult && (
-        <div className="px-3 pb-3 pt-1.5 animate-in slide-in-from-top-1 fade-in duration-200">
-          <div className="rounded-lg bg-surface dark:bg-black/40 border border-border/30 px-3 py-2 max-h-48 overflow-y-auto">
-            <pre className={`text-[11px] font-mono leading-relaxed whitespace-pre-wrap ${isError ? 'text-red-700 dark:text-red-400' : 'text-ink-soft'}`}>
+        <div className="min-w-0 max-w-full px-3 pb-3 pt-1.5 animate-in slide-in-from-top-1 fade-in duration-200">
+          <div className="rounded-lg bg-surface dark:bg-black/40 border border-border/30 px-3 py-2 max-h-48 overflow-y-auto overflow-x-hidden max-w-full">
+            <pre className={`text-[11px] font-mono leading-relaxed whitespace-pre-wrap break-all [overflow-wrap:anywhere] ${isError ? 'text-red-700 dark:text-red-400' : 'text-ink-soft'}`}>
               {result}
             </pre>
           </div>

@@ -61,6 +61,8 @@ export function ChatPanel() {
 
   const getMaxWidth = () => Math.min(screenWidth * 0.6, 800)
 
+  const effectiveWidth = Math.min(panelWidth || getMinWidth(), screenWidth || 100000)
+
   useEffect(() => {
     if (!panelWidth) {
       setPanelWidth(storedPanelWidth)
@@ -73,9 +75,9 @@ export function ChatPanel() {
 
   const updateWidth = useCallback((clientX: number) => {
     const newWidth = window.innerWidth - clientX
-    const minW = getMinWidth()
-    const maxW = getMaxWidth()
-    const clamped = Math.max(minW, Math.min(newWidth, maxW))
+    const minW = Math.min(getMinWidth(), window.innerWidth)
+    const maxW = Math.min(getMaxWidth(), window.innerWidth)
+    const clamped = Math.max(minW, Math.min(newWidth, Math.max(maxW, minW)))
     setPanelWidth(clamped)
   }, [screenWidth])
 
@@ -159,12 +161,12 @@ export function ChatPanel() {
       />
 
       <aside
-        className="fixed inset-y-0 right-0 z-60 lg:relative lg:shrink-0 flex flex-col border-l border-border/60 bg-surface shadow-2xl lg:shadow-[-8px_0_32px_-8px_rgba(0,0,0,0.12)] animate-in slide-in-from-right duration-200"
-        style={{ width: panelWidth || getMinWidth() }}
+        className="fixed inset-y-0 right-0 z-60 lg:relative lg:shrink-0 flex flex-col min-w-0 max-w-[100vw] border-l border-border/60 bg-surface shadow-2xl lg:shadow-[-8px_0_32px_-8px_rgba(0,0,0,0.12)] animate-in slide-in-from-right duration-200"
+        style={{ width: effectiveWidth }}
       >
         <div
           onMouseDown={handleDragStart}
-          className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-accent/40 active:bg-accent/60 transition-colors group z-10"
+          className="absolute left-0 top-0 bottom-0 hidden w-1.5 cursor-col-resize hover:bg-accent/40 active:bg-accent/60 transition-colors group z-10 lg:block"
         >
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-6 rounded-full bg-border/50 opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>

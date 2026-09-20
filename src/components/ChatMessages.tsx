@@ -79,12 +79,12 @@ function ChatMarkdown({ content }: { content: string }) {
       remarkPlugins={[remarkGfm, remarkMath]}
       rehypePlugins={[rehypeKatex]}
       components={{
-        p: ({ children }) => <p className="mb-2.5 last:mb-0 leading-relaxed text-[13px]">{children}</p>,
+        p: ({ children }) => <p className="mb-2.5 last:mb-0 leading-relaxed text-[13px] break-words [overflow-wrap:anywhere]">{children}</p>,
         ul: ({ children }) => <ul className="mb-2.5 ml-4 list-disc space-y-0.5">{children}</ul>,
         ol: ({ children }) => <ol className="mb-2.5 ml-4 list-decimal space-y-0.5">{children}</ol>,
-        li: ({ children }) => <li className="leading-relaxed text-[13px]">{children}</li>,
+        li: ({ children }) => <li className="leading-relaxed text-[13px] break-words [overflow-wrap:anywhere]">{children}</li>,
         a: ({ href, children }) => (
-          <a href={href} target="_blank" rel="noopener noreferrer" className="text-accent underline decoration-accent/25 underline-offset-2 hover:decoration-accent/60 transition-all duration-200">
+          <a href={href} target="_blank" rel="noopener noreferrer" className="text-accent underline decoration-accent/25 underline-offset-2 hover:decoration-accent/60 transition-all duration-200 break-all [overflow-wrap:anywhere]">
             {children}
           </a>
         ),
@@ -95,7 +95,7 @@ function ChatMarkdown({ content }: { content: string }) {
           const trimmed = codeStr.replace(/\n$/, '')
           if (match) {
             return (
-              <div className="my-2.5 rounded-lg border border-border/60 bg-surface-alt/80 overflow-x-auto backdrop-blur-sm">
+              <div className="my-2.5 max-w-full rounded-lg border border-border/60 bg-surface-alt/80 overflow-x-auto backdrop-blur-sm">
                 <pre className="px-3.5 py-2.5 text-xs font-mono leading-relaxed text-ink w-max min-w-full">
                   <code>{trimmed}</code>
                 </pre>
@@ -104,7 +104,7 @@ function ChatMarkdown({ content }: { content: string }) {
           }
           if (isFenced) {
             return (
-              <div className="my-2.5 rounded-lg border border-border/60 bg-surface-alt/80 overflow-x-auto backdrop-blur-sm">
+              <div className="my-2.5 max-w-full rounded-lg border border-border/60 bg-surface-alt/80 overflow-x-auto backdrop-blur-sm">
                 <pre className="px-3.5 py-2.5 text-xs font-mono leading-relaxed text-ink w-max min-w-full">
                   <code>{trimmed}</code>
                 </pre>
@@ -112,23 +112,23 @@ function ChatMarkdown({ content }: { content: string }) {
             )
           }
           return (
-            <code className="rounded-md bg-accent/8 px-1.5 py-0.5 text-xs font-mono text-accent" {...props}>
+            <code className="rounded-md bg-accent/8 px-1.5 py-0.5 text-xs font-mono text-accent break-all [overflow-wrap:anywhere]" {...props}>
               {children}
             </code>
           )
         },
         pre: ({ children }) => <>{children}</>,
         blockquote: ({ children }) => (
-          <blockquote className="mb-2.5 border-l-2 border-accent/20 pl-3.5 italic text-ink-soft text-[13px]">{children}</blockquote>
+          <blockquote className="mb-2.5 border-l-2 border-accent/20 pl-3.5 italic text-ink-soft text-[13px] break-words [overflow-wrap:anywhere]">{children}</blockquote>
         ),
         hr: () => <hr className="my-4 border-border/40" />,
         table: ({ children }) => (
-          <div className="mb-3 overflow-x-auto rounded-xl border border-border/50 shadow-xs">
+          <div className="mb-3 max-w-full overflow-x-auto rounded-xl border border-border/50 shadow-xs">
             <table className="w-max min-w-full border-collapse text-xs chat-table">{children}</table>
           </div>
         ),
-        th: ({ children }) => <th className="bg-surface-alt/90 px-3.5 py-2 text-left font-semibold text-ink text-[11px] tracking-wider uppercase border-b border-border/40">{children}</th>,
-        td: ({ children }) => <td className="px-3.5 py-2 border-b border-border/30 text-[13px] leading-relaxed">{children}</td>,
+        th: ({ children }) => <th className="bg-surface-alt/90 px-3.5 py-2 text-left font-semibold text-ink text-[11px] tracking-wider uppercase border-b border-border/40 break-words [overflow-wrap:anywhere]">{children}</th>,
+        td: ({ children }) => <td className="px-3.5 py-2 border-b border-border/30 text-[13px] leading-relaxed break-words [overflow-wrap:anywhere]">{children}</td>,
         h1: ({ children }) => <h1 className="mb-2.5 mt-4 text-base font-bold text-ink first:mt-0 tracking-tight">{children}</h1>,
         h2: ({ children }) => <h2 className="mb-2 mt-3.5 text-sm font-bold text-ink first:mt-0 tracking-tight">{children}</h2>,
         h3: ({ children }) => <h3 className="mb-1.5 mt-3 text-[13px] font-bold text-ink first:mt-0 tracking-tight">{children}</h3>,
@@ -144,8 +144,8 @@ const ChatMarkdownMemo = memo(ChatMarkdown)
 function StreamingText({ text }: { text: string }) {
   const paced = usePacedText(text, true)
   return (
-    <div className="prose prose-sm max-w-none">
-      <p className="whitespace-pre-wrap text-[13px] leading-relaxed">{paced}</p>
+    <div className="prose prose-sm max-w-none min-w-0 max-w-full">
+      <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[13px] leading-relaxed">{paced}</p>
       {paced.length < text.length && (
         <span className="inline-block w-1.5 h-4 bg-accent ml-0.5 rounded-sm animate-pulse align-text-bottom" />
       )}
@@ -161,7 +161,7 @@ function PartRenderer({ part, isStreaming, isLast }: { part: Part; isStreaming: 
         return <StreamingText text={text} />
       }
       return (
-        <div className="prose prose-sm max-w-none">
+        <div className="prose prose-sm min-w-0 max-w-full break-words [overflow-wrap:anywhere]">
           <ChatMarkdownMemo content={text} />
         </div>
       )
@@ -248,10 +248,10 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
   useKeydown(editing, handleSave, handleCancel)
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-in fade-in duration-200`}>
-      <div className={`${isUser ? (editing ? 'w-full' : 'max-w-[88%]') : 'w-full'}`}>
+    <div className={`flex min-w-0 ${isUser ? 'justify-end' : 'justify-start'} animate-in fade-in duration-200`}>
+      <div className={`min-w-0 max-w-full ${isUser ? (editing ? 'w-full' : 'max-w-[88%]') : 'w-full'}`}>
         <div
-          className={`relative ${
+          className={`relative min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere] ${
             isUser
               ? 'bg-accent/15 border border-accent/30 text-ink rounded-xl rounded-br-md'
               : `text-ink ${hasParts || msg.content ? 'bg-surface-alt border border-border/40 rounded-xl rounded-tl-md' : ''}`
@@ -266,8 +266,8 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
               rows={3}
             />
           ) : isUser ? (
-            <div ref={bubbleRef}>
-              <p className="whitespace-pre-wrap text-[13px] leading-relaxed font-medium">
+            <div ref={bubbleRef} className="min-w-0 max-w-full">
+              <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[13px] leading-relaxed font-medium">
                 {isCollapsed
                   ? msg.content.split('\n').slice(0, COLLAPSE_LINE_THRESHOLD).join('\n')
                   : msg.content}
@@ -282,7 +282,7 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
               )}
             </div>
           ) : hasParts ? (
-            <div className="space-y-2">
+            <div className="min-w-0 max-w-full space-y-2">
               {msg.parts!.map((part, i) => (
                 <PartRendererMemo
                   key={part.type === 'tool' ? (part as ToolPart).id : `part-${i}`}
@@ -301,11 +301,11 @@ const MessageBubble = memo(function MessageBubble({ msg, isLastStreaming, isLast
           ) : msg.content ? (
             isLastStreaming ? (
               <>
-                <p className="whitespace-pre-wrap text-[13px] leading-relaxed">{msg.content}</p>
+                <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[13px] leading-relaxed">{msg.content}</p>
                 <span className="inline-block w-1.5 h-4 bg-accent ml-0.5 rounded-sm animate-pulse align-text-bottom" />
               </>
             ) : (
-              <div className="prose prose-sm max-w-none">
+              <div className="prose prose-sm min-w-0 max-w-full break-words [overflow-wrap:anywhere]">
                 <ChatMarkdownMemo content={msg.content} />
               </div>
             )
@@ -376,17 +376,17 @@ function DocLinks({ parts }: { parts: Part[] }) {
   }
   if (docs.size === 0) return null
   return (
-    <div className="pt-2 border-t border-border/30">
+    <div className="min-w-0 max-w-full pt-2 border-t border-border/30">
       <span className="text-[11px] text-ink-faint/60 font-semibold uppercase tracking-wider">Documents modified:</span>
-      <div className="mt-1 space-y-0.5">
+      <div className="mt-1 min-w-0 max-w-full space-y-0.5">
         {Array.from(docs.entries()).map(([id, title]) => (
           <button
             key={id}
             onClick={() => useDocumentStore.getState().setActiveDoc(id)}
-            className="flex items-center gap-1.5 text-[12px] text-accent hover:underline cursor-pointer"
+            className="flex min-w-0 max-w-full items-center gap-1.5 text-left text-[12px] text-accent hover:underline cursor-pointer"
           >
             <FileText size={12} className="shrink-0" />
-            {title}
+            <span className="min-w-0 flex-1 break-all [overflow-wrap:anywhere]">{title}</span>
           </button>
         ))}
       </div>
@@ -449,7 +449,7 @@ export function ChatMessages({ messages, isStreaming, activeThinking, onEdit }: 
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="h-full overflow-y-auto px-2.5 pt-4 scroll-smooth"
+        className="h-full overflow-y-auto overflow-x-hidden px-2.5 pt-4 scroll-smooth"
       >
         <div className="space-y-4">
           {messages.map((msg, index) => (
