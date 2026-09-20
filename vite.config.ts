@@ -6,9 +6,12 @@ import { sseProxyPlugin } from './vite-plugin-sse-proxy.ts'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const aiApiKey = env.AI_API_KEY
+  const aiApiKey = env.AI_API_KEY || env.VITE_AI_API_KEY
   const aiBaseUrl = env.VITE_AI_BASE_URL || 'https://openrouter.ai/api/v1'
   console.log(`[config] AI API target: ${aiBaseUrl}`)
+  if (!aiApiKey) {
+    console.warn('[config] AI API key missing: set AI_API_KEY (preferred) or VITE_AI_API_KEY in .env, then restart the dev server')
+  }
 
   return {
     plugins: [

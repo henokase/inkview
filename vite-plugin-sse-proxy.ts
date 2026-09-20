@@ -61,6 +61,9 @@ function proxyRequest(
 
 export function sseProxyPlugin(aiBaseUrl: string, apiKey: string | undefined): Plugin {
   console.log(`[sse-proxy] AI API target: ${aiBaseUrl}`)
+  if (!apiKey) {
+    console.warn('[sse-proxy] AI API key missing: set AI_API_KEY (preferred) or VITE_AI_API_KEY in .env, then restart `npm run dev`')
+  }
 
   return {
     name: 'sse-proxy',
@@ -68,6 +71,12 @@ export function sseProxyPlugin(aiBaseUrl: string, apiKey: string | undefined): P
       server.middlewares.use('/api-ai', async (req: IncomingMessage, res: ServerResponse, next) => {
         if (req.method !== 'POST' || !req.url?.includes('/chat/completions')) {
           return next()
+        }
+
+        if (!apiKey) {
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'AI API key missing: set AI_API_KEY in .env and restart `npm run dev`' }))
+          return
         }
 
         const upstreamPath = req.url.replace(/^\/api-ai/, '')

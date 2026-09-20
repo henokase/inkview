@@ -3,10 +3,10 @@ export async function POST(request: Request) {
     const url = new URL(request.url)
 
     const aiBaseUrl = (process.env.VITE_AI_BASE_URL || 'https://openrouter.ai/api/v1').replace(/\/+$/, '')
-    const apiKey = process.env.AI_API_KEY
+    const apiKey = process.env.AI_API_KEY || process.env.VITE_AI_API_KEY
 
     if (!apiKey) {
-      return Response.json({ error: 'AI_API_KEY not configured' }, { status: 500 })
+      return Response.json({ error: 'AI_API_KEY (or VITE_AI_API_KEY) not configured' }, { status: 500 })
     }
 
     const upstreamPath = url.pathname.replace(/^\/api\/ai/, '')
